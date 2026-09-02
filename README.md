@@ -2,7 +2,7 @@
 
 Mori is a planned voice-first Mandarin learning app built around natural conversation, personalized practice, and evidence-based progression.
 
-> Status: Product definition. Application implementation has not started yet.
+> Status: Webapp foundation in progress. Backend and realtime integrations are not implemented.
 
 ## Product vision
 
@@ -46,10 +46,11 @@ These are product decisions, not completed implementation. Model, voice, API, an
 ## Documentation
 
 - [Product requirements document](docs/PRD.md)
-- [High-level system design](docs/SYSTEM_DESIGN.md)
+- [High-level system design](docs/diagrams/high-level-system-design.md)
+- [Webapp foundation](apps/web/README.md)
 
 The PRD defines the MVP scope, user experience, tutor behavior, learning state, functional requirements, technical direction, metrics, safety requirements, and acceptance criteria. The system design defines the approved component boundaries and end-to-end learning flow.
 
 ## Repository status
 
-This repository currently contains product documentation only. Application code, local setup instructions, testing commands, and deployment guidance will be added alongside the implementation.
+The responsive webapp scaffold lives in `apps/web`. It currently uses a mock gateway so frontend work can proceed independently from backend API design. See the webapp README for local setup, source boundaries, and integration notes.
