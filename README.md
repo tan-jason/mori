@@ -46,8 +46,9 @@ These are product decisions, not completed implementation. Model, voice, API, an
 ## Documentation
 
 - [Product requirements document](docs/PRD.md)
+- [High-level system design](docs/SYSTEM_DESIGN.md)
 
-The PRD defines the MVP scope, user experience, tutor behavior, learning state, functional requirements, technical direction, metrics, safety requirements, and acceptance criteria.
+The PRD defines the MVP scope, user experience, tutor behavior, learning state, functional requirements, technical direction, metrics, safety requirements, and acceptance criteria. The system design defines the approved component boundaries and end-to-end learning flow.
 
 ## Repository status
 

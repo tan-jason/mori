@@ -1,6 +1,6 @@
 # Personalized Mandarin Conversation Coach - MVP PRD
 
-**Status:** Draft 0.3
+**Status:** Draft 0.5
 
 **Date:** September 1, 2026
 
@@ -12,7 +12,9 @@ The product is a personalized, voice-first Mandarin learning app. A learner has 
 
 The MVP is not an open-ended AI companion with language-learning flavor. It is a structured learning system delivered through natural conversation. The curriculum engine decides what the learner needs to demonstrate. The conversation model decides how to weave those objectives into an engaging discussion.
 
-Sessions may end at any time and are capped at 20 minutes. During a session, Mandarin is the persistent default. When a learner asks for help, switches to English because they are stuck, or communicates unclear intent, the tutor may use brief English clarification and compassionate word-by-word or phrase-by-phrase scaffolding before returning to Mandarin. After each session, a separate analysis process extracts evidence, updates learning progress, assesses level, and prepares safe follow-up topics for the next conversation.
+Sessions may end at any time and are capped at 20 minutes. Every new user account receives one free introductory session of up to 20 minutes. After that session is consumed, continued voice access requires a plan. At launch, the Basic plan includes two sessions of up to 20 minutes per weekly entitlement window. The entitlement system must support additional plans, feature access, and usage limits without hard-coding product behavior to the Basic plan.
+
+During a session, Mandarin is the persistent default. When a learner asks for help, switches to English because they are stuck, or communicates unclear intent, the tutor may use brief English clarification and compassionate word-by-word or phrase-by-phrase scaffolding before returning to Mandarin. After each session, a separate analysis process extracts evidence, updates learning progress, assesses level, and prepares safe follow-up topics for the next conversation.
 
 ## 2. Problem
 
@@ -51,6 +53,9 @@ Learners need:
 - Promote or demote a learner using transcript-grounded evidence and stable rules.
 - Produce a useful session recap and seed appropriate topics for the next session.
 - Enforce a 20-minute hard cap while allowing early ending.
+- Give every new user one free introductory session of up to 20 minutes.
+- Enforce the Basic plan's allowance of two 20-minute sessions per weekly entitlement window and its cost-aware post-session analysis policy on the server.
+- Represent plan capabilities as configurable entitlements so additional plans, features, and usage limits can be added without changing core session logic.
 
 ### 4.2 Non-goals for MVP
 
@@ -84,6 +89,8 @@ MVP assumptions:
 - **Conversation hook:** A short-lived, non-sensitive topic from a prior session that may be revisited naturally.
 - **Language profile:** All progress, memories, and settings associated with one base-target language pair.
 - **Full session:** A session with at least five minutes of connected conversation or enough evidence to complete the planned diagnostic.
+- **Introductory entitlement:** A one-time, account-level grant for one voice session of up to 20 minutes. It does not reset.
+- **Plan entitlement:** A versioned rule that grants access to a feature, optionally with a usage limit, duration limit, and reset window.
 
 ## 7. Core user experience
 
@@ -100,12 +107,16 @@ The learner:
 
 The initial level may change after the first diagnostic. Beginner fallback and any self-selected level are provisional and are never treated as verified evidence.
 
+The learner's first voice session uses the free introductory entitlement, so the initial diagnostic does not require a paid plan.
+
 ### 7.2 Home screen
 
 The home screen shows:
 
 - Current level and a short description.
 - Start conversation button.
+- Current plan, available voice sessions, and the next reset time when applicable.
+- A clear upgrade path when the free session or current plan allowance has been exhausted.
 - Suggested session focus, such as "talking about this week" or "practicing past events."
 - Due review count.
 - Recent learning items and session history.
@@ -194,6 +205,22 @@ The recap appears when processing finishes and contains:
 
 The recap interface may use English for clarity. The Mandarin-first spoken-language policy applies to the live tutor's audio. Mandarin examples should include characters and optional pinyin.
 
+### 7.8 Plans, entitlements, and usage
+
+Every new user account receives one free introductory voice session. The session may use up to the existing 20-minute cap and the entitlement does not reset. After that session is consumed, the learner needs an active plan with available voice-session entitlement to start another session.
+
+At launch, the Basic plan includes two voice sessions per weekly entitlement window. Each Basic session may use up to 20 minutes.
+
+- Before creating a Realtime call, the server resolves the user's effective entitlements and atomically reserves one available voice session.
+- A session consumes the reservation after it produces at least one usable learner turn. A failure during setup that produces no usable turn releases the reservation.
+- Ending early still consumes the free session or plan allowance because the transcript and valid evidence continue through post-session processing.
+- The client displays whether the introductory session is available, the active plan, remaining sessions, and the next reset time when applicable. The server-side entitlement and usage ledger is authoritative.
+- Plan definitions are versioned data, not branches keyed to plan names. Each plan can grant boolean feature access, metered usage, duration limits, and reset windows.
+- Future plans may add or vary features beyond voice-session quantity. The same entitlement resolver must protect those features at their server-side entry points.
+- The introductory session and every paid tier must preserve the same P0 learning correctness, privacy, and safety guarantees. A plan may vary optional features and processing depth, but not the validity of committed learning state.
+- Basic sessions use the cost-optimized post-session extraction policy. This policy must still produce all P0 learning evidence and state updates, satisfy the same schema and provenance validation, and meet the release evaluation threshold. It may omit optional enrichment or additional analysis passes.
+- Concrete model identifiers remain runtime configuration. A lower-cost model may be used only when it meets the required extraction evaluation threshold; low-confidence or invalid output follows the normal retry or escalation policy.
+
 ## 8. Live tutor behavior
 
 ### 8.1 Language policy
@@ -269,6 +296,8 @@ The MVP curriculum is a versioned, curated competency graph. Items may depend on
 - Whether the item is a promotion gate.
 
 Development cost is not a reason to let a model invent this graph dynamically. The graph is product content and must be testable, versioned, and migratable.
+
+Only published curriculum versions may be used for new session plans. Draft changes are never served to learners, and every session plan pins the published curriculum version it used.
 
 ### 9.2 Learning states
 
@@ -422,6 +451,21 @@ Do not proactively retain or resurface:
 
 Each memory has source session, source turns, confidence, sensitivity class, created time, last used time, and expiry. Conversation hooks expire by default after 30 days unless refreshed. The user can inspect and delete memories.
 
+### 11.5 Durable analysis handoff and learner snapshots
+
+The completed transcript, session plan, end metadata, and prior learner snapshot reference are persisted before post-session analysis is dispatched. The job payload contains identifiers such as `session_id`, `analysis_run_id`, and `analyzer_version`, not the transcript itself. The worker loads the exact versioned session bundle from durable storage so retries never depend on cache contents or a large queue payload.
+
+After deterministic validation succeeds, one transaction commits:
+
+- Append-only learning and assessment evidence.
+- The normalized current learner state.
+- One immutable, versioned planning snapshot associated with the analyzed session.
+- The completed analysis-run status.
+
+The planning snapshot is a compact read model used to create future session plans and audit how the learner state changed after each session. Evidence and normalized state remain the source of truth. Conversation memories remain separate and are not copied into the learning snapshot.
+
+The initial beta includes an internal manual snapshot-review workflow. Whether that review blocks the next plan or runs retrospectively remains an open product decision.
+
 ## 12. Functional requirements
 
 | ID | Priority | Requirement |
@@ -444,6 +488,11 @@ Each memory has source session, source turns, confidence, sensitivity class, cre
 | FR-16 | P1 | Show due reviews and a post-session recap |
 | FR-17 | P1 | Reconnect after a brief network interruption without resetting the time cap |
 | FR-18 | P1 | Support account-level transcript export and deletion |
+| FR-19 | P0 | Grant each new user account exactly one non-resetting introductory voice session of up to 20 minutes |
+| FR-20 | P0 | After the introductory session is consumed, require an active entitlement and enforce the Basic allowance of two sessions per weekly entitlement window through a server-authoritative usage ledger |
+| FR-21 | P0 | Route Basic sessions through a cost-optimized core extraction policy without weakening schema, provenance, progression, or evaluation requirements |
+| FR-22 | P0 | Persist an immutable, versioned learner planning snapshot after every successfully committed session analysis |
+| FR-23 | P0 | Resolve feature access from versioned plan entitlements that support boolean access, metered limits, duration limits, and reset windows without plan-name-specific authorization logic |
 
 ## 13. Language switching and deletion
 
@@ -483,7 +532,7 @@ Use separate model calls for separate responsibilities:
 
 - **Realtime tutor:** Low-latency conversation and turn-taking.
 - **Plan personalizer:** Optional constrained generation of a natural conversational route around deterministic objectives.
-- **Post-session extractor:** Structured evidence extraction from the completed transcript.
+- **Post-session extractor:** Structured evidence extraction from the completed transcript. A server-side model policy selects the cost-optimized or richer extraction tier based on plan entitlement, evaluation results, and retry state.
 
 No model call receives unrestricted database access or directly mutates learner state.
 
@@ -501,6 +550,12 @@ No model call receives unrestricted database access or directly mutates learner 
 - `memories`
 - `conversation_hooks`
 - `analysis_runs`
+- `learner_state_snapshots`
+- `plans`
+- `plan_entitlements`
+- `user_plan_subscriptions`
+- `entitlement_grants`
+- `usage_events`
 - `deletion_jobs`
 
 Every derived record should include provenance and a schema or rule version.
@@ -514,6 +569,9 @@ Every derived record should include provenance and a schema or rule version.
 - 99.9% of sessions stop accepting new tutor output by 20:00 plus a small transport shutdown tolerance.
 - 99% of usable sessions receive a recap within 60 seconds.
 - Analysis retries are idempotent and do not duplicate evidence or memories.
+- Entitlement grants, usage reservations, releases, and consumption are idempotent and cannot exceed either the one-time introductory grant or a recurring plan allowance under concurrent requests.
+- An entitlement change takes effect at server-side feature entry points without requiring a client release.
+- Cost-optimized extraction must satisfy the same release thresholds for required evidence, provenance, and progression safety as any richer extraction tier.
 - A Realtime or analyzer outage preserves existing learner data and fails with a clear retry path.
 
 ### 15.2 Privacy and security
@@ -561,6 +619,7 @@ Every derived record should include provenance and a schema or rule version.
 
 - Onboarding-to-first-session conversion.
 - First-session completion beyond five minutes.
+- Free-session-to-Basic conversion.
 - Sessions per active learner per week.
 - Week 1 and week 4 retention.
 - Early-end rate by minute and stated reason.
@@ -572,6 +631,7 @@ Every derived record should include provenance and a schema or rule version.
 - Third-language output rate.
 - English assistance outside an allowed help trigger or longer than needed to restore Mandarin practice.
 - 20-minute cap violation rate.
+- Incorrect entitlement grant, denial, or over-consumption rate.
 - Inappropriate-memory resurfacing reports.
 - Level change reversal rate within the next three sessions.
 - Post-session extraction claims without valid transcript evidence.
@@ -619,6 +679,10 @@ The MVP is ready for a controlled adult beta when:
 10. Users can inspect and delete their sessions and remembered information.
 11. Raw audio is not retained by default, and no standard provider API key reaches the client.
 12. The regression suite meets release thresholds for language-policy adherence, English-scaffolding quality, extraction accuracy, timing, and level calibration.
+13. A new account can start one free session of up to 20 minutes without a paid plan, cannot receive a second introductory session, and is shown an upgrade path after the session is consumed.
+14. A Basic learner can start no more than two countable sessions in one weekly entitlement window, and the interface shows remaining sessions and the next reset time.
+15. Adding a test plan with a different feature or usage entitlement requires configuration data rather than plan-name-specific authorization logic.
+16. Every committed session analysis creates one immutable planning snapshot, and the next plan uses the latest committed snapshot.
 
 ## 20. Recommended MVP decisions
 
@@ -631,6 +695,10 @@ The MVP is ready for a controlled adult beta when:
 - Limit each session to three objectives to preserve conversational quality.
 - Require cross-session evidence before labeling an item learned or changing an established level.
 - Launch adult-only until minor-specific safety and consent requirements are designed.
+- Give every new user one non-resetting introductory session of up to 20 minutes.
+- Give the Basic plan two sessions per weekly entitlement window, with each session capped at 20 minutes.
+- Define plan features and limits through versioned entitlements so future plans can add capabilities without hard-coded plan branching.
+- Use a cost-optimized core extraction policy for Basic sessions while preserving all P0 evidence, validation, and progression requirements.
 
 ## 21. Open product decisions
 
@@ -645,7 +713,10 @@ These decisions do not block the PRD but should be resolved before implementatio
 7. What reconnect grace period balances continuity, cost, and implementation complexity?
 8. What internal expert rubric and reviewer pool will calibrate level decisions?
 9. Will reminders be part of MVP, and if so, what frequency and quiet-hour controls apply?
-10. What usage or subscription limit applies beyond the 20-minute per-session cap?
+10. What calendar boundary and timezone-change policy define recurring weekly entitlement windows?
+11. Does the free introductory session expire if it is never used?
+12. Which additional plans, features, and usage limits follow Basic, and which are required for the MVP data model versus later releases?
+13. During the initial beta, must manual learner-snapshot review complete before the next session plan, or may review happen retrospectively?
 
 ## 22. Official OpenAI implementation notes
 

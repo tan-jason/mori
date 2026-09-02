@@ -1,0 +1,212 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" role="img" aria-labelledby="title description">
+  <title id="title">Mori high-level system design</title>
+  <desc id="description">The learner uses a web app authenticated through Google OAuth. The web app communicates with the application backend and the Realtime voice agent. After a session, the backend persists transcript turns in PostgreSQL and queues identifiers for a post-session worker. The worker loads the session bundle, calls an extraction model, validates candidates through the learning engine, and commits learner state and a new planning snapshot to PostgreSQL.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0369a1"/>
+    </marker>
+    <style>
+      .canvas { fill: #ffffff; }
+      .lane { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1.5; }
+      .lane-title { fill: #64748b; font: 700 13px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 1.5px; }
+      .node { stroke-width: 1.5; }
+      .client { fill: #e0f2fe; stroke: #0284c7; }
+      .trusted { fill: #ede9fe; stroke: #7c3aed; }
+      .managed { fill: #dcfce7; stroke: #16a34a; }
+      .external { fill: #fff7ed; stroke: #ea580c; }
+      .node-title { fill: #172033; font: 700 17px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .node-detail { fill: #475569; font: 400 13px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .node-badge { fill: #64748b; font: 700 10px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 1px; }
+      .edge { fill: none; stroke: #334155; stroke-width: 2; marker-end: url(#arrow); }
+      .edge-bidirectional { fill: none; stroke: #334155; stroke-width: 2; marker-start: url(#arrow); marker-end: url(#arrow); }
+      .edge-media { fill: none; stroke: #0369a1; stroke-width: 2.5; stroke-dasharray: 8 6; marker-start: url(#arrow-blue); marker-end: url(#arrow-blue); }
+      .edge-label { fill: #334155; font: 600 12px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; paint-order: stroke; stroke: #ffffff; stroke-width: 6px; stroke-linejoin: round; }
+      .edge-label-lane { fill: #334155; font: 600 12px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; paint-order: stroke; stroke: #f8fafc; stroke-width: 6px; stroke-linejoin: round; }
+      .page-title { fill: #172033; font: 750 28px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .page-subtitle { fill: #64748b; font: 400 14px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .legend-text { fill: #475569; font: 500 11px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .observability { fill: #f1f5f9; stroke: #64748b; stroke-width: 1.5; }
+    </style>
+  </defs>
+
+  <rect class="canvas" width="1440" height="900"/>
+  <text class="page-title" x="40" y="45">Mori high-level system design</text>
+  <text class="page-subtitle" x="40" y="70">Live voice stays low latency. Learning updates stay durable, validated, and server controlled.</text>
+
+  <g id="legend">
+    <title>Diagram legend</title>
+    <line x1="1110" y1="45" x2="1160" y2="45" class="edge"/>
+    <text class="legend-text" x="1172" y="49">Data or control</text>
+    <line x1="1110" y1="70" x2="1160" y2="70" class="edge-media"/>
+    <text class="legend-text" x="1172" y="74">WebRTC media</text>
+  </g>
+
+  <g id="lane-live-session">
+    <title>Live session path</title>
+    <rect class="lane" x="30" y="100" width="1380" height="275" rx="22"/>
+    <text class="lane-title" x="55" y="130">LIVE SESSION</text>
+  </g>
+
+  <g id="lane-post-session">
+    <title>Post-session learning loop</title>
+    <rect class="lane" x="30" y="405" width="1380" height="320" rx="22"/>
+    <text class="lane-title" x="55" y="435">POST-SESSION LEARNING LOOP</text>
+  </g>
+
+  <g id="node-learner">
+    <title>Learner</title>
+    <rect class="node client" x="65" y="185" width="145" height="84" rx="16"/>
+    <text class="node-badge" x="85" y="208">PERSON</text>
+    <text class="node-title" x="137.5" y="239" text-anchor="middle">Learner</text>
+    <text class="node-detail" x="137.5" y="258" text-anchor="middle">voice + review</text>
+  </g>
+
+  <g id="node-web-app">
+    <title>Responsive web application</title>
+    <rect class="node client" x="270" y="170" width="220" height="114" rx="16"/>
+    <text class="node-badge" x="290" y="194">CLIENT</text>
+    <text class="node-title" x="380" y="225" text-anchor="middle">Web app</text>
+    <text class="node-detail" x="380" y="248" text-anchor="middle">home + voice session</text>
+    <text class="node-detail" x="380" y="268" text-anchor="middle">recap + user controls</text>
+  </g>
+
+  <g id="node-auth">
+    <title>Managed authentication with Google OAuth</title>
+    <rect class="node managed" x="270" y="302" width="220" height="58" rx="14"/>
+    <text class="node-badge" x="290" y="324">MANAGED</text>
+    <text class="node-detail" x="380" y="345" text-anchor="middle">Google OAuth</text>
+  </g>
+
+  <g id="node-backend">
+    <title>Application backend and session orchestrator</title>
+    <rect class="node trusted" x="575" y="160" width="250" height="134" rx="16"/>
+    <text class="node-badge" x="595" y="185">TRUSTED APPLICATION</text>
+    <text class="node-title" x="700" y="218" text-anchor="middle">Application backend</text>
+    <text class="node-detail" x="700" y="242" text-anchor="middle">API + session orchestrator</text>
+    <text class="node-detail" x="700" y="262" text-anchor="middle">timer + entitlements</text>
+    <text class="node-detail" x="700" y="282" text-anchor="middle">persistence + privacy actions</text>
+  </g>
+
+  <g id="node-voice-agent">
+    <title>Realtime speech-to-speech Mandarin tutor</title>
+    <rect class="node external" x="1085" y="160" width="270" height="134" rx="16"/>
+    <text class="node-badge" x="1105" y="185">EXTERNAL AI</text>
+    <text class="node-title" x="1220" y="218" text-anchor="middle">Realtime voice agent</text>
+    <text class="node-detail" x="1220" y="242" text-anchor="middle">speech-to-speech tutor</text>
+    <text class="node-detail" x="1220" y="262" text-anchor="middle">VAD + interruptions</text>
+    <text class="node-detail" x="1220" y="282" text-anchor="middle">Mandarin-first conversation</text>
+  </g>
+
+  <g id="edge-learner-web">
+    <title>Learner interacts with the web app</title>
+    <path class="edge" d="M210 227 H264"/>
+  </g>
+  <g id="edge-web-auth">
+    <title>Web app authenticates through Google OAuth</title>
+    <path class="edge-bidirectional" d="M380 290 V296"/>
+    <text class="edge-label-lane" x="395" y="298">OAuth</text>
+  </g>
+  <g id="edge-web-backend">
+    <title>Web app sends authenticated requests to the backend</title>
+    <path class="edge-bidirectional" d="M490 227 H569"/>
+    <text class="edge-label-lane" x="529" y="211" text-anchor="middle">app API</text>
+  </g>
+  <g id="edge-backend-voice">
+    <title>Backend monitors and controls the live session through a sideband connection</title>
+    <path class="edge-bidirectional" d="M825 227 H1079"/>
+    <text class="edge-label-lane" x="952" y="211" text-anchor="middle">sideband control + events</text>
+  </g>
+  <g id="edge-web-voice">
+    <title>Web app exchanges low-latency audio with the voice agent over WebRTC</title>
+    <path class="edge-media" d="M455 170 C590 108, 1015 108, 1125 160"/>
+    <text class="edge-label-lane" x="790" y="118" text-anchor="middle">WebRTC audio</text>
+  </g>
+
+  <g id="node-database">
+    <title>PostgreSQL system of record</title>
+    <path class="node managed" d="M85 495 C85 474, 120 460, 205 460 C290 460, 325 474, 325 495 V625 C325 646, 290 660, 205 660 C120 660, 85 646, 85 625 Z"/>
+    <ellipse class="node managed" cx="205" cy="495" rx="120" ry="35"/>
+    <text class="node-badge" x="115" y="520">MANAGED DATA</text>
+    <text class="node-title" x="205" y="555" text-anchor="middle">PostgreSQL</text>
+    <text class="node-detail" x="205" y="580" text-anchor="middle">relational records</text>
+    <text class="node-detail" x="205" y="601" text-anchor="middle">selective JSONB</text>
+    <text class="node-detail" x="205" y="622" text-anchor="middle">single source of truth</text>
+  </g>
+
+  <g id="node-post-session-pipeline">
+    <title>Durable job queue and post-session worker</title>
+    <rect class="node trusted" x="485" y="480" width="255" height="150" rx="16"/>
+    <text class="node-badge" x="505" y="505">TRUSTED APPLICATION</text>
+    <text class="node-title" x="612.5" y="538" text-anchor="middle">Post-session pipeline</text>
+    <text class="node-detail" x="612.5" y="563" text-anchor="middle">durable queue: IDs only</text>
+    <text class="node-detail" x="612.5" y="584" text-anchor="middle">worker loads session bundle</text>
+    <text class="node-detail" x="612.5" y="605" text-anchor="middle">schema + provenance validation</text>
+  </g>
+
+  <g id="node-extraction-model">
+    <title>Structured post-session extraction model</title>
+    <rect class="node external" x="825" y="480" width="245" height="150" rx="16"/>
+    <text class="node-badge" x="845" y="505">EXTERNAL AI</text>
+    <text class="node-title" x="947.5" y="538" text-anchor="middle">Extraction model</text>
+    <text class="node-detail" x="947.5" y="563" text-anchor="middle">structured candidates</text>
+    <text class="node-detail" x="947.5" y="584" text-anchor="middle">turn-level provenance</text>
+    <text class="node-detail" x="947.5" y="605" text-anchor="middle">no database access</text>
+  </g>
+
+  <g id="node-learning-engine">
+    <title>Curriculum and deterministic learning engine</title>
+    <rect class="node trusted" x="1140" y="480" width="230" height="150" rx="16"/>
+    <text class="node-badge" x="1160" y="505">TRUSTED APPLICATION</text>
+    <text class="node-title" x="1255" y="538" text-anchor="middle">Learning engine</text>
+    <text class="node-detail" x="1255" y="563" text-anchor="middle">curriculum planning</text>
+    <text class="node-detail" x="1255" y="584" text-anchor="middle">deterministic progression</text>
+    <text class="node-detail" x="1255" y="605" text-anchor="middle">snapshot creation</text>
+  </g>
+
+  <g id="edge-backend-database">
+    <title>Backend persists the session and reads application state</title>
+    <path class="edge" d="M630 294 C545 375, 405 424, 307 481"/>
+    <text class="edge-label-lane" x="454" y="405" text-anchor="middle">persist transcript + session state</text>
+  </g>
+  <g id="edge-backend-pipeline">
+    <title>Backend enqueues identifiers after durable persistence</title>
+    <path class="edge" d="M700 294 C700 360, 640 409, 625 474"/>
+    <text class="edge-label-lane" x="688" y="390">enqueue IDs</text>
+  </g>
+  <g id="edge-database-pipeline">
+    <title>Worker loads the exact versioned session bundle by identifier</title>
+    <path class="edge" d="M325 545 H479"/>
+    <text class="edge-label-lane" x="402" y="529" text-anchor="middle">load by ID</text>
+  </g>
+  <g id="edge-pipeline-extractor-request">
+    <title>Worker sends the versioned session bundle for structured extraction</title>
+    <path class="edge" d="M740 530 H819"/>
+    <text class="edge-label-lane" x="779" y="514" text-anchor="middle">session bundle</text>
+  </g>
+  <g id="edge-extractor-pipeline-response">
+    <title>Extraction model returns schema-constrained candidates</title>
+    <path class="edge" d="M825 590 H746"/>
+    <text class="edge-label-lane" x="785" y="613" text-anchor="middle">candidates</text>
+  </g>
+  <g id="edge-pipeline-learning">
+    <title>Worker sends validated candidates to deterministic learning rules</title>
+    <path class="edge" d="M740 625 C830 690, 1080 690, 1160 636"/>
+    <text class="edge-label-lane" x="951" y="685" text-anchor="middle">validated candidates</text>
+  </g>
+  <g id="edge-learning-database">
+    <title>Learning engine atomically commits evidence, current state, and a new immutable planning snapshot</title>
+    <path class="edge" d="M1240 630 C1150 735, 420 742, 250 663"/>
+    <text class="edge-label-lane" x="756" y="732" text-anchor="middle">atomic commit: evidence + current state + new snapshot</text>
+  </g>
+
+  <g id="node-observability">
+    <title>Cross-cutting observability, product analytics, evaluations, and alerts</title>
+    <rect class="observability" x="30" y="780" width="1380" height="82" rx="18"/>
+    <text class="node-title" x="60" y="814">Observability + analytics + evaluations</text>
+    <text class="node-detail" x="60" y="840">Latency, interruption success, language policy, model and prompt versions, extraction accuracy, usage, spend, failures, and alerts</text>
+  </g>
+</svg>
