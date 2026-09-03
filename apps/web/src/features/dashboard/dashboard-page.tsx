@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useLanguageProfile } from "../../app/use-language-profile";
 import { PageErrorState, PageLoadingState } from "../../components/async-state";
 import type { LearningState } from "../../domain/learning";
 import { useDashboard } from "./use-dashboard";
@@ -11,7 +12,13 @@ const stateLabels: Record<LearningState, string> = {
 };
 
 export function DashboardPage() {
+  const { targetLanguage } = useLanguageProfile();
   const dashboard = useDashboard();
+  const currentDateLabel = new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(new Date());
 
   if (dashboard.isPending) {
     return <PageLoadingState />;
@@ -38,14 +45,22 @@ export function DashboardPage() {
     <div className="dashboard-page">
       <section className="welcome-row" aria-labelledby="welcome-title">
         <div className="welcome-copy">
-          <p className="eyebrow">Tuesday, September 1</p>
-          <h1 id="welcome-title">Nǐ hǎo, {data.learner.displayName}.</h1>
-          <p>Ready for a little Mandarin today?</p>
+          <p className="eyebrow">{currentDateLabel}</p>
+          <h1 id="welcome-title">
+            {targetLanguage.greeting}, {data.learner.displayName}.
+          </h1>
+          <p>Ready for a little {targetLanguage.name} today?</p>
         </div>
         <div className="level-pill">
-          <span className="level-pill-label">Course level</span>
-          <strong>{data.learner.level}</strong>
-          <small>Standard Mandarin · Active</small>
+          <div className="level-profile">
+            <span className="level-pill-label">Active language</span>
+            <strong>{targetLanguage.courseName}</strong>
+            <small>{targetLanguage.nativeName}</small>
+          </div>
+          <div className="course-level-summary">
+            <span className="level-pill-label">Course level</span>
+            <strong>{data.learner.level}</strong>
+          </div>
         </div>
       </section>
 
@@ -63,28 +78,22 @@ export function DashboardPage() {
             <span aria-hidden="true">→</span>
           </Link>
         </div>
-        <div className="lesson-board" aria-hidden="true">
+        <div className="lesson-board" aria-label="Today’s word bank">
           <div className="lesson-board-heading">
-            <span>Lesson 09</span>
+            <span>{data.lessonPreview.label}</span>
             <strong>Today&apos;s word bank</strong>
           </div>
           <div className="lesson-words">
-            <span>
-              <strong>先</strong>
-              xiān · first
-            </span>
-            <span>
-              <strong>后来</strong>
-              hòulái · later
-            </span>
-            <span>
-              <strong>最后</strong>
-              zuìhòu · finally
-            </span>
+            {data.lessonPreview.terms.map((term) => (
+              <span key={term.targetText}>
+                <strong>{term.targetText}</strong>
+                {[term.pronunciation, term.meaning].filter(Boolean).join(" · ")}
+              </span>
+            ))}
           </div>
           <div className="lesson-prompt">
             <span>Conversation prompt</span>
-            <p>“What did you do after work?”</p>
+            <p>“{data.lessonPreview.prompt}”</p>
           </div>
         </div>
       </section>
@@ -146,14 +155,16 @@ export function DashboardPage() {
             <p className="eyebrow">Growing vocabulary</p>
             <h2 id="learning-title">Recent learning</h2>
           </div>
-          <span className="text-link">Progress is evidence-based</span>
+          <span className="section-note">Progress is evidence-based</span>
         </div>
         <div className="learning-grid">
           {data.recentItems.map((item) => (
             <article className="learning-card" key={item.id}>
-              <div className="hanzi-large">{item.hanzi}</div>
+              <div className="target-term">{item.targetText}</div>
               <div>
-                <p className="pinyin">{item.pinyin}</p>
+                {item.pronunciation ? (
+                  <p className="pronunciation">{item.pronunciation}</p>
+                ) : null}
                 <p>{item.meaning}</p>
               </div>
               <span className={`state-badge state-${item.state}`}>
@@ -184,7 +195,7 @@ export function DashboardPage() {
           {data.recentSessions.map((session) => (
             <Link className="session-row" to={`/recaps/${session.id}`} key={session.id}>
               <span className="session-index" aria-hidden="true">
-                语
+                {targetLanguage.mark}
               </span>
               <span className="session-row-title">
                 <strong>{session.title}</strong>
@@ -204,11 +215,11 @@ export function DashboardPage() {
       <aside className="practice-note">
         <span className="practice-note-label">Tutor note</span>
         <span className="practice-note-mark" aria-hidden="true">
-          木
+          {targetLanguage.mark}
         </span>
         <p>
           <strong>Speak with what you have.</strong> If a word is missing, describe it
-          in Mandarin. Your tutor will help without judgment.
+          in {targetLanguage.name}. Your tutor will help without judgment.
         </p>
       </aside>
     </div>

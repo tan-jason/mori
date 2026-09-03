@@ -3,6 +3,13 @@
 Responsive React foundation for Mori's learner experience. It includes the home,
 pre-session, recap, and remembered-information surfaces described in the PRD.
 
+English is the fixed base language. The mock profile defaults to Mandarin, and the
+webapp supports Spanish, French, Portuguese, Japanese, Korean, and Vietnamese. The
+active language comes from the learner's server-owned language profile. Its profile
+ID is included in query keys and gateway calls so course data stays isolated by
+target language. Changing languages belongs in a separate account workflow rather
+than an inline page control.
+
 Auth, backend transport, data mutations, microphone access, and the realtime voice
 agent are intentionally outside this scaffold.
 

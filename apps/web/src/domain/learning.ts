@@ -19,11 +19,14 @@ export interface SessionEntitlement {
   resetLabel?: string;
 }
 
-export interface LearningItem {
-  id: string;
-  hanzi: string;
-  pinyin: string;
+export interface LearningTerm {
+  targetText: string;
+  pronunciation?: string;
   meaning: string;
+}
+
+export interface LearningItem extends LearningTerm {
+  id: string;
   state: LearningState;
 }
 
@@ -46,6 +49,11 @@ export interface DashboardSnapshot {
     eyebrow: string;
     title: string;
     description: string;
+  };
+  lessonPreview: {
+    label: string;
+    terms: LearningTerm[];
+    prompt: string;
   };
   dueReviewCount: number;
   recentItems: LearningItem[];

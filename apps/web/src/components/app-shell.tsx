@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { useLanguageProfile } from "../app/use-language-profile";
 
 export function BrandMark() {
   return (
@@ -10,6 +11,8 @@ export function BrandMark() {
 }
 
 export function AppShell() {
+  const { targetLanguage } = useLanguageProfile();
+
   return (
     <div className="app-frame">
       <a className="skip-link" href="#main-content">
@@ -20,7 +23,7 @@ export function AppShell() {
           <BrandMark />
           <span className="brand-copy">
             <strong>Mori</strong>
-            <small>Mandarin studio</small>
+            <small>{targetLanguage.name} studio</small>
           </span>
         </NavLink>
 
@@ -55,7 +58,7 @@ export function AppShell() {
       </main>
 
       <footer className="site-footer">
-        <span>Mori Mandarin Studio</span>
+        <span>Mori {targetLanguage.name} Studio</span>
         <span>Practice with patience · Speak with confidence</span>
       </footer>
     </div>

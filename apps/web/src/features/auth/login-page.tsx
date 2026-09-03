@@ -38,7 +38,7 @@ export function LoginPage() {
           <BrandMark />
           <span className="brand-copy">
             <strong>Mori</strong>
-            <small>Mandarin studio</small>
+            <small>Conversation studio</small>
           </span>
         </Link>
 
@@ -46,16 +46,15 @@ export function LoginPage() {
           <p className="eyebrow eyebrow-light">A conversation practice</p>
           <h1 id="login-story-title">Speak a little.<br />Remember more.</h1>
           <p>
-            Natural Mandarin practice that meets you where you are and builds on
+            Natural speaking practice that meets you where you are and builds on
             every conversation.
           </p>
         </div>
 
         <div className="login-word-card" aria-hidden="true">
-          <span className="login-word-index">今天的词 · Today&apos;s word</span>
-          <strong>慢慢来</strong>
-          <span>mànmàn lái</span>
-          <p>Take your time.</p>
+          <span className="login-word-index">Practice note</span>
+          <strong>Take your time.</strong>
+          <p>Progress grows one conversation at a time.</p>
         </div>
 
         <p className="login-story-note">Practice with patience · Speak with confidence</p>
@@ -67,14 +66,14 @@ export function LoginPage() {
             <BrandMark />
             <span className="brand-copy">
               <strong>Mori</strong>
-              <small>Mandarin studio</small>
+              <small>Conversation studio</small>
             </span>
           </div>
 
           <p className="eyebrow">Welcome to Mori</p>
           <h2 id="login-title">Your next conversation starts here.</h2>
           <p className="login-intro">
-            Sign in to continue your Mandarin practice, learning history, and
+            Sign in to continue your language practice, learning history, and
             personalized sessions.
           </p>
 
@@ -84,7 +83,7 @@ export function LoginPage() {
           </Link>
 
           <div className="login-assurance" role="note">
-            <span aria-hidden="true">私</span>
+            <span aria-hidden="true">✓</span>
             <p>
               <strong>Your practice stays yours.</strong>
               We use your Google name and email for your account. Raw session audio

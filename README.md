@@ -1,22 +1,23 @@
 # Mori
 
-Mori is a planned voice-first Mandarin learning app built around natural conversation, personalized practice, and evidence-based progression.
+Mori is a planned voice-first language learning app built around natural conversation, personalized practice, and evidence-based progression. Mandarin is the initial MVP course.
 
 > Status: Webapp foundation in progress. Backend and realtime integrations are not implemented.
 
 ## Product vision
 
-Mori is designed to give English-speaking learners regular, realistic Mandarin speaking practice without losing the structure of a curriculum. Each conversation should feel natural while still targeting a small set of learning objectives.
+Mori is designed to give English-speaking learners regular, realistic speaking practice without losing the structure of a curriculum. Each conversation should feel natural while still targeting a small set of learning objectives.
 
-The tutor will remember useful learning context, adapt to the learner's demonstrated ability, revisit skills over time, and help the learner express ideas with the Mandarin they already know.
+The tutor will remember useful learning context, adapt to the learner's demonstrated ability, revisit skills over time, and help the learner express ideas with the target language they already know.
 
 ## MVP experience
 
-- English is the fixed base language and Standard Mandarin is the fixed learning language.
+- English is the fixed base language. Standard Mandarin is the default MVP target.
+- The webapp foundation supports Mandarin, Spanish, French, Portuguese, Japanese, Korean, and Vietnamese as target languages.
 - Learners receive a provisional Beginner level when they are unsure of their starting ability.
 - Sessions are voice-first, may end at any time, and have a 20-minute maximum.
 - Each session focuses on one to three personalized learning objectives.
-- Mandarin remains the default conversation language.
+- The selected target remains the default conversation language.
 - Brief, compassionate English clarification is available when a learner is stuck.
 - Post-session processing extracts transcript-grounded learning evidence and prepares future practice.
 - Progression is computed through versioned product rules rather than model intuition alone.
@@ -25,7 +26,7 @@ The tutor will remember useful learning context, adapt to the learner's demonstr
 
 Mori encourages productive effort without shame:
 
-> Always try your best to speak Mandarin. If you do not know a word, use the Mandarin you already know to describe what you mean. Your tutor will help you build the missing word or phrase without judgment.
+> Always try your best to speak your target language. If you do not know a word, use the language you already know to describe what you mean. Your tutor will help you build the missing word or phrase without judgment.
 
 Exposure is not treated as mastery. Vocabulary, concepts, and level changes require demonstrated evidence across meaningful opportunities.
 

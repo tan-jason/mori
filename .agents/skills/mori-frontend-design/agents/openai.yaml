@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mori Frontend Design"
+  short_description: "Build UI that stays faithful to Mori theme"
+  default_prompt: "Use $mori-frontend-design to build this Mori frontend change on-theme."

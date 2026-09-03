@@ -1,7 +1,9 @@
 import { PageErrorState, PageLoadingState } from "../../components/async-state";
+import { useLanguageProfile } from "../../app/use-language-profile";
 import { useMemories } from "./use-memories";
 
 export function MemoriesPage() {
+  const { targetLanguage } = useLanguageProfile();
   const memories = useMemories();
 
   if (memories.isPending) {
@@ -35,7 +37,7 @@ export function MemoriesPage() {
           {memories.data.map((memory) => (
             <article className="memory-card" key={memory.id}>
               <div className="memory-mark" aria-hidden="true">
-                记
+                {targetLanguage.mark}
               </div>
               <div>
                 <h3>{memory.label}</h3>
@@ -48,7 +50,7 @@ export function MemoriesPage() {
                 className="button button-danger-quiet"
                 type="button"
                 disabled
-                title="Backend mutation is not implemented"
+                title="Memory deletion is not available in this preview"
               >
                 Delete
               </button>
