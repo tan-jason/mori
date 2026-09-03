@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 
-function BrandMark() {
+export function BrandMark() {
   return (
     <span className="brand-mark" aria-hidden="true">
       <span />
@@ -35,7 +35,11 @@ export function AppShell() {
           </NavLink>
         </nav>
 
-        <div className="learner-chip" aria-label="Current learner: Jason">
+        <NavLink
+          className="learner-chip"
+          to="/profile"
+          aria-label="Open Jason Tan's profile"
+        >
           <span className="avatar" aria-hidden="true">
             JT
           </span>
@@ -43,7 +47,7 @@ export function AppShell() {
             <small>Student</small>
             <strong>Jason Tan</strong>
           </span>
-        </div>
+        </NavLink>
       </header>
 
       <main id="main-content" className="page-shell">
