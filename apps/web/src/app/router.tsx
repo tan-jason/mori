@@ -1,4 +1,5 @@
 import { createBrowserRouter } from "react-router-dom";
+import { LanguageProfileProvider } from "./language-profile-provider";
 import { AppShell } from "../components/app-shell";
 import { RouteErrorPage } from "../components/route-error-page";
 import { DashboardPage } from "../features/dashboard/dashboard-page";
@@ -16,7 +17,11 @@ export const router = createBrowserRouter([
   },
   {
     path: "/",
-    element: <AppShell />,
+    element: (
+      <LanguageProfileProvider>
+        <AppShell />
+      </LanguageProfileProvider>
+    ),
     errorElement: <RouteErrorPage />,
     children: [
       { index: true, element: <DashboardPage /> },

@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { useLanguageProfile } from "../../app/use-language-profile";
+import { BASE_LANGUAGE } from "../../domain/languages";
 
 const timezones = [
   { value: "America/New_York", label: "Eastern Time (US & Canada)" },
@@ -12,16 +14,22 @@ const timezones = [
 ];
 
 export function ProfilePage() {
+  const { targetLanguage } = useLanguageProfile();
   const [name, setName] = useState("Jason Tan");
   const [correctionPreference, setCorrectionPreference] = useState("balanced");
   const [pace, setPace] = useState("level");
   const [timezone, setTimezone] = useState("America/New_York");
   const [saved, setSaved] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
-  const markChanged = () => setSaved(false);
+  const markChanged = () => {
+    setSaved(false);
+    setIsDirty(true);
+  };
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSaved(true);
+    setIsDirty(false);
   };
 
   return (
@@ -97,11 +105,11 @@ export function ProfilePage() {
               <span>Base language</span>
               <select
                 disabled
-                value="English"
+                value={BASE_LANGUAGE.id}
                 aria-label="Base language"
                 aria-describedby="language-help"
               >
-                <option>English</option>
+                <option value={BASE_LANGUAGE.id}>{BASE_LANGUAGE.name}</option>
               </select>
             </label>
 
@@ -109,22 +117,26 @@ export function ProfilePage() {
               <span>Language to learn</span>
               <select
                 disabled
-                value="Standard Mandarin"
+                value={targetLanguage.id}
                 aria-label="Language to learn"
                 aria-describedby="language-help"
               >
-                <option>Standard Mandarin</option>
+                <option value={targetLanguage.id}>
+                  {targetLanguage.courseName} · {targetLanguage.nativeName}
+                </option>
               </select>
             </label>
           </div>
 
           <p className="form-note" id="language-help">
-            Mori currently supports English to Standard Mandarin. More language
-            pairs are planned.
+            Progress is tracked separately for each language. To switch languages,
+            start a new learning profile.
           </p>
 
           <div className="level-summary">
-            <span className="level-summary-mark" aria-hidden="true">级</span>
+            <span className="level-summary-mark" aria-hidden="true">
+              {targetLanguage.mark}
+            </span>
             <div>
               <small>Current assessed level</small>
               <strong>Learning Beginner</strong>
@@ -200,9 +212,19 @@ export function ProfilePage() {
 
         <div className="profile-actions">
           <span className="save-status" role="status" aria-live="polite">
-            {saved ? "Preferences saved for this demo." : "Changes are stored in this demo only."}
+            {saved
+              ? "Preferences saved for this preview."
+              : isDirty
+                ? "You have unsaved changes."
+                : "Your preferences are up to date."}
           </span>
-          <button className="button button-primary" type="submit">Save changes</button>
+          <button
+            className="button button-primary"
+            type="submit"
+            disabled={!isDirty}
+          >
+            Save changes
+          </button>
         </div>
       </form>
 
@@ -214,7 +236,7 @@ export function ProfilePage() {
         </div>
         <div className="account-data-actions">
           <Link className="button account-button" to="/memories">Review memories</Link>
-          <button className="button account-button" type="button" disabled title="Backend export is not implemented">Export transcripts</button>
+          <button className="button account-button" type="button" disabled title="Transcript exports are not available in this preview">Export transcripts</button>
           <Link className="button account-button account-signout" to="/login">Sign out</Link>
         </div>
       </section>

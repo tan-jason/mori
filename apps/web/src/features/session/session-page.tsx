@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useLanguageProfile } from "../../app/use-language-profile";
+import { BASE_LANGUAGE } from "../../domain/languages";
 
 export function SessionPage() {
+  const { targetLanguage } = useLanguageProfile();
   const [captionsEnabled, setCaptionsEnabled] = useState(false);
   const [playbackRate, setPlaybackRate] = useState("0.82");
 
@@ -12,7 +15,7 @@ export function SessionPage() {
           <span aria-hidden="true">←</span> Back home
         </Link>
         <span className="connection-status">
-          <span aria-hidden="true" /> Not connected
+          <span aria-hidden="true" /> Preview mode
         </span>
       </div>
 
@@ -22,32 +25,30 @@ export function SessionPage() {
           <h1 id="session-title">Make a little room to speak.</h1>
           <p>
             Find a quiet spot and give yourself permission to be imperfect. Mori will
-            keep the conversation in Mandarin and help when you get stuck.
+            keep the conversation in {targetLanguage.name} and help when you get
+            stuck.
           </p>
 
           <div className="language-pair" aria-label="Language pair">
-            <label>
+            <div className="language-pair-value">
               <span>Base language</span>
-              <select disabled defaultValue="English">
-                <option>English</option>
-              </select>
-            </label>
+              <strong>{BASE_LANGUAGE.name}</strong>
+            </div>
             <span className="language-arrow" aria-hidden="true">
               →
             </span>
-            <label>
+            <div className="language-pair-value">
               <span>Learning</span>
-              <select disabled defaultValue="Standard Mandarin">
-                <option>Standard Mandarin</option>
-              </select>
-            </label>
+              <strong>{targetLanguage.courseName}</strong>
+              <small>{targetLanguage.nativeName}</small>
+            </div>
           </div>
 
           <div className="foundation-notice" role="note">
-            <strong>Connection scaffold only</strong>
+            <strong>Voice practice is coming soon</strong>
             <p>
-              Microphone access and the realtime agent are intentionally not wired in
-              this foundation.
+              Mori is still getting the microphone ready. You can set your
+              preferences now and start speaking when voice access is available.
             </p>
           </div>
 
@@ -55,7 +56,7 @@ export function SessionPage() {
             className="button button-primary button-wide"
             type="button"
             disabled
-            title="Realtime integration is not configured"
+            title="Voice practice is not available in this preview"
           >
             Begin session
           </button>
@@ -70,9 +71,9 @@ export function SessionPage() {
               <strong>Corrections</strong>
               <span>Balanced</span>
             </div>
-            <button type="button" disabled>
+            <Link className="preference-link" to="/profile">
               Change
-            </button>
+            </Link>
           </div>
 
           <label className="preference-field">

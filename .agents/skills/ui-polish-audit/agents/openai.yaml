@@ -1,0 +1,4 @@
+interface:
+  display_name: "UI Polish Audit"
+  short_description: "Strict visual QA for finished web interfaces"
+  default_prompt: "Use $ui-polish-audit to nitpick and polish this interface."
