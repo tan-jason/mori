@@ -48,9 +48,11 @@ These are product decisions, not completed implementation. Model, voice, API, an
 
 - [Product requirements document](docs/PRD.md)
 - [High-level system design](docs/diagrams/high-level-system-design.md)
+- [Backend architecture](docs/architecture/README.md)
+- [Backend implementation plan](docs/plans/backend-implementation.md)
 - [Webapp foundation](apps/web/README.md)
 
-The PRD defines the MVP scope, user experience, tutor behavior, learning state, functional requirements, technical direction, metrics, safety requirements, and acceptance criteria. The system design defines the approved component boundaries and end-to-end learning flow.
+The PRD defines the MVP scope, user experience, tutor behavior, learning state, functional requirements, technical direction, metrics, safety requirements, and acceptance criteria. The system design defines the high-level component boundaries and end-to-end learning flow. The backend architecture turns those boundaries into runtime, module, data, API, security, and delivery decisions.
 
 ## Repository status
 
