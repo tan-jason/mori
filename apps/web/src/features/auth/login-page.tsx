@@ -38,7 +38,6 @@ export function LoginPage() {
           <BrandMark />
           <span className="brand-copy">
             <strong>Mori</strong>
-            <small>Conversation studio</small>
           </span>
         </Link>
 
@@ -81,15 +80,6 @@ export function LoginPage() {
             <GoogleMark />
             Continue with Google
           </Link>
-
-          <div className="login-assurance" role="note">
-            <span aria-hidden="true">✓</span>
-            <p>
-              <strong>Your practice stays yours.</strong>
-              We use your Google name and email for your account. Raw session audio
-              is not saved by default.
-            </p>
-          </div>
 
           <p className="login-terms">
             By continuing, you confirm you are 18 or older and agree to the
