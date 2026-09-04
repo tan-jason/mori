@@ -11,7 +11,7 @@ describe("LoginPage", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("heading", { name: /your next conversation/i })).toBeVisible();
+    expect(screen.getByRole("heading", { name: /learn it by speaking it/i })).toBeVisible();
     expect(screen.getByRole("link", { name: /continue with google/i })).toHaveAttribute(
       "href",
       "/",

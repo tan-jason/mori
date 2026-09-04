@@ -43,18 +43,18 @@ export function LoginPage() {
         </Link>
 
         <div className="login-story-copy">
-          <p className="eyebrow eyebrow-light">A conversation practice</p>
-          <h1 id="login-story-title">Speak a little.<br />Remember more.</h1>
+          <p className="eyebrow eyebrow-light">Learn through conversation</p>
+          <h1 id="login-story-title">Learn it by{" "}<br />speaking it.</h1>
           <p>
-            Natural speaking practice that meets you where you are and builds on
-            every conversation.
+            Practice real conversations with a tutor who meets you where you are,
+            helps when you get stuck, and builds on what you already know.
           </p>
         </div>
 
         <div className="login-word-card" aria-hidden="true">
           <span className="login-word-index">Practice note</span>
-          <strong>Take your time.</strong>
-          <p>Progress grows one conversation at a time.</p>
+          <strong>Use what you know.</strong>
+          <p>Every conversation is a chance to make it yours.</p>
         </div>
 
         <p className="login-story-note">Practice with patience · Speak with confidence</p>
