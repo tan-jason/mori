@@ -40,7 +40,8 @@ Owns Google identity linking, opaque application sessions, idempotent user provi
 
 - Commands: `complete_sign_in`, `update_preferences`, `record_consent`
 - Queries: `current_learner`
-- Records: `users`, `auth_sessions`, `language_profiles`, `learner_preferences`, `user_consents`
+- Records: `users`, `external_identities`, `oauth_login_attempts`, `auth_sessions`,
+  `language_profiles`, `learner_preferences`, `user_consents`
 
 ### Access and billing
 
@@ -115,7 +116,7 @@ Pydantic HTTP models generate OpenAPI. The generated TypeScript client and runti
 
 | Domain | Purpose | Primary records |
 | --- | --- | --- |
-| Identity | Account, authentication, language profile, preferences, and consent | `users`, `auth_sessions`, `language_profiles`, `learner_preferences`, `user_consents` |
+| Identity | Account, authentication, language profile, preferences, and consent | `users`, `external_identities`, `oauth_login_attempts`, `auth_sessions`, `language_profiles`, `learner_preferences`, `user_consents` |
 | Access | Versioned plans, capabilities, subscriptions, grants, reservations, usage, and provider deduplication | `plan_versions`, `entitlement_rules`, `subscriptions`, `grants`, `usage_reservations`, `usage_events`, `webhook_events` |
 | Live | Session state, immutable plan, connection history, ordered turns, provider facts, leases, and consented audio metadata | `sessions`, `session_connections`, `session_plans`, `plan_objectives`, `session_turns`, `realtime_events`, `supervisor_leases`, `audio_consents`, `session_audio_assets` |
 | Curriculum | Published competency graph, dependencies, and evidence policy | `curriculum_versions`, `curriculum_items`, `curriculum_edges`, `evidence_rules` |

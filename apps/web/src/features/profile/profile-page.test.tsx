@@ -48,6 +48,6 @@ describe("ProfilePage", () => {
     await user.selectOptions(screen.getByLabelText("Corrections"), "frequent");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
-    expect(screen.getByRole("status")).toHaveTextContent("Preferences saved");
+    expect(await screen.findByText("Preferences saved.")).toBeVisible();
   });
 });

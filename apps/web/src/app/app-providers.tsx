@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type PropsWithChildren } from "react";
+import { createBackendWebAppGateway } from "../api/backend-web-app-gateway";
 import { mockWebAppGateway } from "../api/mock-web-app-gateway";
 import {
   AppDependenciesContext,
@@ -7,7 +8,10 @@ import {
 } from "./app-dependencies";
 
 const defaultDependencies: AppDependencies = {
-  gateway: mockWebAppGateway,
+  gateway:
+    import.meta.env.MODE === "test" || import.meta.env.VITE_USE_MOCK_API === "true"
+      ? mockWebAppGateway
+      : createBackendWebAppGateway(),
 };
 
 interface AppProvidersProps extends PropsWithChildren {

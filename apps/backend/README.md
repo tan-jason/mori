@@ -1,6 +1,8 @@
 # Mori backend development
 
-This directory contains the Python 3.13 backend package. The current scaffold establishes the uv toolchain and local PostgreSQL dependency. API and application modules will be added during M1.
+This directory contains the Python 3.13 backend package. The first M1 identity slice includes
+the FastAPI process, PostgreSQL migrations, Google OpenID Connect, opaque database-backed
+application sessions, learner profiles, preferences, and introductory grant provisioning.
 
 ## Prerequisites
 
@@ -81,3 +83,37 @@ uv run --directory apps/backend pytest
 ```
 
 Commit `pyproject.toml` and `uv.lock`. Do not commit `.env` or `.venv`.
+
+## Database and API
+
+Apply migrations explicitly before starting the API:
+
+```sh
+uv run --directory apps/backend alembic upgrade head
+uv run --directory apps/backend uvicorn mori.api.main:create_app --factory --reload --no-access-log
+```
+
+The API listens on `http://localhost:8000` by default. Liveness is available at `/health`,
+database readiness at `/ready`, and development OpenAPI documentation at `/docs`.
+
+The initial identity endpoints are:
+
+- `GET /auth/google/start`
+- `GET /auth/google/callback`
+- `POST /auth/logout`
+- `GET /api/v1/me`
+- `PATCH /api/v1/me/preferences`
+
+See [the identity contract](../../docs/architecture/identity-contract.md) for session,
+callback, CSRF, cookie, and optimistic-concurrency behavior.
+
+## Verification
+
+Run the complete backend gate from the repository root:
+
+```sh
+uv run --directory apps/backend ruff check src tests migrations
+uv run --directory apps/backend mypy
+uv run --directory apps/backend pytest
+uv run --directory apps/backend alembic check
+```

@@ -999,6 +999,15 @@ select:disabled {
   font-size: 0.75rem;
 }
 
+.save-status-error,
+.account-action-error {
+  color: #8d4a39;
+}
+
+.account-action-error {
+  margin-top: 0.65rem;
+}
+
 .account-data {
   display: flex;
   align-items: center;

@@ -1,5 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useLanguageProfile } from "../app/use-language-profile";
+import { useLearnerSession } from "../app/use-learner-session";
+import { getInitials } from "../domain/identity";
 
 export function BrandMark() {
   return (
@@ -12,6 +14,8 @@ export function BrandMark() {
 
 export function AppShell() {
   const { targetLanguage } = useLanguageProfile();
+  const { learner } = useLearnerSession();
+  const displayName = learner.user.displayName;
 
   return (
     <div className="app-frame">
@@ -41,14 +45,14 @@ export function AppShell() {
         <NavLink
           className="learner-chip"
           to="/profile"
-          aria-label="Open Jason Tan's profile"
+          aria-label={`Open ${displayName}'s profile`}
         >
           <span className="avatar" aria-hidden="true">
-            JT
+            {getInitials(displayName)}
           </span>
           <span>
             <small>Student</small>
-            <strong>Jason Tan</strong>
+            <strong>{displayName}</strong>
           </span>
         </NavLink>
       </header>

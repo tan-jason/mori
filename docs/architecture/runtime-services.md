@@ -21,7 +21,7 @@ Deployment order is:
 
 ## `mori-api`
 
-**Entry point:** `uv run uvicorn mori.api.main:create_app --factory`
+**Entry point:** `uv run uvicorn mori.api.main:create_app --factory --no-access-log`
 
 FastAPI owns every synchronous public backend request. It authenticates callers, validates transport contracts, invokes one bounded application use case, owns the request transaction boundary, and maps results to the versioned HTTP contract.
 

@@ -1,6 +1,6 @@
 # Backend implementation plan
 
-**Status:** Ready for milestone planning
+**Status:** M1 in progress
 
 **Sequence:** M0 through M5, with no calendar estimate implied
 

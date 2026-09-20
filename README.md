@@ -2,7 +2,8 @@
 
 Mori is a planned voice-first language learning app built around natural conversation, personalized practice, and evidence-based progression. Mandarin is the initial MVP course.
 
-> Status: Webapp foundation in progress. Backend and realtime integrations are not implemented.
+> Status: Webapp foundation and backend identity foundation are in progress. Realtime and
+> learning integrations are not implemented.
 
 ## Product vision
 
@@ -56,4 +57,4 @@ The PRD defines the MVP scope, user experience, tutor behavior, learning state, 
 
 ## Repository status
 
-The responsive webapp scaffold lives in `apps/web`. It currently uses a mock gateway so frontend work can proceed independently from backend API design. See the webapp README for local setup, source boundaries, and integration notes.
+The responsive webapp scaffold lives in `apps/web`. Its account flow is connected to the backend for Google sign-in, application sessions, learner profiles, preferences, and sign-out. Learning content still uses a preview adapter while those APIs are built. See each application README for local setup and integration notes.

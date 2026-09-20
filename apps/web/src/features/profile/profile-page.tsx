@@ -1,6 +1,15 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { ApiError, isAuthenticationRequired } from "../../api/api-error";
+import { useAppDependencies } from "../../app/app-dependencies";
 import { useLanguageProfile } from "../../app/use-language-profile";
+import { useLearnerSession } from "../../app/use-learner-session";
+import type {
+  CorrectionPreference,
+  TutorPace,
+} from "../../domain/identity";
+import { getInitials } from "../../domain/identity";
 import { BASE_LANGUAGE } from "../../domain/languages";
 
 const timezones = [
@@ -14,29 +23,71 @@ const timezones = [
 ];
 
 export function ProfilePage() {
+  const { gateway } = useAppDependencies();
   const { targetLanguage } = useLanguageProfile();
-  const [name, setName] = useState("Jason Tan");
-  const [correctionPreference, setCorrectionPreference] = useState("balanced");
-  const [pace, setPace] = useState("level");
-  const [timezone, setTimezone] = useState("America/New_York");
+  const { learner, replaceLearner } = useLearnerSession();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [correctionPreference, setCorrectionPreference] =
+    useState<CorrectionPreference>(learner.preferences.correctionPreference);
+  const [pace, setPace] = useState<TutorPace>(learner.preferences.tutorPace);
+  const [timezone, setTimezone] = useState(learner.preferences.timezone);
   const [saved, setSaved] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const timezoneOptions = timezones.some((item) => item.value === timezone)
+    ? timezones
+    : [...timezones, { value: timezone, label: timezone }];
+
+  const savePreferences = useMutation({
+    mutationFn: () =>
+      gateway.updatePreferences({
+        changes: { correctionPreference, tutorPace: pace, timezone },
+        expectedVersion: learner.preferences.version,
+        csrfToken: learner.csrfToken,
+      }),
+    onSuccess: (updatedLearner) => {
+      setSaved(true);
+      setIsDirty(false);
+      replaceLearner(updatedLearner);
+    },
+    onError: (error) => {
+      if (isAuthenticationRequired(error)) {
+        queryClient.clear();
+        void navigate("/login", { replace: true });
+      }
+    },
+  });
+  const signOut = useMutation({
+    mutationFn: () => gateway.logout(learner.csrfToken),
+    onSuccess: () => {
+      queryClient.clear();
+      void navigate("/login", { replace: true });
+    },
+    onError: (error) => {
+      if (isAuthenticationRequired(error)) {
+        queryClient.clear();
+        void navigate("/login", { replace: true });
+      }
+    },
+  });
 
   const markChanged = () => {
+    savePreferences.reset();
     setSaved(false);
     setIsDirty(true);
   };
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSaved(true);
-    setIsDirty(false);
+    if (isDirty && !savePreferences.isPending) {
+      savePreferences.mutate();
+    }
   };
 
   return (
     <div className="detail-page profile-page">
       <header className="profile-hero">
         <div className="profile-avatar" aria-hidden="true">
-          JT
+          {getInitials(learner.user.displayName)}
         </div>
         <div>
           <p className="eyebrow">Learner profile</p>
@@ -62,16 +113,15 @@ export function ProfilePage() {
             <label className="form-field">
               <span>Full name</span>
               <input
+                className="readonly-field"
                 type="text"
                 aria-label="Full name"
                 autoComplete="name"
-                value={name}
-                onChange={(event) => {
-                  setName(event.target.value);
-                  markChanged();
-                }}
+                value={learner.user.displayName}
+                readOnly
+                aria-describedby="name-help"
               />
-              <small>This is how Mori will greet you.</small>
+              <small id="name-help">Managed by your Google account.</small>
             </label>
 
             <label className="form-field">
@@ -81,7 +131,7 @@ export function ProfilePage() {
                 type="email"
                 aria-label="Email"
                 autoComplete="email"
-                value="jason.tan@gmail.com"
+                value={learner.user.email}
                 readOnly
                 aria-describedby="email-help"
               />
@@ -161,8 +211,11 @@ export function ProfilePage() {
               <select
                 value={correctionPreference}
                 aria-label="Corrections"
+                disabled={savePreferences.isPending}
                 onChange={(event) => {
-                  setCorrectionPreference(event.target.value);
+                  setCorrectionPreference(
+                    event.target.value as CorrectionPreference,
+                  );
                   markChanged();
                 }}
               >
@@ -178,8 +231,9 @@ export function ProfilePage() {
               <select
                 value={pace}
                 aria-label="Default tutor pace"
+                disabled={savePreferences.isPending}
                 onChange={(event) => {
-                  setPace(event.target.value);
+                  setPace(event.target.value as TutorPace);
                   markChanged();
                 }}
               >
@@ -196,12 +250,13 @@ export function ProfilePage() {
               <select
                 value={timezone}
                 aria-label="Local timezone"
+                disabled={savePreferences.isPending}
                 onChange={(event) => {
                   setTimezone(event.target.value);
                   markChanged();
                 }}
               >
-                {timezones.map((item) => (
+                {timezoneOptions.map((item) => (
                   <option value={item.value} key={item.value}>{item.label}</option>
                 ))}
               </select>
@@ -211,19 +266,30 @@ export function ProfilePage() {
         </section>
 
         <div className="profile-actions">
-          <span className="save-status" role="status" aria-live="polite">
-            {saved
-              ? "Preferences saved for this preview."
-              : isDirty
-                ? "You have unsaved changes."
-                : "Your preferences are up to date."}
+          <span
+            className={`save-status${savePreferences.isError ? " save-status-error" : ""}`}
+            role="status"
+            aria-live="polite"
+          >
+            {savePreferences.isPending
+              ? "Saving your preferences..."
+              : savePreferences.isError
+                ? savePreferences.error instanceof ApiError &&
+                  savePreferences.error.code === "preference_version_conflict"
+                  ? "These preferences changed elsewhere. Refresh the page before saving."
+                  : "We could not save your preferences. Please try again."
+                : saved
+                  ? "Preferences saved."
+                  : isDirty
+                    ? "You have unsaved changes."
+                    : "Your preferences are up to date."}
           </span>
           <button
             className="button button-primary"
             type="submit"
-            disabled={!isDirty}
+            disabled={!isDirty || savePreferences.isPending}
           >
-            Save changes
+            {savePreferences.isPending ? "Saving..." : "Save changes"}
           </button>
         </div>
       </form>
@@ -233,11 +299,23 @@ export function ProfilePage() {
           <p className="eyebrow">Privacy controls</p>
           <h2 id="account-data-title">Your data</h2>
           <p>Review what Mori remembers or manage your account data.</p>
+          {signOut.isError ? (
+            <p className="account-action-error" role="alert">
+              We could not sign you out. Please try again.
+            </p>
+          ) : null}
         </div>
         <div className="account-data-actions">
           <Link className="button account-button" to="/memories">Review memories</Link>
-          <button className="button account-button" type="button" disabled title="Transcript exports are not available in this preview">Export transcripts</button>
-          <Link className="button account-button account-signout" to="/login">Sign out</Link>
+          <button className="button account-button" type="button" disabled title="Transcript exports are not available yet">Export transcripts</button>
+          <button
+            className="button account-button account-signout"
+            type="button"
+            disabled={signOut.isPending}
+            onClick={() => signOut.mutate()}
+          >
+            {signOut.isPending ? "Signing out..." : "Sign out"}
+          </button>
         </div>
       </section>
     </div>

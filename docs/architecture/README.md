@@ -24,12 +24,18 @@ The product requirements remain authoritative for user behavior and product poli
 
 ## Implementation status
 
-The architecture is approved, but the backend is not implemented. The repository currently has a useful frontend seam:
+The architecture is approved and M1 is in progress. The repository now includes:
 
 - React features read through `WebAppGateway` instead of scattered network calls.
 - A mock gateway supplies dashboard, recap, and memory view models.
 - `RealtimeSessionFactory` isolates the future WebRTC implementation.
-- Authentication, backend mutations, production transport, microphone capture, and realtime provider integration are not present yet.
+- A FastAPI application factory, validated settings, structured logging, health, readiness,
+  PostgreSQL access, and the first ordered Alembic migration.
+- Google OIDC with database login attempts, opaque revocable application sessions, learner
+  provisioning, preferences, and introductory grants.
+
+The production web gateway, dashboard read model, microphone capture, and realtime provider
+integration are not present yet.
 
 The first real vertical slice will sign in a learner, provision one language profile and intro grant, reserve that grant, persist a session plan, exchange SDP, supervise one usable turn, finalize the session, enqueue analysis atomically, and expose the resulting recap.
 
@@ -116,7 +122,7 @@ The three runtime processes are operational services from the same codebase. The
 
 | Process | Entry point | Primary responsibility |
 | --- | --- | --- |
-| API | `uv run uvicorn mori.api.main:create_app --factory` | Authentication, HTTP contracts, synchronous use cases, SDP exchange, webhooks, and transaction boundaries |
+| API | `uv run uvicorn mori.api.main:create_app --factory --no-access-log` | Authentication, HTTP contracts, synchronous use cases, SDP exchange, webhooks, and transaction boundaries |
 | Realtime supervisor | `uv run python -m mori.runtime.supervisor` | Sideband connections, ordered turn persistence, leases, connected-time enforcement, and call finalization |
 | Analysis worker | `uv run python -m mori.runtime.worker` | Extraction, deterministic learning updates, recaps, retention, export, deletion, and repair jobs |
 
@@ -161,6 +167,7 @@ Each business module should begin with `domain.py`, `service.py`, `repository.py
 - [Runtime services and flows](runtime-services.md) defines process ownership, state machines, failure recovery, and transaction boundaries.
 - [Modules and data](modules-and-data.md) defines logical boundaries, command and query interfaces, record ownership, and data invariants.
 - [API and security](api-and-security.md) defines public entry points, the first API surface, authentication, provider boundaries, and consented audio.
+- [Identity contract](identity-contract.md) freezes the implemented Google sign-in, application-session, `/me`, preferences, and logout behavior.
 - [Architecture decisions](decisions.md) records selected alternatives, consequences, and remaining owner decisions.
 - [Architecture references](references.md) preserves product sources and official integration documentation.
 - [Backend implementation plan](../plans/backend-implementation.md) sequences delivery and defines milestone exit gates.
