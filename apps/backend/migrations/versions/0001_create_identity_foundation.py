@@ -1,4 +1,4 @@
-"""Create identity and introductory access foundations.
+"""Migration 0001: create identity and introductory access foundations.
 
 Revision ID: 20260903_0001
 Revises:
