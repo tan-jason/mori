@@ -1,4 +1,5 @@
 import type { WebAppGateway } from "./web-app-gateway";
+import type { CurrentLearner } from "../domain/identity";
 import type {
   LearningItem,
   LearningTerm,
@@ -321,6 +322,27 @@ export function createMockWebAppGateway(
     baseLanguageId: BASE_LANGUAGE.id,
     targetLanguageId,
   };
+  let currentLearner: CurrentLearner = {
+    user: {
+      id: "b25fdaa6-4362-4c47-851a-ad667118c0ac",
+      email: "jason.tan@gmail.com",
+      displayName: "Jason Tan",
+      status: "active",
+    },
+    onboarding: { complete: false },
+    activeLanguageProfile: {
+      ...languageProfile,
+      status: "active",
+    },
+    preferences: {
+      correctionPreference: "balanced",
+      tutorPace: "level",
+      captionsEnabled: false,
+      timezone: "America/New_York",
+      version: 1,
+    },
+    csrfToken: "mock-csrf-token",
+  };
 
   const getContent = (languageProfileId: string): LanguageMockContent => {
     if (languageProfileId !== languageProfile.id) {
@@ -331,10 +353,31 @@ export function createMockWebAppGateway(
   };
 
   return {
-    async getActiveLanguageProfile(signal) {
+    async getCurrentLearner(signal) {
       await pause(signal);
 
-      return languageProfile;
+      return currentLearner;
+    },
+
+    async updatePreferences(command, signal) {
+      await pause(signal);
+      if (command.expectedVersion !== currentLearner.preferences.version) {
+        throw new Error("Preferences changed since they were read.");
+      }
+
+      currentLearner = {
+        ...currentLearner,
+        preferences: {
+          ...currentLearner.preferences,
+          ...command.changes,
+          version: currentLearner.preferences.version + 1,
+        },
+      };
+      return currentLearner;
+    },
+
+    async logout(_csrfToken, signal) {
+      await pause(signal);
     },
 
     async getDashboard(languageProfileId, signal) {

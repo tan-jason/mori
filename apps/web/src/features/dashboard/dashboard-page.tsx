@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
+import { useLearnerSession } from "../../app/use-learner-session";
 import { useLanguageProfile } from "../../app/use-language-profile";
 import { PageErrorState, PageLoadingState } from "../../components/async-state";
+import { getFirstName } from "../../domain/identity";
 import type { LearningState } from "../../domain/learning";
 import { useDashboard } from "./use-dashboard";
 
@@ -13,6 +15,7 @@ const stateLabels: Record<LearningState, string> = {
 
 export function DashboardPage() {
   const { targetLanguage } = useLanguageProfile();
+  const { learner } = useLearnerSession();
   const dashboard = useDashboard();
   const currentDateLabel = new Intl.DateTimeFormat("en-US", {
     weekday: "long",
@@ -47,7 +50,7 @@ export function DashboardPage() {
         <div className="welcome-copy">
           <p className="eyebrow">{currentDateLabel}</p>
           <h1 id="welcome-title">
-            {targetLanguage.greeting}, {data.learner.displayName}.
+            {targetLanguage.greeting}, {getFirstName(learner.user.displayName)}.
           </h1>
           <p>Ready for a little {targetLanguage.name} today?</p>
         </div>

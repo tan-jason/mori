@@ -1,6 +1,6 @@
 # Backend implementation plan
 
-**Status:** Ready for milestone planning
+**Status:** M1 in progress
 
 **Sequence:** M0 through M5, with no calendar estimate implied
 
@@ -61,6 +61,12 @@ Verification:
 ## M1: Backend foundation
 
 **Objective:** Replace the mock identity and dashboard boundary with a real authenticated read path.
+
+M1 can land through bounded vertical slices. An early slice may pair a new backend endpoint with
+a hand-maintained web adapter and runtime validator so the behavior can be exercised end to end.
+That adapter is transitional: before the M1 exit gate, exported OpenAPI must become the transport
+source of truth, `packages/api-client` must replace duplicated request and response schemas, and
+CI must reject generated-contract drift.
 
 Deliverables:
 

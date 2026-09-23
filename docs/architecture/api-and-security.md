@@ -7,7 +7,7 @@ Mori exposes one public backend host, `https://api.mori`. REST is the applicatio
 | Caller | Entry point | First owner | Result |
 | --- | --- | --- | --- |
 | Browser navigation | `https://mori/` and versioned assets | CloudFront and private S3 | Loads the React shell. The API origin is public configuration and no provider secret is embedded in the bundle. |
-| Browser authentication | `GET /auth/google/start` and `GET /auth/google/callback` | API identity module | Completes OIDC, provisions the application user idempotently, and establishes an opaque application session. |
+| Browser authentication | `GET /auth/google/start`, `GET /auth/google/callback`, and `POST /auth/logout` | API identity module | Completes OIDC, provisions the application user idempotently, establishes an opaque application session, or revokes it. |
 | React `WebAppGateway` | `https://api.mori/api/v1/*` | API use case | Authenticates, validates origin and CSRF where required, runs one bounded use case, commits, and maps the result to the OpenAPI contract. |
 | Browser WebRTC adapter | `POST /api/v1/sessions/{id}/webrtc` with `application/sdp` | API session orchestration | Checks ownership and reservation, exchanges SDP, persists call identity and deadline, and returns the SDP answer. Media then flows directly to OpenAI. |
 | Stripe | `POST /webhooks/stripe` | API billing adapter | Verifies the untouched request body, deduplicates the provider event, and advances the internal subscription projection. |
@@ -34,6 +34,7 @@ Static asset caching is allowed through versioned object names. API, auth callba
 | --- | --- | --- |
 | `GET /api/v1/me` | Authenticated learner, onboarding state, preferences, and language profile | First valid sign-in provisions the user, default language profile, and intro grant idempotently. |
 | `PATCH /api/v1/me/preferences` | Correction frequency, playback preference, captions, and timezone | Optimistic version or ETag prevents lost updates. |
+| `POST /auth/logout` | Revoke the current application session | Requires the trusted web origin and a session-bound CSRF token, then clears the browser cookie. |
 | `GET /api/v1/dashboard` | Composite response matching `DashboardSnapshot` | One server-composed read model. Machine timestamps remain available independently of display labels. |
 | `POST /api/v1/sessions` | Create an attempt, reserve entitlement, select objectives, and persist a plan | Requires `Idempotency-Key`. No external call occurs while an entitlement lock is held. |
 | `POST /api/v1/sessions/{id}/webrtc` | Accept an SDP offer, create the provider call, store the call ID and deadline, and return the SDP answer | Only the owning learner with a `planned` session may call it. A session has at most one active call. |
@@ -63,6 +64,7 @@ Required controls:
 - Request only basic OpenID profile and email scopes. Sign-in alone does not require offline access.
 - Link an external identity to one application user idempotently.
 - Store only an opaque, revocable application session identifier in the browser cookie.
+- Store keyed digests rather than raw application session identifiers and OAuth state values in PostgreSQL.
 - Use an `HttpOnly`, `Secure`, `SameSite=Lax`, host-only cookie for `api.mori`.
 - Allow credentialed CORS only from the exact `mori` origin and explicitly configured local or staging origins.
 - Validate CSRF tokens and trusted `Origin` or `Referer` policy on unsafe cookie-authenticated requests.

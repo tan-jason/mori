@@ -1,15 +1,30 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# JavaScript
 node_modules/
 dist/
 coverage/
+*.tsbuildinfo
+.eslintcache
+
+# Python
 .venv/
 __pycache__/
 *.py[cod]
+*.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Local tools and operating systems
 .DS_Store
-.env
-.env.local
 *.log
 .lavish/
 .codex/
+.idea/

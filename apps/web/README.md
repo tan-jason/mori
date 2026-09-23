@@ -10,8 +10,10 @@ ID is included in query keys and gateway calls so course data stays isolated by
 target language. Changing languages belongs in a separate account workflow rather
 than an inline page control.
 
-Auth, backend transport, data mutations, microphone access, and the realtime voice
-agent are intentionally outside this scaffold.
+Google sign-in, application session restoration, learner account details, preference
+updates, and sign-out use the backend API. Dashboard, recap, and memory content still
+use the deterministic preview adapter until their read endpoints land. Microphone
+access and the realtime voice agent remain outside this slice.
 
 ## Run locally
 
@@ -20,6 +22,12 @@ cd apps/web
 npm install
 npm run dev
 ```
+
+The webapp reads `VITE_API_ORIGIN` from the root `.env` and defaults to
+`http://localhost:8000`. Set `VITE_USE_MOCK_API=true` only when working on the
+webapp without the backend. For end-to-end identity testing, start PostgreSQL, apply
+the backend migrations, run the API, then run the webapp. See the backend README for
+the exact commands and Google OAuth configuration.
 
 Quality checks:
 
@@ -44,10 +52,14 @@ src/
   styles/       Responsive design system and global styles
 ```
 
-Features consume `WebAppGateway`, not `fetch` or backend persistence entities. When
-the application API is ready, add a production gateway implementation and inject it
-through `AppProviders`. Keep response validation in that adapter so feature code only
-receives valid view models.
+Features consume `WebAppGateway`, not `fetch` or backend persistence entities. The
+current backend gateway includes credentials on API requests and validates identity
+responses before exposing view models to features. The mock gateway remains available
+for isolated frontend work and tests.
+
+The identity gateway is transitional for this bounded M1 slice and currently maintains its
+runtime schemas by hand. Before the M1 exit gate, the generated OpenAPI client and Zod validators
+become the production implementation, and CI must reject contract drift.
 
 The realtime implementation belongs behind `RealtimeSessionFactory`. It should use a
 short-lived credential or SDP exchange from the application backend and must never

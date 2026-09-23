@@ -14,7 +14,7 @@ describe("LoginPage", () => {
     expect(screen.getByRole("heading", { name: /learn it by speaking it/i })).toBeVisible();
     expect(screen.getByRole("link", { name: /continue with google/i })).toHaveAttribute(
       "href",
-      "/",
+      "http://localhost:8000/auth/google/start?return_to=%2F",
     );
   });
 });

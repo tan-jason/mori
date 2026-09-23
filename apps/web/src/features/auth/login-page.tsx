@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { getGoogleSignInUrl } from "../../api/api-config";
 import { BrandMark } from "../../components/app-shell";
 
 function GoogleMark() {
@@ -76,10 +77,10 @@ export function LoginPage() {
             personalized sessions.
           </p>
 
-          <Link className="google-button" to="/">
+          <a className="google-button" href={getGoogleSignInUrl()}>
             <GoogleMark />
             Continue with Google
-          </Link>
+          </a>
 
           <p className="login-terms">
             By continuing, you confirm you are 18 or older and agree to the

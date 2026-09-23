@@ -3,7 +3,10 @@ import type {
   LearnerMemory,
   SessionRecap,
 } from "../domain/learning";
-import type { LanguageProfile } from "../domain/languages";
+import type {
+  CurrentLearner,
+  UpdatePreferencesCommand,
+} from "../domain/identity";
 
 /**
  * Backend adapter boundary for the webapp.
@@ -12,7 +15,12 @@ import type { LanguageProfile } from "../domain/languages";
  * this contract with REST, RPC, or generated clients once API contracts settle.
  */
 export interface WebAppGateway {
-  getActiveLanguageProfile(signal?: AbortSignal): Promise<LanguageProfile>;
+  getCurrentLearner(signal?: AbortSignal): Promise<CurrentLearner>;
+  updatePreferences(
+    command: UpdatePreferencesCommand,
+    signal?: AbortSignal,
+  ): Promise<CurrentLearner>;
+  logout(csrfToken: string, signal?: AbortSignal): Promise<void>;
   getDashboard(
     languageProfileId: string,
     signal?: AbortSignal,
