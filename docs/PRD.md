@@ -190,7 +190,7 @@ The learner may end through a visible End button or a clear spoken request in En
 - The hard cap is 20 minutes of connected session time measured by the server, not by model judgment.
 - Early, dropped, and time-limited sessions all enter post-session processing if they contain at least one usable turn.
 
-If the connection drops, the app offers a short reconnect window. Connected time already used still counts toward the 20-minute cap.
+If the connection drops, the app offers a short reconnect window. Connected time already used still counts toward the 20-minute cap. One Mori session may contain multiple sequential provider calls, but only one provider call may be active at a time. Reconnect first uses transport recovery when the active call supports it; otherwise the server may create a replacement provider call under the same Mori session. The replacement call reuses the pinned session plan, curriculum version, learner context, entitlement reservation or consumption, and absolute server deadline. Transcript turns from every provider call remain ordered within the Mori session, and post-session processing uses one final session watermark across those calls. A provider spike must determine whether recovery uses ICE restart or a replacement call without changing these session-level invariants.
 
 ### 7.7 Post-session recap
 
@@ -262,10 +262,14 @@ The learner can ask the tutor to slow down or speed up at any time. The change a
 
 ### 8.3 Turn-taking
 
-Use [OpenAI Realtime conversation capabilities](https://developers.openai.com/api/docs/guides/realtime-conversations) and configuration for the first five behaviors rather than building a separate audio turn system. Realtime provides voice activity detection, speech-start and speech-stop events, automatic response interruption, response cancellation, and conversation-item truncation. Input transcription confidence signals may be enabled to support uncertainty handling, while session instructions control response length. The final two behaviors remain explicit tutor-policy instructions.
+Use [OpenAI Realtime conversation capabilities](https://developers.openai.com/api/docs/guides/realtime-conversations) for interruption and audio-state behavior rather than building a separate audio turn system. Realtime provides voice activity detection, speech-start and speech-stop events, automatic response interruption, response cancellation, and conversation-item truncation. Input transcription confidence signals may be enabled to support uncertainty handling, while session instructions control response length. Tutor turn shape remains an explicit policy instruction.
+
+The interruption policy is a product invariant across web and future native clients: when the learner begins speaking while the tutor is speaking, tutor output stops promptly and unheard tutor audio is removed from conversation state. The implementation depends on transport capability, not client platform:
+
+- For WebRTC or SIP, rely on provider-managed output buffering and automatic truncation. The client observes interruption events and renders the resulting state without duplicating truncation logic.
+- For a WebSocket audio transport, the client stops playback immediately, records how much audio was played, and sends `conversation.item.truncate` for the unheard portion.
 
 - Use Realtime voice activity detection for natural turn boundaries and interruption.
-- When the learner barges in, use native interruption events, stop client playback immediately, and truncate unplayed tutor audio from conversation state.
 - Combine Realtime speech state with input-transcription quality signals and client-side gating so background speech is not answered confidently.
 - Ask for repetition when transcription confidence or intent confidence is low.
 - Configure the Realtime session to keep most tutor turns shorter than the learner's turns.
@@ -520,6 +524,7 @@ The session service provides:
 - A privacy-preserving stable safety identifier.
 - Session plan and bounded learner context.
 - Prompt and tool configuration.
+- Provider-call attempt tracking and reconnect coordination.
 - Server-authoritative start and stop timestamps.
 - Transcript event ingestion.
 - Forced hang-up at the product cap.
@@ -541,6 +546,8 @@ No model call receives unrestricted database access or directly mutates learner 
 - `users`
 - `language_profiles`
 - `sessions`
+- `realtime_calls`
+- `session_connections`
 - `session_plans`
 - `session_turns`
 - `curriculum_items`

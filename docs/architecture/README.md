@@ -165,6 +165,7 @@ Each business module should begin with `domain.py`, `service.py`, `repository.py
 
 ## Documentation map
 
+- [MVP system design](system-design.md) consolidates the implementation-facing topology, ownership, state machines, data contracts, failure recovery, and approval gates.
 - [Runtime services and flows](runtime-services.md) defines process ownership, state machines, failure recovery, and transaction boundaries.
 - [Modules and data](modules-and-data.md) defines logical boundaries, command and query interfaces, record ownership, and data invariants.
 - [API and security](api-and-security.md) defines public entry points, the first API surface, authentication, provider boundaries, and consented audio.
