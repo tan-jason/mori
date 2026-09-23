@@ -34,8 +34,9 @@ The architecture is approved and M1 is in progress. The repository now includes:
 - Google OIDC with database login attempts, opaque revocable application sessions, learner
   provisioning, preferences, and introductory grants.
 
-The production web gateway, dashboard read model, microphone capture, and realtime provider
-integration are not present yet.
+An interim identity web gateway is present for the current M1 slice. The generated production
+web gateway, dashboard read model, microphone capture, and realtime provider integration are not
+present yet.
 
 The first real vertical slice will sign in a learner, provision one language profile and intro grant, reserve that grant, persist a session plan, exchange SDP, supervise one usable turn, finalize the session, enqueue analysis atomically, and expose the resulting recap.
 

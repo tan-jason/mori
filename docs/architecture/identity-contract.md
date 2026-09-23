@@ -23,6 +23,12 @@ Google access and refresh tokens are not retained. Login attempts expire after t
 Application sessions expire after thirty days and are revoked on logout or account lifecycle
 actions.
 
+PostgreSQL stores login attempts so every API instance shares the same transaction state and
+the callback can enforce single use atomically. The initial MVP retains consumed and expired
+attempts, along with expired or revoked application sessions; expiry and revocation are still
+enforced on every read. Retention cleanup and public-endpoint rate limiting are operational
+gates for the controlled beta, not requirements for this initial identity slice.
+
 ## Browser controls
 
 - Production uses the `__Host-mori_session` cookie with `HttpOnly`, `Secure`,

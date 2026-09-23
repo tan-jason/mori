@@ -53,9 +53,13 @@ src/
 ```
 
 Features consume `WebAppGateway`, not `fetch` or backend persistence entities. The
-production gateway includes credentials on API requests and validates identity
+current backend gateway includes credentials on API requests and validates identity
 responses before exposing view models to features. The mock gateway remains available
 for isolated frontend work and tests.
+
+The identity gateway is transitional for this bounded M1 slice and currently maintains its
+runtime schemas by hand. Before the M1 exit gate, the generated OpenAPI client and Zod validators
+become the production implementation, and CI must reject contract drift.
 
 The realtime implementation belongs behind `RealtimeSessionFactory`. It should use a
 short-lived credential or SDP exchange from the application backend and must never
