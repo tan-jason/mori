@@ -23,6 +23,12 @@ from mori.modules.identity.errors import (
     PreconditionRequired,
     PreferenceVersionConflict,
 )
+from mori.modules.sessions.errors import (
+    IdempotencyConflict,
+    InvalidIdempotencyKey,
+    SessionNotFound,
+    VoiceEntitlementUnavailable,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -58,6 +64,16 @@ _EXPECTED_ERRORS: dict[type[Exception], ErrorDefinition] = {
     PreferenceVersionConflict: ErrorDefinition(
         412, "preference_version_conflict", "Preferences changed since they were read."
     ),
+    InvalidIdempotencyKey: ErrorDefinition(
+        400, "invalid_idempotency_key", "A valid Idempotency-Key header is required."
+    ),
+    IdempotencyConflict: ErrorDefinition(
+        409, "idempotency_conflict", "This key was already used for another request."
+    ),
+    VoiceEntitlementUnavailable: ErrorDefinition(
+        409, "voice_entitlement_unavailable", "No voice session is available right now."
+    ),
+    SessionNotFound: ErrorDefinition(404, "session_not_found", "The session was not found."),
 }
 
 

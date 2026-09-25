@@ -25,6 +25,8 @@ from mori.modules.identity.google import GoogleOIDC
 from mori.modules.identity.persistence import SqlAlchemyIdentityUnitOfWorkFactory
 from mori.modules.identity.ports import GoogleOIDCClient
 from mori.modules.identity.routes import router as identity_router
+from mori.modules.sessions.application import SessionService
+from mori.modules.sessions.routes import router as session_router
 
 
 def _configure_logging() -> None:
@@ -87,14 +89,17 @@ def create_app(
     app.state.database_engine = runtime_engine
     app.state.session_maker = session_maker
     app.state.identity_service = service
+    app.state.session_service = SessionService(
+        session_maker=session_maker,
+    )
 
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[runtime_settings.web_origin],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
-        allow_headers=["Accept", "Content-Type", "If-Match", "X-CSRF-Token"],
-        expose_headers=["ETag", "X-Request-ID"],
+        allow_headers=["Accept", "Content-Type", "Idempotency-Key", "If-Match", "X-CSRF-Token"],
+        expose_headers=["ETag", "Location", "X-Request-ID"],
     )
     allowed_hosts = [runtime_settings.api_host]
     if runtime_settings.environment == Environment.TEST:
@@ -103,6 +108,7 @@ def create_app(
     app.middleware("http")(security_headers_middleware)
     install_exception_handlers(app)
     app.include_router(identity_router)
+    app.include_router(session_router)
 
     @app.get("/health", tags=["operations"])
     async def health() -> dict[str, str]:

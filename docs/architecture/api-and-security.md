@@ -9,7 +9,7 @@ Mori exposes one public backend host, `https://api.mori`. REST is the applicatio
 | Browser navigation | `https://mori/` and versioned assets | CloudFront and private S3 | Loads the React shell. The API origin is public configuration and no provider secret is embedded in the bundle. |
 | Browser authentication | `GET /auth/google/start`, `GET /auth/google/callback`, and `POST /auth/logout` | API identity module | Completes OIDC, provisions the application user idempotently, establishes an opaque application session, or revokes it. |
 | React `WebAppGateway` | `https://api.mori/api/v1/*` | API use case | Authenticates, validates origin and CSRF where required, runs one bounded use case, commits, and maps the result to the OpenAPI contract. |
-| Browser WebRTC adapter | `POST /api/v1/sessions/{id}/webrtc` with `application/sdp` | API session orchestration | Checks ownership and reservation, exchanges SDP, persists call identity and deadline, and returns the SDP answer. Media then flows directly to OpenAI. |
+| Browser WebRTC adapter | `POST /api/v1/sessions/{id}/webrtc` with `application/sdp` | API session orchestration | Checks ownership and reservation, exchanges SDP, persists call identity, and returns the SDP answer. Client acknowledgment establishes the fixed deadline. Media then flows directly to OpenAI. |
 | Stripe | `POST /webhooks/stripe` | API billing adapter | Verifies the untouched request body, deduplicates the provider event, and advances the internal subscription projection. |
 | Committed database state | Supervisor lease scan and Procrastinate queue | Private runtimes | Wakes durable live-call or background workflows without a public endpoint. |
 
@@ -37,7 +37,7 @@ Static asset caching is allowed through versioned object names. API, auth callba
 | `POST /auth/logout` | Revoke the current application session | Requires the trusted web origin and a session-bound CSRF token, then clears the browser cookie. |
 | `GET /api/v1/dashboard` | Composite response matching `DashboardSnapshot` | One server-composed read model. Machine timestamps remain available independently of display labels. |
 | `POST /api/v1/sessions` | Create an attempt, reserve entitlement, select objectives, and persist a plan | Requires `Idempotency-Key`. No external call occurs while an entitlement lock is held. |
-| `POST /api/v1/sessions/{id}/webrtc` | Accept an SDP offer, create the provider call, store the call ID and deadline, and return the SDP answer | Only the owning learner with a `planned` session may call it. A session has at most one active call. |
+| `POST /api/v1/sessions/{id}/webrtc` | Accept an SDP offer, create the provider call, store the call ID, and return the SDP answer | Only the owning learner with a valid `planned` or `reconnecting` session may call it. A session has at most one active or ending call. Activation and the fixed deadline follow client acknowledgment. |
 | `PUT /api/v1/sessions/{id}/audio-consent` | Grant, revoke, or decline the versioned session-specific audio policy | No retained audio bytes or upload URLs exist before a recorded grant. Revocation denies subsequent access immediately. |
 | `POST /api/v1/sessions/{id}/audio-uploads` | Create a bounded multipart upload | URLs bind the storage key, session, part number, expiry, content constraints, and total byte budget. |
 | `POST /api/v1/audio-uploads/{upload_id}/complete` | Complete and verify the upload manifest | Verifies expected parts, checksum, format, size, and current consent before marking the asset complete. |
@@ -80,7 +80,7 @@ The API accepts the browser SDP offer and exchanges it with OpenAI using the ser
 
 The integration must:
 
-- Persist the provider call ID and absolute server deadline before treating the session as active.
+- Persist the provider call ID before returning the SDP answer. Establish the fixed wall-clock deadline when the first client connection is acknowledged.
 - Attach a server-side sideband connection through the dedicated supervisor.
 - Keep model name, voice, prompts, and provider behavior runtime-configured and version-labeled.
 - Persist event IDs and ordering metadata needed for idempotent normalization.
