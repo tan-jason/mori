@@ -33,10 +33,13 @@ The architecture is approved and M1 is in progress. The repository now includes:
   PostgreSQL access, and the first ordered Alembic migration.
 - Google OIDC with database login attempts, opaque revocable application sessions, learner
   provisioning, preferences, and introductory grants.
+- An initial M2 session foundation with a PostgreSQL reservation ledger, immutable placeholder
+  plan, idempotent session creation, status reads, and expiry recovery for unconnected plans.
 
 An interim identity web gateway is present for the current M1 slice. The generated production
 web gateway, dashboard read model, microphone capture, and realtime provider integration are not
-present yet.
+present yet. The browser's voice-start action remains unavailable until the SDP exchange and
+supervisor can enforce the server deadline.
 
 The first real vertical slice will sign in a learner, provision one language profile and intro grant, reserve that grant, persist a session plan, exchange SDP, supervise one usable turn, finalize the session, enqueue analysis atomically, and expose the resulting recap.
 

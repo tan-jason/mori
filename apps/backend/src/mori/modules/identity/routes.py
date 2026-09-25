@@ -8,11 +8,11 @@ from typing import cast
 from fastapi import APIRouter, Header, Query, Request, Response
 from fastapi.responses import RedirectResponse
 
+from mori.api.auth import session_token as _session_token
+from mori.api.auth import verify_csrf as _verify_csrf
 from mori.config import Settings
 from mori.modules.identity.application import IdentityService
 from mori.modules.identity.errors import (
-    AuthenticationRequired,
-    CsrfRejected,
     InvalidOAuthFlow,
     InvalidPrecondition,
     PreconditionRequired,
@@ -30,23 +30,6 @@ def _settings(request: Request) -> Settings:
 
 def _service(request: Request) -> IdentityService:
     return cast(IdentityService, request.app.state.identity_service)
-
-
-def _session_token(request: Request) -> str:
-    token = request.cookies.get(_settings(request).session_cookie_name)
-    if not token:
-        raise AuthenticationRequired
-    return token
-
-
-def _verify_csrf(request: Request, session_token: str) -> None:
-    settings = _settings(request)
-    if request.headers.get("origin") != settings.web_origin:
-        raise CsrfRejected
-    provided = request.headers.get("x-csrf-token", "")
-    expected = _service(request).csrf_token(session_token)
-    if not provided or not tokens_match(provided, expected):
-        raise CsrfRejected
 
 
 def _parse_etag(if_match: str | None) -> int:

@@ -3,6 +3,8 @@
 This directory contains the Python 3.13 backend package. The first M1 identity slice includes
 the FastAPI process, PostgreSQL migrations, Google OpenID Connect, opaque database-backed
 application sessions, learner profiles, preferences, and introductory grant provisioning.
+The first M2 foundation adds idempotent intro-grant reservation and an immutable placeholder
+session plan. It does not yet connect audio or start a provider call.
 
 ## Prerequisites
 
@@ -103,6 +105,9 @@ The initial identity endpoints are:
 - `POST /auth/logout`
 - `GET /api/v1/me`
 - `PATCH /api/v1/me/preferences`
+- `POST /api/v1/sessions` with `Idempotency-Key`, origin, CSRF token, and
+  `{"languageProfileId":"<active profile UUID>"}`
+- `GET /api/v1/sessions/{id}` for the learner's authoritative session status
 
 See [the identity contract](../../docs/architecture/identity-contract.md) for session,
 callback, CSRF, cookie, and optimistic-concurrency behavior.

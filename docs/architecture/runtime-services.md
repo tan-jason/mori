@@ -90,7 +90,10 @@ stateDiagram-v2
     created --> reserved: entitlement reserved
     reserved --> planned: immutable objectives stored
     planned --> connecting: SDP exchange begins
-    connecting --> active: call ID and deadline stored
+    connecting --> active: client connection acknowledged
+    active --> reconnecting: connection lost
+    reconnecting --> active: replacement connection acknowledged
+    reconnecting --> ending: grace or wall expiry
     active --> ending: end requested or deadline reached
     ending --> analysis_pending: final watermark and job committed
     analysis_pending --> ready: recap and snapshot committed
@@ -99,8 +102,7 @@ stateDiagram-v2
     reserved --> setup_failed
     planned --> setup_failed
     connecting --> setup_failed
-    active --> abandoned
-    ending --> abandoned
+    active --> ending: provider or policy termination
     analysis_pending --> analysis_failed
     analysis_failed --> analysis_pending: explicit retry or repair
 ```
@@ -113,13 +115,14 @@ The state names describe the main success path. Detailed end reasons, connection
 
 1. The browser sends `POST /api/v1/sessions` with an `Idempotency-Key`.
 2. In one short transaction, the API creates or reuses the session attempt and reserves an available intro or paid grant under a row lock.
-3. Planning runs outside the entitlement lock using a pinned learner snapshot and published curriculum version.
-4. The API stores the immutable plan and objective records. An expired setup reservation can be released safely.
+3. Planning runs outside the entitlement lock when it needs external work. The M2 placeholder plan is deterministic and may be stored in the reservation transaction.
+4. The API stores the immutable plan and objective records. An expired unconnected setup reservation can be released safely.
 5. The browser sends its SDP offer to `POST /api/v1/sessions/{id}/webrtc`.
 6. The API verifies ownership, state, and reservation, then exchanges SDP with OpenAI without holding the entitlement lock.
-7. The API persists the provider call ID, server deadline, and active state before returning the SDP answer.
+7. The API persists the provider call ID and `awaiting_client` call state before returning the SDP answer. The fixed wall-clock deadline is established on first activation.
 8. Committed call state wakes a supervisor. The browser sends media directly to OpenAI while the supervisor attaches through the sideband connection.
-9. The first usable learner turn atomically consumes the reservation. Setup failure with no usable turn releases it.
+9. After applying the SDP answer and opening the data channel, the browser acknowledges connection. Only then does the Mori session become `active` and open its first connected segment.
+10. The first usable learner turn atomically consumes the reservation. Setup failure with no usable turn releases it.
 
 No external call may occur while a transaction holds an entitlement row lock. If the SDP exchange succeeds but the final state update fails, recovery uses the persisted attempt data and provider cleanup path rather than creating an unbounded second call.
 
@@ -128,7 +131,7 @@ No external call may occur while a transaction holds an entitlement row lock. If
 The server stores:
 
 - Provider call ID.
-- Absolute server deadline.
+- Fixed wall-clock deadline established on first activation.
 - Connected segments and their start and end times.
 - Accumulated connected duration.
 - Final persisted provider-event and turn watermarks.
