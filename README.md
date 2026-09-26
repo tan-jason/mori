@@ -13,13 +13,14 @@ The tutor will remember useful learning context, adapt to the learner's demonstr
 
 ## MVP experience
 
-- English is the fixed base language. Standard Mandarin is the default MVP target.
-- The webapp foundation supports Mandarin, Spanish, French, Portuguese, Japanese, Korean, and Vietnamese as target languages.
+- Learners explicitly select a supported base and target language during onboarding. No language is preselected.
+- The webapp scaffold lists several target languages; voice practice requires a published course for the selected pair.
 - Learners receive a provisional Beginner level when they are unsure of their starting ability.
+- The learning system has four levels: Beginner, Intermediate, Advanced, and Fluent practice mode.
 - Sessions are voice-first, may end at any time, and have a 20-minute maximum.
 - Each session focuses on one to three personalized learning objectives.
 - The selected target remains the default conversation language.
-- Brief, compassionate English clarification is available when a learner is stuck.
+- Brief, compassionate help in the selected base language is available when a learner is stuck.
 - Post-session processing extracts transcript-grounded learning evidence and prepares future practice.
 - Progression is computed through versioned product rules rather than model intuition alone.
 
@@ -48,12 +49,15 @@ These are product decisions, not completed implementation. Model, voice, API, an
 ## Documentation
 
 - [Product requirements document](docs/PRD.md)
+- [Learning system PRD](docs/learning-system-prd.md)
 - [High-level system design](docs/diagrams/high-level-system-design.md)
 - [Backend architecture](docs/architecture/README.md)
+- [Learning system implementation design](docs/architecture/learning-system-implementation.md)
+- [Learning system data contracts](docs/architecture/learning-system-data-contracts.md)
 - [Backend implementation plan](docs/plans/backend-implementation.md)
 - [Webapp foundation](apps/web/README.md)
 
-The PRD defines the MVP scope, user experience, tutor behavior, learning state, functional requirements, technical direction, metrics, safety requirements, and acceptance criteria. The system design defines the high-level component boundaries and end-to-end learning flow. The backend architecture turns those boundaries into runtime, module, data, API, security, and delivery decisions.
+The original PRD defines the broader MVP scope. The learning system PRD owns the updated language selection, level, tutor, planning, learning, and memory behavior. The implementation design contains the five workflow diagrams and delivery gates; the data contracts define the table relationships and object fields. The backend architecture covers the shared runtime, API, security, and operations foundations.
 
 ## Repository status
 

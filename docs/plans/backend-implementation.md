@@ -6,6 +6,8 @@
 
 This plan delivers one real, recoverable conversation loop before broadening the MVP. Each milestone ends in an observable product outcome and a correctness gate. Work is split by bounded behavior, not by frontend versus backend.
 
+The approved [learning system PRD](../learning-system-prd.md), [implementation design with workflow diagrams](../architecture/learning-system-implementation.md), and [data contracts](../architecture/learning-system-data-contracts.md) supersede the earlier default-profile and six-level learning assumptions in this milestone plan. The existing automatic English-to-Mandarin profile is a migration input, not the target sign-in behavior.
+
 ## Outcome
 
 At completion, an adult learner can sign in, receive the correct entitlement, start and safely end a server-controlled voice session, receive a validated recap and updated learner snapshot, inspect or delete retained information, and use the paid Basic allowance. The system is ready for a controlled beta only after failure, privacy, quality, recovery, and operations gates pass.
@@ -75,16 +77,16 @@ Deliverables:
 - Add PostgreSQL, SQLAlchemy 2.0, psycopg 3, Alembic, local container configuration, and Testcontainers support.
 - Create identity, language profile, preference, plan version, grant, and application-session foundations.
 - Integrate Authlib Google OIDC with PKCE, state, nonce, callback allowlisting, and secure database-backed sessions.
-- Provision the user, default Mandarin language profile, and one intro grant idempotently after valid sign-in.
-- Implement `GET /api/v1/me`, preference mutation, and `GET /api/v1/dashboard` against real read models.
+- Provision the user and one intro grant idempotently after valid sign-in. Complete onboarding only after explicit selection of a published language pair and starting mode.
+- Implement nullable-profile `GET /api/v1/me`, `GET /api/v1/language-pairs`, idempotent `POST /api/v1/language-profiles`, profile-scoped preferences, and `GET /api/v1/dashboard` against real read models.
 - Export OpenAPI and generate `packages/api-client` with TypeScript types and Zod validators.
 - Implement the production `WebAppGateway` and preserve the mock gateway for isolated frontend development and tests.
 - Add CI for Python linting, type checks, unit and PostgreSQL integration tests, migrations, web tests, and contract drift.
 
 Verification:
 
-- A new user can sign in, reload with the application session, and see a real dashboard.
-- Replaying the callback or provisioning command does not create duplicate users, profiles, sessions, or intro grants.
+- A new user can sign in, reload with the application session, and complete explicit language onboarding before seeing a plan or starting voice practice.
+- Replaying the callback or profile-creation command does not create duplicate users, profiles, sessions, or intro grants.
 - Invalid origin, CSRF, state, nonce, and expired application session cases fail safely.
 - Migrations apply from an empty database and upgrade from every supported prior migration fixture.
 
@@ -181,7 +183,7 @@ Verification:
 Deliverables:
 
 - Run HTTP, active-call, database-lock, queue, and provider-rate-limit load tests against the agreed beta profile.
-- Run Mandarin language-policy, extraction, provenance, progression, pronunciation, safety, and memory evaluations across all six levels.
+- Run transcript-based language-policy, extraction, provenance, progression, tutor correction, safety, and memory evaluations across Beginner, Intermediate, Advanced, and Fluent practice. Validate live-call transport separately; do not claim acoustic pronunciation accuracy from transcripts.
 - Complete the threat model and remediate all release-blocking findings.
 - Configure structured logs, traces, metrics, dashboards, alerts, redaction, and budget monitoring.
 - Write and exercise runbooks for provider outage, supervisor churn, queue backlog, stuck privacy job, billing mismatch, data repair, and secret rotation.
@@ -271,8 +273,8 @@ This lane owns learning correctness. It publishes pinned session bundles and exp
 ### Product and operations
 
 - Provide the first published curriculum graph and promotion rules as versioned source data.
-- Create a consented gold transcript and audio evaluation set across all six levels.
-- Approve audio consent copy, audio retention, evaluator threshold, and rollback policy.
+- Create a gold transcript evaluation set across all four levels and verify live-call transport. Add consented retained-audio evaluation only before pronunciation-derived progress or acoustic-quality claims are enabled.
+- Approve memory retention, transcript evaluator thresholds, and rollback policy. Approve audio consent copy and retention before storing learner audio.
 - Select the OpenTelemetry backend, alert destinations, and incident owner.
 
 Do not commit any secret. Use ignored local configuration and managed secrets in deployed environments.

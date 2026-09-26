@@ -2,6 +2,8 @@
 
 Mori exposes one public backend host, `https://api.mori`. REST is the application contract and one SDP endpoint bootstraps direct browser-to-provider WebRTC. Internal runtimes are never internet-facing.
 
+The approved [learning system API and workflow design](learning-system-implementation.md#4-public-api-contract) updates the first backend surface below: sign-in may return a nullable profile; pair selection is explicit; profile-specific preferences and memories live under `/api/v1/language-profiles/{id}`. The current `/me/preferences` route remains a temporary active-profile adapter during migration.
+
 ## Public entry points
 
 | Caller | Entry point | First owner | Result |
@@ -32,8 +34,10 @@ Static asset caching is allowed through versioned object names. API, auth callba
 
 | Route | Responsibility | Correctness behavior |
 | --- | --- | --- |
-| `GET /api/v1/me` | Authenticated learner, onboarding state, preferences, and language profile | First valid sign-in provisions the user, default language profile, and intro grant idempotently. |
-| `PATCH /api/v1/me/preferences` | Correction frequency, playback preference, captions, and timezone | Optimistic version or ETag prevents lost updates. |
+| `GET /api/v1/me` | Authenticated learner, onboarding state, nullable active profile, and nullable preferences | First valid sign-in provisions the user and intro grant; language selection remains incomplete until explicit confirmation. |
+| `GET /api/v1/language-pairs` | Published supported language pairs | Catalog controls which pair can start voice practice. |
+| `POST /api/v1/language-profiles` | Confirm a selected pair, starting mode, and initial preferences | Idempotent atomic onboarding command. |
+| `PATCH /api/v1/language-profiles/{id}/preferences` | Correction frequency, pace, captions, timezone, and interests | Profile ownership and ETag prevent lost updates. Existing `/me/preferences` is a migration adapter. |
 | `POST /auth/logout` | Revoke the current application session | Requires the trusted web origin and a session-bound CSRF token, then clears the browser cookie. |
 | `GET /api/v1/dashboard` | Composite response matching `DashboardSnapshot` | One server-composed read model. Machine timestamps remain available independently of display labels. |
 | `POST /api/v1/sessions` | Create an attempt, reserve entitlement, select objectives, and persist a plan | Requires `Idempotency-Key`. No external call occurs while an entitlement lock is held. |
@@ -46,8 +50,8 @@ Static asset caching is allowed through versioned object names. API, auth callba
 | `GET /api/v1/sessions/{id}/recap` | Return the recap view model | Returns an explicit processing or failed state until current analysis is committed. |
 | `GET /api/v1/sessions` | Return session history | Excludes revoked or deleted content and uses stable pagination. |
 | `DELETE /api/v1/sessions/{id}` | Begin the approved cascade-and-rebuild privacy workflow | Revokes access immediately and returns an auditable asynchronous job status. |
-| `GET /api/v1/memories` | Return inspectable bounded conversation memories | Does not expose internal prompts or unrelated learning evidence. |
-| `DELETE /api/v1/memories/{id}` | Remove one memory | Immediate and idempotent. It does not mutate learning evidence. |
+| `GET /api/v1/language-profiles/{id}/memories` | Return inspectable bounded conversation memories for an owned profile | Does not expose internal prompts or unrelated learning evidence. |
+| `DELETE /api/v1/language-profiles/{id}/memories/{memoryId}` | Revoke one owned memory | Immediate and idempotent. It does not mutate learning evidence. |
 | `POST /api/v1/exports` | Begin an account data export | Durable job with auditable status and a private expiring download URL. |
 | `POST /api/v1/account-deletion` | Begin account erasure | Revokes access, blocks new sessions, and runs a durable deletion workflow. |
 | `POST /webhooks/stripe` | Receive subscription, invoice, and checkout lifecycle events | Verifies the raw-body signature, records the event ID, then applies a monotonic internal projection. |

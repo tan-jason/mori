@@ -5,6 +5,8 @@
 **Scope:** Google sign-in, Mori application sessions, learner identity, the default
 English-to-Mandarin profile, preferences, consent history, and the introductory grant.
 
+This document records the currently implemented identity slice. The approved [learning system implementation design](learning-system-implementation.md#1-current-state-and-migration-boundary) changes the target behavior to explicit language selection after sign-in, nullable profile and preferences in `GET /me`, and profile-scoped preference routes. The default profile described below is migration input, not the target contract for new accounts.
+
 ## Authentication flow
 
 1. `GET /auth/google/start` creates a single-use database login attempt and redirects to
