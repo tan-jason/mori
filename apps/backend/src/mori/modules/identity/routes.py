@@ -10,6 +10,7 @@ from fastapi.responses import RedirectResponse
 
 from mori.api.auth import session_token as _session_token
 from mori.api.auth import verify_csrf as _verify_csrf
+from mori.api.contracts import mutation_headers
 from mori.config import Settings
 from mori.modules.identity.application import IdentityService
 from mori.modules.identity.errors import (
@@ -102,7 +103,7 @@ async def complete_google_sign_in(
     return response
 
 
-@router.post("/auth/logout", status_code=204)
+@router.post("/auth/logout", status_code=204, openapi_extra=mutation_headers())
 async def logout(request: Request) -> Response:
     session_token = _session_token(request)
     _verify_csrf(request, session_token)
@@ -131,12 +132,16 @@ async def get_me(request: Request, response: Response) -> MeResponse:
     )
 
 
-@router.patch("/api/v1/me/preferences", response_model=MeResponse)
+@router.patch(
+    "/api/v1/me/preferences",
+    response_model=MeResponse,
+    openapi_extra=mutation_headers("If-Match"),
+)
 async def update_preferences(
     request: Request,
     response: Response,
     patch: PreferencePatch,
-    if_match: str | None = Header(default=None),
+    if_match: str | None = Header(default=None, include_in_schema=False),
 ) -> MeResponse:
     session_token = _session_token(request)
     _verify_csrf(request, session_token)

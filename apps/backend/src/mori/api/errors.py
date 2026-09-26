@@ -10,6 +10,7 @@ import structlog
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from starlette.exceptions import HTTPException
 
 from mori.modules.identity.errors import (
@@ -31,6 +32,16 @@ from mori.modules.sessions.errors import (
 )
 
 logger = structlog.get_logger(__name__)
+
+
+class ApiErrorDetails(BaseModel):
+    code: str
+    message: str
+    requestId: str
+
+
+class ApiErrorResponse(BaseModel):
+    error: ApiErrorDetails
 
 
 @dataclass(frozen=True, slots=True)

@@ -8,6 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Header, Request, Response
 
 from mori.api.auth import session_token, verify_csrf
+from mori.api.contracts import mutation_headers
 from mori.modules.identity.application import IdentityService
 from mori.modules.sessions.application import SessionService
 from mori.modules.sessions.errors import InvalidIdempotencyKey
@@ -16,12 +17,12 @@ from mori.modules.sessions.schemas import CreateSessionRequest, SessionResponse
 router = APIRouter(prefix="/api/v1/sessions", tags=["sessions"])
 
 
-@router.post("", response_model=SessionResponse)
+@router.post("", response_model=SessionResponse, openapi_extra=mutation_headers("Idempotency-Key"))
 async def create_session(
     request: Request,
     response: Response,
     body: CreateSessionRequest,
-    idempotency_key: str | None = Header(default=None),
+    idempotency_key: str | None = Header(default=None, include_in_schema=False),
 ) -> SessionResponse:
     token = session_token(request)
     verify_csrf(request, token)

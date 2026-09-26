@@ -1,0 +1,34 @@
+name: API contract
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.15.0"
+          cache: npm
+          cache-dependency-path: |
+            packages/api-client/package-lock.json
+            apps/web/package-lock.json
+      - run: uv sync --directory apps/backend --locked
+      - run: uv run --directory apps/backend python scripts/export_openapi.py --check
+      - run: npm ci
+        working-directory: packages/api-client
+      - run: npm run check
+        working-directory: packages/api-client
+      - run: npm ci
+        working-directory: apps/web
+      - run: npm run build
+        working-directory: apps/web
+      - run: npm test
+        working-directory: apps/web

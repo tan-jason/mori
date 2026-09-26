@@ -98,6 +98,22 @@ uv run --directory apps/backend uvicorn mori.api.main:create_app --factory --rel
 The API listens on `http://localhost:8000` by default. Liveness is available at `/health`,
 database readiness at `/ready`, and development OpenAPI documentation at `/docs`.
 
+## API contract generation
+
+The FastAPI application exports the checked-in OpenAPI contract without connecting to a database
+or reading local credentials. Run these commands after changing public routes or Pydantic schemas:
+
+```sh
+uv run --directory apps/backend python scripts/export_openapi.py
+npm --prefix packages/api-client run generate
+```
+
+`packages/api-client` contains the generated TypeScript SDK, response types, and Zod validators.
+The web gateway uses its generated `GET /me` response validator. CI checks both the OpenAPI
+export and generated files for drift, then builds and tests the web consumer. The current export
+describes the shipped profile-required response; the explicit-onboarding slice will change the
+server response, regenerate this package, and update the web flow together.
+
 The initial identity endpoints are:
 
 - `GET /auth/google/start`

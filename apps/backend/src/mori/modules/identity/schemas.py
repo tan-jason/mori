@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from pydantic.alias_generators import to_camel
+from pydantic.json_schema import SkipJsonSchema
 
 from mori.modules.identity.domain import (
     CorrectionPreference,
@@ -26,9 +28,9 @@ class ApiModel(BaseModel):
 
 
 class UserResponse(ApiModel):
-    id: str
+    id: UUID
     email: EmailStr
-    display_name: str
+    display_name: str = Field(min_length=1)
     status: UserStatus
 
 
@@ -37,7 +39,7 @@ class OnboardingResponse(ApiModel):
 
 
 class LanguageProfileResponse(ApiModel):
-    id: str
+    id: UUID
     base_language_id: str
     target_language_id: str
     status: LanguageProfileStatus
@@ -47,8 +49,8 @@ class PreferencesResponse(ApiModel):
     correction_preference: CorrectionPreference
     tutor_pace: TutorPace
     captions_enabled: bool
-    timezone: str
-    version: int
+    timezone: str = Field(min_length=1)
+    version: int = Field(gt=0)
 
 
 class MeResponse(ApiModel):
@@ -56,20 +58,20 @@ class MeResponse(ApiModel):
     onboarding: OnboardingResponse
     active_language_profile: LanguageProfileResponse
     preferences: PreferencesResponse
-    csrf_token: str
+    csrf_token: str = Field(min_length=1)
 
     @classmethod
     def from_domain(cls, learner: CurrentLearner, *, csrf_token: str) -> MeResponse:
         return cls(
             user=UserResponse(
-                id=str(learner.user_id),
+                id=learner.user_id,
                 email=learner.email,
                 display_name=learner.display_name,
                 status=learner.status,
             ),
             onboarding=OnboardingResponse(complete=learner.onboarding_complete),
             active_language_profile=LanguageProfileResponse(
-                id=str(learner.language_profile.id),
+                id=learner.language_profile.id,
                 base_language_id=learner.language_profile.base_language_id,
                 target_language_id=learner.language_profile.target_language_id,
                 status=learner.language_profile.status,
@@ -86,10 +88,10 @@ class MeResponse(ApiModel):
 
 
 class PreferencePatch(ApiModel):
-    correction_preference: CorrectionPreference | None = None
-    tutor_pace: TutorPace | None = None
-    captions_enabled: bool | None = None
-    timezone: str | None = Field(default=None, min_length=1, max_length=64)
+    correction_preference: CorrectionPreference | SkipJsonSchema[None] = None
+    tutor_pace: TutorPace | SkipJsonSchema[None] = None
+    captions_enabled: bool | SkipJsonSchema[None] = None
+    timezone: str | SkipJsonSchema[None] = Field(default=None, min_length=1, max_length=64)
 
     @model_validator(mode="after")
     def validate_patch(self) -> PreferencePatch:
