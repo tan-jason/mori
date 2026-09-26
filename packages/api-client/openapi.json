@@ -1,0 +1,575 @@
+{
+  "components": {
+    "schemas": {
+      "ApiErrorDetails": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "requestId": {
+            "title": "Requestid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "requestId"
+        ],
+        "title": "ApiErrorDetails",
+        "type": "object"
+      },
+      "ApiErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ApiErrorDetails"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ApiErrorResponse",
+        "type": "object"
+      },
+      "CorrectionPreference": {
+        "enum": [
+          "light",
+          "balanced",
+          "frequent"
+        ],
+        "title": "CorrectionPreference",
+        "type": "string"
+      },
+      "CreateSessionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "languageProfileId": {
+            "format": "uuid",
+            "title": "Languageprofileid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "languageProfileId"
+        ],
+        "title": "CreateSessionRequest",
+        "type": "object"
+      },
+      "LanguageProfileResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "baseLanguageId": {
+            "title": "Baselanguageid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LanguageProfileStatus"
+          },
+          "targetLanguageId": {
+            "title": "Targetlanguageid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "baseLanguageId",
+          "targetLanguageId",
+          "status"
+        ],
+        "title": "LanguageProfileResponse",
+        "type": "object"
+      },
+      "LanguageProfileStatus": {
+        "enum": [
+          "active",
+          "archived"
+        ],
+        "title": "LanguageProfileStatus",
+        "type": "string"
+      },
+      "MeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "activeLanguageProfile": {
+            "$ref": "#/components/schemas/LanguageProfileResponse"
+          },
+          "csrfToken": {
+            "minLength": 1,
+            "title": "Csrftoken",
+            "type": "string"
+          },
+          "onboarding": {
+            "$ref": "#/components/schemas/OnboardingResponse"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/PreferencesResponse"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserResponse"
+          }
+        },
+        "required": [
+          "user",
+          "onboarding",
+          "activeLanguageProfile",
+          "preferences",
+          "csrfToken"
+        ],
+        "title": "MeResponse",
+        "type": "object"
+      },
+      "OnboardingResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "complete"
+        ],
+        "title": "OnboardingResponse",
+        "type": "object"
+      },
+      "PreferencePatch": {
+        "additionalProperties": false,
+        "properties": {
+          "captionsEnabled": {
+            "title": "Captionsenabled",
+            "type": "boolean"
+          },
+          "correctionPreference": {
+            "$ref": "#/components/schemas/CorrectionPreference",
+            "title": "Correctionpreference"
+          },
+          "timezone": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          },
+          "tutorPace": {
+            "$ref": "#/components/schemas/TutorPace",
+            "title": "Tutorpace"
+          }
+        },
+        "title": "PreferencePatch",
+        "type": "object"
+      },
+      "PreferencesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "captionsEnabled": {
+            "title": "Captionsenabled",
+            "type": "boolean"
+          },
+          "correctionPreference": {
+            "$ref": "#/components/schemas/CorrectionPreference"
+          },
+          "timezone": {
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          },
+          "tutorPace": {
+            "$ref": "#/components/schemas/TutorPace"
+          },
+          "version": {
+            "exclusiveMinimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "correctionPreference",
+          "tutorPace",
+          "captionsEnabled",
+          "timezone",
+          "version"
+        ],
+        "title": "PreferencesResponse",
+        "type": "object"
+      },
+      "SessionResponse": {
+        "properties": {
+          "connectedLimitMs": {
+            "title": "Connectedlimitms",
+            "type": "integer"
+          },
+          "connectedMs": {
+            "title": "Connectedms",
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "objective": {
+            "title": "Objective",
+            "type": "string"
+          },
+          "reservationExpiresAt": {
+            "format": "date-time",
+            "title": "Reservationexpiresat",
+            "type": "string"
+          },
+          "rowVersion": {
+            "title": "Rowversion",
+            "type": "integer"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "rowVersion",
+          "connectedLimitMs",
+          "connectedMs",
+          "reservationExpiresAt",
+          "objective",
+          "createdAt"
+        ],
+        "title": "SessionResponse",
+        "type": "object"
+      },
+      "TutorPace": {
+        "enum": [
+          "level",
+          "gentle",
+          "steady",
+          "natural"
+        ],
+        "title": "TutorPace",
+        "type": "string"
+      },
+      "UserResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "displayName": {
+            "minLength": 1,
+            "title": "Displayname",
+            "type": "string"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "status"
+        ],
+        "title": "UserResponse",
+        "type": "object"
+      },
+      "UserStatus": {
+        "enum": [
+          "active",
+          "suspended",
+          "deletion_pending"
+        ],
+        "title": "UserStatus",
+        "type": "string"
+      }
+    }
+  },
+  "info": {
+    "title": "Mori API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/me": {
+      "get": {
+        "operationId": "get_me_api_v1_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Mori error envelope"
+          }
+        },
+        "summary": "Get Me"
+      }
+    },
+    "/api/v1/me/preferences": {
+      "patch": {
+        "operationId": "update_preferences_api_v1_me_preferences_patch",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferencePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Mori error envelope"
+          }
+        },
+        "summary": "Update Preferences"
+      }
+    },
+    "/api/v1/sessions": {
+      "post": {
+        "operationId": "create_session_api_v1_sessions_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Mori error envelope"
+          }
+        },
+        "summary": "Create Session",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/api/v1/sessions/{session_id}": {
+      "get": {
+        "operationId": "get_session_api_v1_sessions__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Mori error envelope"
+          }
+        },
+        "summary": "Get Session",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logout_auth_logout_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Mori error envelope"
+          }
+        },
+        "summary": "Logout"
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "operations"
+        ]
+      }
+    },
+    "/ready": {
+      "get": {
+        "operationId": "ready_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ready",
+        "tags": [
+          "operations"
+        ]
+      }
+    }
+  }
+}

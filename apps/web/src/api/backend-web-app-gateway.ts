@@ -1,58 +1,10 @@
-import { z } from "zod";
+import { zApiErrorResponse, zMeResponse } from "@mori/api-client/zod";
 import type { CurrentLearner } from "../domain/identity";
 import { isTargetLanguageId } from "../domain/languages";
 import { getApiOrigin } from "./api-config";
 import { ApiError } from "./api-error";
 import { createMockWebAppGateway } from "./mock-web-app-gateway";
 import type { WebAppGateway } from "./web-app-gateway";
-
-const apiErrorSchema = z
-  .object({
-    error: z
-      .object({
-        code: z.string(),
-        message: z.string(),
-        requestId: z.string().optional(),
-      })
-      .strict(),
-  })
-  .strict();
-
-const targetLanguageIdSchema = z.string().refine(isTargetLanguageId, {
-  message: "Unsupported target language",
-});
-
-const currentLearnerSchema = z
-  .object({
-    user: z
-      .object({
-        id: z.string().uuid(),
-        email: z.email(),
-        displayName: z.string().min(1),
-        status: z.enum(["active", "suspended", "deletion_pending"]),
-      })
-      .strict(),
-    onboarding: z.object({ complete: z.boolean() }).strict(),
-    activeLanguageProfile: z
-      .object({
-        id: z.string().uuid(),
-        baseLanguageId: z.literal("english"),
-        targetLanguageId: targetLanguageIdSchema,
-        status: z.enum(["active", "archived"]),
-      })
-      .strict(),
-    preferences: z
-      .object({
-        correctionPreference: z.enum(["light", "balanced", "frequent"]),
-        tutorPace: z.enum(["level", "gentle", "steady", "natural"]),
-        captionsEnabled: z.boolean(),
-        timezone: z.string().min(1),
-        version: z.number().int().positive(),
-      })
-      .strict(),
-    csrfToken: z.string().min(1),
-  })
-  .strict();
 
 interface BackendWebAppGatewayOptions {
   apiOrigin?: string;
@@ -71,7 +23,7 @@ async function readError(response: Response): Promise<ApiError> {
     );
   }
 
-  const parsed = apiErrorSchema.safeParse(payload);
+  const parsed = zApiErrorResponse.safeParse(payload);
   if (!parsed.success) {
     return new ApiError(
       response.status,
@@ -143,17 +95,28 @@ export function createBackendWebAppGateway(
         { cause: error },
       );
     }
-    const parsed = currentLearnerSchema.safeParse(payload);
-    if (!parsed.success) {
+    const parsed = zMeResponse.safeParse(payload);
+    if (
+      !parsed.success ||
+      parsed.data.activeLanguageProfile.baseLanguageId !== "english" ||
+      !isTargetLanguageId(parsed.data.activeLanguageProfile.targetLanguageId)
+    ) {
       throw new ApiError(
         response.status,
         "invalid_response",
         "Mori returned an invalid learner profile.",
         response.headers.get("X-Request-ID") ?? undefined,
-        { cause: parsed.error },
+        { cause: parsed.success ? undefined : parsed.error },
       );
     }
-    return parsed.data;
+    return {
+      ...parsed.data,
+      activeLanguageProfile: {
+        ...parsed.data.activeLanguageProfile,
+        baseLanguageId: "english",
+        targetLanguageId: parsed.data.activeLanguageProfile.targetLanguageId,
+      },
+    };
   };
 
   return {

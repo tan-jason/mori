@@ -1,0 +1,25 @@
+{
+  "name": "@mori/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./zod": "./src/zod.gen.ts",
+    "./client": "./src/client.gen.ts"
+  },
+  "scripts": {
+    "generate": "openapi-ts",
+    "check": "npm run generate && node ./scripts/check-generated.mjs"
+  },
+  "dependencies": {
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "0.97.3",
+    "typescript": "5.9.3"
+  },
+  "overrides": {
+    "@hey-api/json-schema-ref-parser": "1.4.1"
+  }
+}

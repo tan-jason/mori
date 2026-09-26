@@ -70,6 +70,11 @@ That adapter is transitional: before the M1 exit gate, exported OpenAPI must bec
 source of truth, `packages/api-client` must replace duplicated request and response schemas, and
 CI must reject generated-contract drift.
 
+The contract-tooling slice exports the currently shipped FastAPI schemas, generates the SDK and
+Zod validators in `packages/api-client`, moves the live identity response validation to those
+validators, and checks drift in CI. The explicit-onboarding slice changes the nullable `/me`
+contract and web flow together before removing automatic profile creation.
+
 Deliverables:
 
 - Scaffold `apps/backend` as a Python 3.13 uv project using the target module layout.

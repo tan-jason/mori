@@ -6,6 +6,7 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import timedelta
+from typing import Any
 
 import structlog
 from fastapi import FastAPI
@@ -16,7 +17,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from mori.api.errors import install_exception_handlers
+from mori.api.errors import ApiErrorResponse, install_exception_handlers
 from mori.api.middleware import security_headers_middleware
 from mori.config import Environment, Settings
 from mori.db import create_engine, create_session_maker
@@ -107,8 +108,11 @@ def create_app(
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
     app.middleware("http")(security_headers_middleware)
     install_exception_handlers(app)
-    app.include_router(identity_router)
-    app.include_router(session_router)
+    error_contract: dict[int | str, dict[str, Any]] = {
+        "default": {"model": ApiErrorResponse, "description": "Mori error envelope"}
+    }
+    app.include_router(identity_router, responses=error_contract)
+    app.include_router(session_router, responses=error_contract)
 
     @app.get("/health", tags=["operations"])
     async def health() -> dict[str, str]:
