@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from urllib.parse import parse_qs, urlsplit
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
@@ -37,6 +38,23 @@ def _scalar(database_url: str, sql: str) -> object:
         engine.dispose()
 
 
+def _complete_profile(client: TestClient, *, choice: str = "beginner"):
+    me = client.get("/api/v1/me").json()
+    return client.post(
+        "/api/v1/language-profiles",
+        json={
+            "baseLanguageId": "english",
+            "targetLanguageId": "mandarin",
+            "startingChoice": choice,
+        },
+        headers={
+            "Origin": "http://web.test",
+            "X-CSRF-Token": me["csrfToken"],
+            "Idempotency-Key": "profile-setup-123",
+        },
+    )
+
+
 def test_me_requires_authentication(client: TestClient) -> None:
     response = client.get("/api/v1/me")
 
@@ -68,32 +86,22 @@ def test_google_sign_in_provisions_identity_and_only_stores_token_digest(
             "displayName": "Mori Learner",
             "status": "active",
         },
+        "version": 1,
         "onboarding": {"complete": False},
-        "activeLanguageProfile": {
-            "id": me.json()["activeLanguageProfile"]["id"],
-            "baseLanguageId": "english",
-            "targetLanguageId": "mandarin",
-            "status": "active",
-        },
-        "preferences": {
-            "correctionPreference": "balanced",
-            "tutorPace": "level",
-            "captionsEnabled": False,
-            "timezone": "America/New_York",
-            "version": 1,
-        },
+        "activeLanguageProfile": None,
+        "preferences": None,
         "csrfToken": me.json()["csrfToken"],
     }
 
     for table in (
         "users",
         "external_identities",
-        "language_profiles",
-        "learner_preferences",
         "grants",
         "auth_sessions",
     ):
         assert _scalar(database_url, f"SELECT count(*) FROM {table}") == 1
+    assert _scalar(database_url, "SELECT count(*) FROM language_profiles") == 0
+    assert _scalar(database_url, "SELECT count(*) FROM learner_preferences") == 0
     assert _scalar(database_url, "SELECT token_digest FROM auth_sessions") != cookie
 
     raw_state_count = _scalar(
@@ -164,15 +172,141 @@ def test_separate_sign_ins_reuse_provisioned_records(
     _complete_login(client, second_state)
 
     assert _scalar(database_url, "SELECT count(*) FROM users") == 1
-    assert _scalar(database_url, "SELECT count(*) FROM language_profiles") == 1
-    assert _scalar(database_url, "SELECT count(*) FROM learner_preferences") == 1
+    assert _scalar(database_url, "SELECT count(*) FROM language_profiles") == 0
+    assert _scalar(database_url, "SELECT count(*) FROM learner_preferences") == 0
     assert _scalar(database_url, "SELECT count(*) FROM grants") == 1
     assert _scalar(database_url, "SELECT count(*) FROM auth_sessions") == 2
+
+
+def test_explicit_onboarding_is_atomic_and_retry_safe(
+    client: TestClient, database_url: str
+) -> None:
+    state, _ = _start_login(client)
+    _complete_login(client, state)
+    catalog = client.get("/api/v1/language-pairs")
+    assert catalog.status_code == 200
+    assert next(
+        pair for pair in catalog.json()["pairs"] if pair["targetLanguageId"] == "mandarin"
+    )["available"] is True
+    assert next(
+        pair for pair in catalog.json()["pairs"] if pair["targetLanguageId"] == "spanish"
+    )["available"] is False
+
+    before = client.get("/api/v1/me").json()
+    headers = {
+        "Origin": "http://web.test",
+        "X-CSRF-Token": before["csrfToken"],
+        "Idempotency-Key": "profile-setup-123",
+    }
+    body = {
+        "baseLanguageId": "english",
+        "targetLanguageId": "mandarin",
+        "startingChoice": "unsure",
+        "correctionPreference": "light",
+        "tutorPace": "gentle",
+        "timezone": "Asia/Shanghai",
+        "interests": ["Cooking", " cooking ", "Travel"],
+    }
+    created = client.post("/api/v1/language-profiles", json=body, headers=headers)
+    assert created.status_code == 201, created.text
+    assert created.json()["onboarding"] == {"complete": True}
+    assert created.json()["version"] == 2
+    assert created.json()["activeLanguageProfile"]["learning"] == {
+        "mode": "learning", "startingChoice": "unsure", "provisionalLevel": "beginner",
+        "version": 1,
+    }
+    assert created.json()["preferences"]["interests"] == ["Cooking", "Travel"]
+    assert _scalar(database_url, "SELECT count(*) FROM language_profiles") == 1
+    assert _scalar(database_url, "SELECT count(*) FROM profile_learning_settings") == 1
+    assert _scalar(database_url, "SELECT count(*) FROM onboarding_commands") == 1
+
+    replay = client.post("/api/v1/language-profiles", json=body, headers=headers)
+    assert replay.status_code == 200
+    assert replay.json() == created.json()
+    conflict = client.post(
+        "/api/v1/language-profiles", json={**body, "startingChoice": "advanced"}, headers=headers
+    )
+    assert conflict.status_code == 409
+    assert conflict.json()["error"]["code"] == "idempotency_conflict"
+    duplicate = client.post(
+        "/api/v1/language-profiles",
+        json={**body, "startingChoice": "advanced"},
+        headers={**headers, "Idempotency-Key": "different-setup-456"},
+    )
+    assert duplicate.status_code == 409
+    assert duplicate.json()["error"]["code"] == "profile_already_confirmed"
+    assert client.get("/api/v1/me").json()["activeLanguageProfile"]["learning"] == (
+        created.json()["activeLanguageProfile"]["learning"]
+    )
+    assert _scalar(database_url, "SELECT count(*) FROM language_profiles") == 1
+
+
+def test_onboarding_rejects_unavailable_pair_and_supports_fluent(client: TestClient) -> None:
+    state, _ = _start_login(client)
+    _complete_login(client, state)
+    csrf = client.get("/api/v1/me").json()["csrfToken"]
+    headers = {
+        "Origin": "http://web.test", "X-CSRF-Token": csrf,
+        "Idempotency-Key": "profile-setup-123",
+    }
+    unavailable = client.post(
+        "/api/v1/language-profiles",
+        json={
+            "baseLanguageId": "english", "targetLanguageId": "spanish",
+            "startingChoice": "fluent",
+        },
+        headers=headers,
+    )
+    assert unavailable.status_code == 409
+    assert unavailable.json()["error"]["code"] == "unsupported_language_pair"
+    assert client.get("/api/v1/me").json()["activeLanguageProfile"] is None
+
+    fluent = client.post(
+        "/api/v1/language-profiles",
+        json={
+            "baseLanguageId": "english", "targetLanguageId": "mandarin",
+            "startingChoice": "fluent",
+        },
+        headers=headers,
+    )
+    assert fluent.status_code == 201
+    assert fluent.json()["activeLanguageProfile"]["learning"] == {
+        "mode": "practice", "startingChoice": "fluent", "provisionalLevel": None,
+        "version": 1,
+    }
+
+
+def test_legacy_unconfirmed_profile_is_not_preselected(
+    client: TestClient, database_url: str
+) -> None:
+    state, _ = _start_login(client)
+    _complete_login(client, state)
+    user_id = client.get("/api/v1/me").json()["user"]["id"]
+    legacy_id = str(uuid4())
+    engine = create_engine(database_url)
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO language_profiles "
+                    "(id, user_id, base_language_id, target_language_id, status) "
+                    "VALUES (:id, :user_id, 'english', 'mandarin', 'active')"
+                ),
+                {"id": legacy_id, "user_id": user_id},
+            )
+    finally:
+        engine.dispose()
+    assert client.get("/api/v1/me").json()["activeLanguageProfile"] is None
+    confirmed = _complete_profile(client)
+    assert confirmed.status_code == 201
+    assert confirmed.json()["activeLanguageProfile"]["id"] == legacy_id
+    assert _scalar(database_url, "SELECT count(*) FROM language_profiles") == 1
 
 
 def test_preferences_require_csrf_origin_and_current_etag(client: TestClient) -> None:
     state, _ = _start_login(client)
     _complete_login(client, state)
+    assert _complete_profile(client).status_code == 201
     me = client.get("/api/v1/me")
     csrf = me.json()["csrfToken"]
 
@@ -209,6 +343,7 @@ def test_preferences_require_csrf_origin_and_current_etag(client: TestClient) ->
         "tutorPace": "steady",
         "captionsEnabled": True,
         "timezone": "Asia/Shanghai",
+        "interests": [],
         "version": 2,
     }
 

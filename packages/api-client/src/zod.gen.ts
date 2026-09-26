@@ -35,19 +35,33 @@ export const zCreateSessionRequest = z.object({
 });
 
 /**
+ * LanguagePairResponse
+ */
+export const zLanguagePairResponse = z.object({
+    available: z.boolean(),
+    baseLanguageId: z.string(),
+    baseLanguageName: z.string(),
+    targetLanguageId: z.string(),
+    targetLanguageName: z.string(),
+    targetNativeName: z.string()
+});
+
+/**
+ * LanguagePairsResponse
+ */
+export const zLanguagePairsResponse = z.object({
+    pairs: z.array(zLanguagePairResponse)
+});
+
+/**
  * LanguageProfileStatus
  */
 export const zLanguageProfileStatus = z.enum(['active', 'archived']);
 
 /**
- * LanguageProfileResponse
+ * LearningMode
  */
-export const zLanguageProfileResponse = z.object({
-    baseLanguageId: z.string(),
-    id: z.uuid(),
-    status: zLanguageProfileStatus,
-    targetLanguageId: z.string()
-});
+export const zLearningMode = z.enum(['learning', 'practice']);
 
 /**
  * OnboardingResponse
@@ -71,6 +85,40 @@ export const zSessionResponse = z.object({
 });
 
 /**
+ * StartingChoice
+ */
+export const zStartingChoice = z.enum([
+    'beginner',
+    'intermediate',
+    'advanced',
+    'fluent',
+    'unsure'
+]);
+
+/**
+ * LearningSettingsResponse
+ */
+export const zLearningSettingsResponse = z.object({
+    mode: zLearningMode,
+    provisionalLevel: zStartingChoice.nullable(),
+    startingChoice: zStartingChoice,
+    version: z.int().gt(0)
+});
+
+/**
+ * LanguageProfileResponse
+ */
+export const zLanguageProfileResponse = z.object({
+    baseLanguageId: z.string(),
+    id: z.uuid(),
+    languageSelectionConfirmed: z.boolean(),
+    learning: zLearningSettingsResponse,
+    status: zLanguageProfileStatus,
+    targetLanguageId: z.string(),
+    version: z.int().gt(0)
+});
+
+/**
  * TutorPace
  */
 export const zTutorPace = z.enum([
@@ -79,6 +127,19 @@ export const zTutorPace = z.enum([
     'steady',
     'natural'
 ]);
+
+/**
+ * CreateProfileRequest
+ */
+export const zCreateProfileRequest = z.object({
+    baseLanguageId: z.string().min(1).max(32),
+    correctionPreference: zCorrectionPreference.optional().default('balanced'),
+    interests: z.array(z.string()).optional(),
+    startingChoice: zStartingChoice,
+    targetLanguageId: z.string().min(1).max(32),
+    timezone: z.string().min(1).max(64).optional().default('UTC'),
+    tutorPace: zTutorPace.optional().default('level')
+});
 
 /**
  * PreferencePatch
@@ -96,6 +157,7 @@ export const zPreferencePatch = z.object({
 export const zPreferencesResponse = z.object({
     captionsEnabled: z.boolean(),
     correctionPreference: zCorrectionPreference,
+    interests: z.array(z.string()),
     timezone: z.string().min(1),
     tutorPace: zTutorPace,
     version: z.int().gt(0)
@@ -124,12 +186,30 @@ export const zUserResponse = z.object({
  * MeResponse
  */
 export const zMeResponse = z.object({
-    activeLanguageProfile: zLanguageProfileResponse,
+    activeLanguageProfile: zLanguageProfileResponse.nullable(),
     csrfToken: z.string().min(1),
     onboarding: zOnboardingResponse,
-    preferences: zPreferencesResponse,
-    user: zUserResponse
+    preferences: zPreferencesResponse.nullable(),
+    user: zUserResponse,
+    version: z.int().gt(0)
 });
+
+/**
+ * Successful Response
+ */
+export const zGetLanguagePairsApiV1LanguagePairsGetResponse = zLanguagePairsResponse;
+
+export const zCreateLanguageProfileApiV1LanguageProfilesPostBody = zCreateProfileRequest;
+
+export const zCreateLanguageProfileApiV1LanguageProfilesPostHeaders = z.object({
+    'X-CSRF-Token': z.string(),
+    'Idempotency-Key': z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zCreateLanguageProfileApiV1LanguageProfilesPostResponse = zMeResponse;
 
 /**
  * Successful Response

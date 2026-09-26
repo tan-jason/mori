@@ -9,6 +9,8 @@ from uuid import UUID
 
 from mori.modules.identity.domain import (
     ApplicationSession,
+    CoursePairView,
+    CreateProfile,
     CurrentLearner,
     GoogleClaims,
     OAuthLoginAttempt,
@@ -70,6 +72,17 @@ class IdentityStore(Protocol):
         token_digest: str,
         now: datetime,
     ) -> CurrentLearner: ...
+
+    async def language_pairs(self) -> tuple[CoursePairView, ...]: ...
+
+    async def create_profile(
+        self,
+        *,
+        token_digest: str,
+        idempotency_key: str,
+        command: CreateProfile,
+        now: datetime,
+    ) -> tuple[CurrentLearner, bool]: ...
 
     async def update_preferences(
         self,

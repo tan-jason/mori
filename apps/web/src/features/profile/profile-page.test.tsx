@@ -13,11 +13,11 @@ describe("ProfilePage", () => {
       <AppProviders
         dependencies={{ gateway: createMockWebAppGateway("vietnamese") }}
       >
-        <LanguageProfileProvider>
-          <MemoryRouter>
+        <MemoryRouter>
+          <LanguageProfileProvider>
             <ProfilePage />
-          </MemoryRouter>
-        </LanguageProfileProvider>
+          </LanguageProfileProvider>
+        </MemoryRouter>
       </AppProviders>,
     );
 
@@ -36,11 +36,11 @@ describe("ProfilePage", () => {
     const user = userEvent.setup();
     render(
       <AppProviders>
-        <LanguageProfileProvider>
-          <MemoryRouter>
+        <MemoryRouter>
+          <LanguageProfileProvider>
             <ProfilePage />
-          </MemoryRouter>
-        </LanguageProfileProvider>
+          </LanguageProfileProvider>
+        </MemoryRouter>
       </AppProviders>,
     );
 

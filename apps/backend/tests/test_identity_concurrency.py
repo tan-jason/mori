@@ -51,8 +51,8 @@ async def test_concurrent_sign_ins_create_one_identity_and_two_sessions(
     assert counts == {
         "users": 1,
         "external_identities": 1,
-        "language_profiles": 1,
-        "learner_preferences": 1,
+        "language_profiles": 0,
+        "learner_preferences": 0,
         "grants": 1,
         "auth_sessions": 2,
     }

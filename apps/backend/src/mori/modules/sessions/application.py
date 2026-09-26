@@ -13,7 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from mori.modules.access.application import AccessCommands
 from mori.modules.access.usage_models import UsageReservationModel
-from mori.modules.identity.models import LanguageProfileModel, UserModel
+from mori.modules.identity.errors import OnboardingRequired, UnsupportedLanguagePair
+from mori.modules.identity.models import CourseCatalogModel, LanguageProfileModel, UserModel
 from mori.modules.sessions.errors import (
     IdempotencyConflict,
     InvalidIdempotencyKey,
@@ -61,6 +62,8 @@ class SessionService:
             )
             if user is None or user.status != "active":
                 raise VoiceEntitlementUnavailable
+            if user.onboarding_completed_at is None:
+                raise OnboardingRequired
             now = datetime.now(UTC)
 
             existing = await db.scalar(
@@ -82,7 +85,22 @@ class SessionService:
                 )
             )
             if profile is None:
-                raise VoiceEntitlementUnavailable
+                raise OnboardingRequired
+            if profile.language_selection_confirmed_at is None:
+                raise OnboardingRequired
+            pair = await db.scalar(
+                select(CourseCatalogModel).where(
+                    CourseCatalogModel.base_language_id == profile.base_language_id,
+                    CourseCatalogModel.target_language_id == profile.target_language_id,
+                )
+            )
+            if (
+                pair is None or pair.status != "published"
+                or pair.active_curriculum_version is None
+                or pair.pair_policy_version is None
+                or pair.voice_policy_version is None
+            ):
+                raise UnsupportedLanguagePair
 
             grant = await AccessCommands.claim_intro_grant(db, user_id=user_id, now=now)
             if grant is None:

@@ -5,7 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from mori.modules.identity.domain import CurrentLearner, PreferenceChanges
+from mori.modules.identity.domain import (
+    CoursePairView,
+    CreateProfile,
+    CurrentLearner,
+    PreferenceChanges,
+)
 from mori.modules.identity.errors import InvalidOAuthFlow, InvalidReturnPath, OAuthProviderFailure
 from mori.modules.identity.ports import GoogleOIDCClient, IdentityUnitOfWorkFactory
 from mori.modules.identity.security import csrf_token, keyed_digest, random_token
@@ -131,6 +136,22 @@ class IdentityService:
         async with self._unit_of_work_factory() as unit_of_work:
             return await unit_of_work.identity.current_learner(
                 token_digest=digest,
+                now=datetime.now(UTC),
+            )
+
+    async def language_pairs(self) -> tuple[CoursePairView, ...]:
+        async with self._unit_of_work_factory() as unit_of_work:
+            return await unit_of_work.identity.language_pairs()
+
+    async def create_profile(
+        self, *, session_token: str, idempotency_key: str, command: CreateProfile
+    ) -> tuple[CurrentLearner, bool]:
+        digest = self._session_digest(session_token)
+        async with self._unit_of_work_factory() as unit_of_work:
+            return await unit_of_work.identity.create_profile(
+                token_digest=digest,
+                idempotency_key=idempotency_key,
+                command=command,
                 now=datetime.now(UTC),
             )
 

@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateSessionApiV1SessionsPostData, CreateSessionApiV1SessionsPostErrors, CreateSessionApiV1SessionsPostResponses, GetMeApiV1MeGetData, GetMeApiV1MeGetErrors, GetMeApiV1MeGetResponses, GetSessionApiV1SessionsSessionIdGetData, GetSessionApiV1SessionsSessionIdGetErrors, GetSessionApiV1SessionsSessionIdGetResponses, HealthHealthGetData, HealthHealthGetResponses, LogoutAuthLogoutPostData, LogoutAuthLogoutPostErrors, LogoutAuthLogoutPostResponses, ReadyReadyGetData, ReadyReadyGetResponses, UpdatePreferencesApiV1MePreferencesPatchData, UpdatePreferencesApiV1MePreferencesPatchErrors, UpdatePreferencesApiV1MePreferencesPatchResponses } from './types.gen';
+import type { CreateLanguageProfileApiV1LanguageProfilesPostData, CreateLanguageProfileApiV1LanguageProfilesPostErrors, CreateLanguageProfileApiV1LanguageProfilesPostResponses, CreateSessionApiV1SessionsPostData, CreateSessionApiV1SessionsPostErrors, CreateSessionApiV1SessionsPostResponses, GetLanguagePairsApiV1LanguagePairsGetData, GetLanguagePairsApiV1LanguagePairsGetErrors, GetLanguagePairsApiV1LanguagePairsGetResponses, GetMeApiV1MeGetData, GetMeApiV1MeGetErrors, GetMeApiV1MeGetResponses, GetSessionApiV1SessionsSessionIdGetData, GetSessionApiV1SessionsSessionIdGetErrors, GetSessionApiV1SessionsSessionIdGetResponses, HealthHealthGetData, HealthHealthGetResponses, LogoutAuthLogoutPostData, LogoutAuthLogoutPostErrors, LogoutAuthLogoutPostResponses, ReadyReadyGetData, ReadyReadyGetResponses, UpdatePreferencesApiV1MePreferencesPatchData, UpdatePreferencesApiV1MePreferencesPatchErrors, UpdatePreferencesApiV1MePreferencesPatchResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -17,6 +17,23 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
      */
     meta?: Record<string, unknown>;
 };
+
+/**
+ * Get Language Pairs
+ */
+export const getLanguagePairsApiV1LanguagePairsGet = <ThrowOnError extends boolean = false>(options?: Options<GetLanguagePairsApiV1LanguagePairsGetData, ThrowOnError>) => (options?.client ?? client).get<GetLanguagePairsApiV1LanguagePairsGetResponses, GetLanguagePairsApiV1LanguagePairsGetErrors, ThrowOnError>({ url: '/api/v1/language-pairs', ...options });
+
+/**
+ * Create Language Profile
+ */
+export const createLanguageProfileApiV1LanguageProfilesPost = <ThrowOnError extends boolean = false>(options: Options<CreateLanguageProfileApiV1LanguageProfilesPostData, ThrowOnError>) => (options.client ?? client).post<CreateLanguageProfileApiV1LanguageProfilesPostResponses, CreateLanguageProfileApiV1LanguageProfilesPostErrors, ThrowOnError>({
+    url: '/api/v1/language-profiles',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Get Me

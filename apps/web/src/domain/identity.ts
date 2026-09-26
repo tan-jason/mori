@@ -4,12 +4,24 @@ export type UserStatus = "active" | "suspended" | "deletion_pending";
 export type LanguageProfileStatus = "active" | "archived";
 export type CorrectionPreference = "light" | "balanced" | "frequent";
 export type TutorPace = "level" | "gentle" | "steady" | "natural";
+export type StartingChoice = "beginner" | "intermediate" | "advanced" | "fluent" | "unsure";
+export type LearningMode = "learning" | "practice";
+
+export interface LanguagePair {
+  baseLanguageId: string;
+  targetLanguageId: string;
+  baseLanguageName: string;
+  targetLanguageName: string;
+  targetNativeName: string;
+  available: boolean;
+}
 
 export interface LearnerPreferences {
   correctionPreference: CorrectionPreference;
   tutorPace: TutorPace;
   captionsEnabled: boolean;
   timezone: string;
+  interests: string[];
   version: number;
 }
 
@@ -23,10 +35,42 @@ export interface CurrentLearner {
   onboarding: {
     complete: boolean;
   };
-  activeLanguageProfile: LanguageProfile & {
+  version: number;
+  activeLanguageProfile: (LanguageProfile & {
     status: LanguageProfileStatus;
-  };
+    languageSelectionConfirmed: boolean;
+    version: number;
+    learning: {
+      mode: LearningMode;
+      startingChoice: StartingChoice;
+      provisionalLevel: StartingChoice | null;
+      version: number;
+    };
+  }) | null;
+  preferences: LearnerPreferences | null;
+  csrfToken: string;
+}
+
+export type ReadyLearner = CurrentLearner & {
+  activeLanguageProfile: NonNullable<CurrentLearner["activeLanguageProfile"]>;
   preferences: LearnerPreferences;
+};
+
+export function isReadyLearner(learner: CurrentLearner): learner is ReadyLearner {
+  return learner.onboarding.complete &&
+    learner.activeLanguageProfile?.languageSelectionConfirmed === true &&
+    learner.preferences !== null;
+}
+
+export interface CreateProfileCommand {
+  baseLanguageId: string;
+  targetLanguageId: string;
+  startingChoice: StartingChoice;
+  correctionPreference: CorrectionPreference;
+  tutorPace: TutorPace;
+  timezone: string;
+  interests: string[];
+  idempotencyKey: string;
   csrfToken: string;
 }
 

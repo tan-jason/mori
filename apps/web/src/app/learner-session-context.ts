@@ -1,8 +1,8 @@
 import { createContext } from "react";
-import type { CurrentLearner } from "../domain/identity";
+import type { CurrentLearner, ReadyLearner } from "../domain/identity";
 
 export interface LearnerSessionContextValue {
-  learner: CurrentLearner;
+  learner: ReadyLearner;
   replaceLearner: (learner: CurrentLearner) => void;
 }
 

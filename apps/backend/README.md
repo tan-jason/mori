@@ -1,8 +1,8 @@
 # Mori backend development
 
-This directory contains the Python 3.13 backend package. The first M1 identity slice includes
-the FastAPI process, PostgreSQL migrations, Google OpenID Connect, opaque database-backed
-application sessions, learner profiles, preferences, and introductory grant provisioning.
+This directory contains the Python 3.13 backend package. The identity slice includes the
+FastAPI process, PostgreSQL migrations, Google OpenID Connect, opaque database-backed
+application sessions, explicit profile onboarding, preferences, and introductory grant provisioning.
 The first M2 foundation adds idempotent intro-grant reservation and an immutable placeholder
 session plan. It does not yet connect audio or start a provider call.
 
@@ -110,9 +110,9 @@ npm --prefix packages/api-client run generate
 
 `packages/api-client` contains the generated TypeScript SDK, response types, and Zod validators.
 The web gateway uses its generated `GET /me` response validator. CI checks both the OpenAPI
-export and generated files for drift, then builds and tests the web consumer. The current export
-describes the shipped profile-required response; the explicit-onboarding slice will change the
-server response, regenerate this package, and update the web flow together.
+export and generated files for drift, then builds and tests the web consumer. New sign-ins return
+an incomplete learner with no profile. `POST /api/v1/language-profiles` confirms a published pair,
+starting mode, and preferences in one idempotent transaction before session creation is allowed.
 
 The initial identity endpoints are:
 

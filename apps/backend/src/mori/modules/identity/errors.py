@@ -39,3 +39,23 @@ class PreconditionRequired(IdentityError):
 
 class InvalidPrecondition(IdentityError):
     pass
+
+
+class UnsupportedLanguagePair(IdentityError):
+    pass
+
+
+class OnboardingRequired(IdentityError):
+    pass
+
+
+class OnboardingIdempotencyConflict(IdentityError):
+    pass
+
+
+class ProfileAlreadyConfirmed(IdentityError):
+    pass
+
+
+class InvalidOnboardingKey(IdentityError):
+    pass

@@ -12,11 +12,11 @@ describe("SessionPage", () => {
       <AppProviders
         dependencies={{ gateway: createMockWebAppGateway("japanese") }}
       >
-        <LanguageProfileProvider>
-          <MemoryRouter>
+        <MemoryRouter>
+          <LanguageProfileProvider>
             <SessionPage />
-          </MemoryRouter>
-        </LanguageProfileProvider>
+          </LanguageProfileProvider>
+        </MemoryRouter>
       </AppProviders>,
     );
 

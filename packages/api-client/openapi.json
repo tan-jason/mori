@@ -45,6 +45,55 @@
         "title": "CorrectionPreference",
         "type": "string"
       },
+      "CreateProfileRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "baseLanguageId": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Baselanguageid",
+            "type": "string"
+          },
+          "correctionPreference": {
+            "$ref": "#/components/schemas/CorrectionPreference",
+            "default": "balanced"
+          },
+          "interests": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Interests",
+            "type": "array"
+          },
+          "startingChoice": {
+            "$ref": "#/components/schemas/StartingChoice"
+          },
+          "targetLanguageId": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Targetlanguageid",
+            "type": "string"
+          },
+          "timezone": {
+            "default": "UTC",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          },
+          "tutorPace": {
+            "$ref": "#/components/schemas/TutorPace",
+            "default": "level"
+          }
+        },
+        "required": [
+          "baseLanguageId",
+          "targetLanguageId",
+          "startingChoice"
+        ],
+        "title": "CreateProfileRequest",
+        "type": "object"
+      },
       "CreateSessionRequest": {
         "additionalProperties": false,
         "properties": {
@@ -60,6 +109,62 @@
         "title": "CreateSessionRequest",
         "type": "object"
       },
+      "LanguagePairResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "baseLanguageId": {
+            "title": "Baselanguageid",
+            "type": "string"
+          },
+          "baseLanguageName": {
+            "title": "Baselanguagename",
+            "type": "string"
+          },
+          "targetLanguageId": {
+            "title": "Targetlanguageid",
+            "type": "string"
+          },
+          "targetLanguageName": {
+            "title": "Targetlanguagename",
+            "type": "string"
+          },
+          "targetNativeName": {
+            "title": "Targetnativename",
+            "type": "string"
+          }
+        },
+        "required": [
+          "baseLanguageId",
+          "targetLanguageId",
+          "baseLanguageName",
+          "targetLanguageName",
+          "targetNativeName",
+          "available"
+        ],
+        "title": "LanguagePairResponse",
+        "type": "object"
+      },
+      "LanguagePairsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "pairs": {
+            "items": {
+              "$ref": "#/components/schemas/LanguagePairResponse"
+            },
+            "title": "Pairs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pairs"
+        ],
+        "title": "LanguagePairsResponse",
+        "type": "object"
+      },
       "LanguageProfileResponse": {
         "additionalProperties": false,
         "properties": {
@@ -72,19 +177,34 @@
             "title": "Id",
             "type": "string"
           },
+          "languageSelectionConfirmed": {
+            "title": "Languageselectionconfirmed",
+            "type": "boolean"
+          },
+          "learning": {
+            "$ref": "#/components/schemas/LearningSettingsResponse"
+          },
           "status": {
             "$ref": "#/components/schemas/LanguageProfileStatus"
           },
           "targetLanguageId": {
             "title": "Targetlanguageid",
             "type": "string"
+          },
+          "version": {
+            "exclusiveMinimum": 0.0,
+            "title": "Version",
+            "type": "integer"
           }
         },
         "required": [
           "id",
           "baseLanguageId",
           "targetLanguageId",
-          "status"
+          "status",
+          "languageSelectionConfirmed",
+          "version",
+          "learning"
         ],
         "title": "LanguageProfileResponse",
         "type": "object"
@@ -97,11 +217,60 @@
         "title": "LanguageProfileStatus",
         "type": "string"
       },
+      "LearningMode": {
+        "enum": [
+          "learning",
+          "practice"
+        ],
+        "title": "LearningMode",
+        "type": "string"
+      },
+      "LearningSettingsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/LearningMode"
+          },
+          "provisionalLevel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StartingChoice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "startingChoice": {
+            "$ref": "#/components/schemas/StartingChoice"
+          },
+          "version": {
+            "exclusiveMinimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mode",
+          "startingChoice",
+          "provisionalLevel",
+          "version"
+        ],
+        "title": "LearningSettingsResponse",
+        "type": "object"
+      },
       "MeResponse": {
         "additionalProperties": false,
         "properties": {
           "activeLanguageProfile": {
-            "$ref": "#/components/schemas/LanguageProfileResponse"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LanguageProfileResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "csrfToken": {
             "minLength": 1,
@@ -112,14 +281,27 @@
             "$ref": "#/components/schemas/OnboardingResponse"
           },
           "preferences": {
-            "$ref": "#/components/schemas/PreferencesResponse"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreferencesResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "user": {
             "$ref": "#/components/schemas/UserResponse"
+          },
+          "version": {
+            "exclusiveMinimum": 0.0,
+            "title": "Version",
+            "type": "integer"
           }
         },
         "required": [
           "user",
+          "version",
           "onboarding",
           "activeLanguageProfile",
           "preferences",
@@ -177,6 +359,13 @@
           "correctionPreference": {
             "$ref": "#/components/schemas/CorrectionPreference"
           },
+          "interests": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Interests",
+            "type": "array"
+          },
           "timezone": {
             "minLength": 1,
             "title": "Timezone",
@@ -196,6 +385,7 @@
           "tutorPace",
           "captionsEnabled",
           "timezone",
+          "interests",
           "version"
         ],
         "title": "PreferencesResponse",
@@ -251,6 +441,17 @@
         ],
         "title": "SessionResponse",
         "type": "object"
+      },
+      "StartingChoice": {
+        "enum": [
+          "beginner",
+          "intermediate",
+          "advanced",
+          "fluent",
+          "unsure"
+        ],
+        "title": "StartingChoice",
+        "type": "string"
       },
       "TutorPace": {
         "enum": [
@@ -310,6 +511,90 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/language-pairs": {
+      "get": {
+        "operationId": "get_language_pairs_api_v1_language_pairs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LanguagePairsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Mori error envelope"
+          }
+        },
+        "summary": "Get Language Pairs"
+      }
+    },
+    "/api/v1/language-profiles": {
+      "post": {
+        "operationId": "create_language_profile_api_v1_language_profiles_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Mori error envelope"
+          }
+        },
+        "summary": "Create Language Profile"
+      }
+    },
     "/api/v1/me": {
       "get": {
         "operationId": "get_me_api_v1_me_get",
