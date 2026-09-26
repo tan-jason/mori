@@ -6,6 +6,8 @@
 
 **MVP language pair:** English base language -> Standard Mandarin target language
 
+**Learning-system update (September 26, 2026):** The [learning system PRD](learning-system-prd.md) is the product contract for language selection, levels, session planning, tutor behavior, learning evidence, memories, and Fluent practice. Its explicit language selection and four-level framework supersede conflicting descriptions in this earlier draft. This document continues to define the remaining MVP product scope.
+
 ## 1. Product summary
 
 The product is a personalized, voice-first Mandarin learning app. A learner has natural conversations with an AI tutor that remembers their progress, adapts to their ability, revisits useful topics from their life, and deliberately practices a small number of learning objectives in each session.

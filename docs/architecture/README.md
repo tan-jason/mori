@@ -8,6 +8,12 @@ This documentation turns the backend architecture proposal into a durable implem
 
 The product requirements remain authoritative for user behavior and product policy. These documents define how the system preserves those requirements under concurrency, retries, provider failures, and process restarts.
 
+The [learning system PRD](../learning-system-prd.md) records newer product decisions for explicit language selection, four levels, Fluent practice, and tutor behavior. Existing identity and learning contracts that assume a default English-to-Mandarin profile or six levels require migration before those slices are complete.
+
+The [learning system implementation design](learning-system-implementation.md) is the approved handoff for API, workflow diagrams, prompt, and worker contracts.
+
+The [learning system data contracts](learning-system-data-contracts.md) define the object fields, relationship diagram, public read models, and persistence invariants.
+
 ## Architecture at a glance
 
 | Concern | Baseline |
@@ -41,7 +47,7 @@ web gateway, dashboard read model, microphone capture, and realtime provider int
 present yet. The browser's voice-start action remains unavailable until the SDP exchange and
 supervisor can enforce the server deadline.
 
-The first real vertical slice will sign in a learner, provision one language profile and intro grant, reserve that grant, persist a session plan, exchange SDP, supervise one usable turn, finalize the session, enqueue analysis atomically, and expose the resulting recap.
+The first real vertical slice will sign in a learner, issue one intro grant, let the learner explicitly confirm a supported language pair and starting mode, persist that profile and a session plan, exchange SDP, supervise one usable turn, finalize the session, enqueue analysis atomically, and expose the resulting recap.
 
 ## System context
 
@@ -168,6 +174,9 @@ Each business module should begin with `domain.py`, `service.py`, `repository.py
 
 ## Documentation map
 
+- [Learning system PRD](../learning-system-prd.md) defines the approved learner behavior and four-level framework.
+- [Learning system implementation design](learning-system-implementation.md) defines the API, five workflow diagrams, prompt composition, analysis boundary, and delivery gates.
+- [Learning system data contracts](learning-system-data-contracts.md) defines the relationship diagram, object structures, and field limits.
 - [MVP system design](system-design.md) consolidates the implementation-facing topology, ownership, state machines, data contracts, failure recovery, and approval gates.
 - [Runtime services and flows](runtime-services.md) defines process ownership, state machines, failure recovery, and transaction boundaries.
 - [Modules and data](modules-and-data.md) defines logical boundaries, command and query interfaces, record ownership, and data invariants.
