@@ -30,24 +30,24 @@ Rules:
 - Read-model composition may join stable projections for reads but cannot bypass commands for writes.
 - Cyclic imports between business modules fail an architecture test.
 
-Session creation may coordinate access, account, profile, curriculum, and learning queries in one unit of work. Realtime control may invoke session commands. Analysis consumes an immutable session bundle and curriculum version, then invokes learning commands. Billing affects access only through the access application interface.
+Session creation may coordinate access, user, profile, curriculum, and learning queries in one unit of work. Realtime control may invoke session commands. Analysis consumes an immutable session bundle and curriculum version, then invokes learning commands. Billing affects access only through the access application interface.
 
 ## Logical modules
 
 ### Identity
 
-Owns Google identity linking, login attempts, opaque application sessions, and token verification. Sign-in coordinates account provisioning and intro-grant issuance through their owning modules in one transaction.
+Owns Google identity linking, login attempts, opaque application sessions, and token verification. Sign-in coordinates user provisioning and intro-grant issuance through their owning modules in one transaction.
 
 - Commands: `complete_sign_in`, `logout`
 - Queries: `authenticated_user_id`
 - Records: `external_identities`, `oauth_login_attempts`, `auth_sessions`
 
-### Accounts
+### Users
 
-Owns the application user, account status, account details, and account consent records. The `/me` read model composes account and active language profile data without changing their write ownership.
+Owns the application user, status, details, and consent records. The `/me` read model composes user and active language profile data without changing their write ownership.
 
-- Commands: `create_or_update_account`, `complete_onboarding`, `record_consent`
-- Queries: `current_learner`, `account_status`
+- Commands: `create_or_update_user`, `complete_onboarding`, `record_consent`
+- Queries: `current_learner`, `user_status`
 - Records: `users`, `user_consents`
 
 ### Learner profiles
@@ -86,7 +86,7 @@ Owns deterministic session planning, the immutable plan, the conversation state 
 - Queries: `session_status`, `transcript_bundle`, `plan_preview`
 - Records: `sessions`, `session_plans`, `session_plan_objectives`, `session_connections`, `session_turns`
 
-Planning uses pinned account, profile, learning snapshot, and curriculum inputs. A plan pins their relevant versions and no more than three objectives. Session orchestration is the only module allowed to transition session state. Realtime control supplies normalized facts through session commands instead of updating the session row directly.
+Planning uses pinned user, profile, learning snapshot, and curriculum inputs. A plan pins their relevant versions and no more than three objectives. Session orchestration is the only module allowed to transition session state. Realtime control supplies normalized facts through session commands instead of updating the session row directly.
 
 ### Realtime control
 
@@ -132,7 +132,7 @@ Pydantic HTTP models generate OpenAPI. The generated TypeScript client and runti
 | Domain | Purpose | Primary records |
 | --- | --- | --- |
 | Identity | External identity and application sessions | `external_identities`, `oauth_login_attempts`, `auth_sessions` |
-| Account | User status, details, and consent | `users`, `user_consents` |
+| User | User status, details, and consent | `users`, `user_consents` |
 | Learner profile | Confirmed pair, starting mode, preferences, and interests | `language_profiles`, `learner_preferences`, `profile_learning_settings`, `onboarding_commands` |
 | Access | Versioned plans, capabilities, subscriptions, grants, reservations, usage, and provider deduplication | `plan_versions`, `entitlement_rules`, `subscriptions`, `grants`, `usage_reservations`, `usage_events`, `webhook_events` |
 | Live | Session state, immutable plan, connection history, ordered turns, provider facts, leases, and consented audio metadata | `sessions`, `session_connections`, `session_plans`, `session_plan_objectives`, `session_turns`, `realtime_events`, `supervisor_leases`, `audio_consents`, `session_audio_assets` |

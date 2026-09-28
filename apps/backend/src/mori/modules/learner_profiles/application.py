@@ -8,12 +8,12 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from hashlib import sha256
 
-from mori.modules.accounts.application import current_learner_for_user
-from mori.modules.accounts.domain import CurrentLearner
 from mori.modules.curriculum.domain import CoursePairView
 from mori.modules.identity.application import IdentityService
 from mori.modules.learner_profiles.domain import CreateProfile, PreferenceChanges
 from mori.modules.learner_profiles.errors import InvalidOnboardingKey, UnsupportedLanguagePair
+from mori.modules.users.application import current_learner_for_user
+from mori.modules.users.domain import CurrentLearner
 from mori.persistence.ports import UnitOfWorkFactory
 
 _KEY_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9:_-]{7,127}\Z")
@@ -45,7 +45,7 @@ class LearnerProfileService:
             user_id = await unit_of_work.identity.authenticated_user_id(
                 token_digest=digest, now=now
             )
-            await unit_of_work.accounts.active(user_id, lock=True)
+            await unit_of_work.users.active(user_id, lock=True)
             if await unit_of_work.profiles.replay_exists(
                 user_id=user_id, key_digest=key_digest, payload_digest=payload_digest
             ):
@@ -62,7 +62,7 @@ class LearnerProfileService:
                 payload_digest=payload_digest,
                 now=now,
             )
-            await unit_of_work.accounts.complete_onboarding(user_id, now=now)
+            await unit_of_work.users.complete_onboarding(user_id, now=now)
             return await current_learner_for_user(unit_of_work, user_id), True
 
     async def update_preferences(
@@ -78,7 +78,7 @@ class LearnerProfileService:
             user_id = await unit_of_work.identity.authenticated_user_id(
                 token_digest=digest, now=now
             )
-            await unit_of_work.accounts.active(user_id)
+            await unit_of_work.users.active(user_id)
             await unit_of_work.profiles.update_preferences(
                 user_id=user_id,
                 expected_version=expected_version,

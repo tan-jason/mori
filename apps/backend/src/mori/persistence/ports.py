@@ -7,10 +7,10 @@ from types import TracebackType
 from typing import Protocol, Self
 from uuid import UUID
 
-from mori.modules.accounts.ports import AccountStore
 from mori.modules.curriculum.ports import CourseCatalogStore
 from mori.modules.identity.ports import IdentityStore
 from mori.modules.learner_profiles.ports import LearnerProfileStore
+from mori.modules.users.ports import UserStore
 
 
 class AccessStore(Protocol):
@@ -22,7 +22,7 @@ class UnitOfWork(Protocol):
     def identity(self) -> IdentityStore: ...
 
     @property
-    def accounts(self) -> AccountStore: ...
+    def users(self) -> UserStore: ...
 
     @property
     def profiles(self) -> LearnerProfileStore: ...

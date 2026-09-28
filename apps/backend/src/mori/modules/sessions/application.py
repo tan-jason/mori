@@ -13,8 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from mori.modules.access.application import AccessCommands
 from mori.modules.access.usage_models import UsageReservationModel
-from mori.modules.accounts.domain import UserStatus
-from mori.modules.accounts.persistence import SqlAlchemyAccountStore
 from mori.modules.curriculum.persistence import SqlAlchemyCourseCatalogStore
 from mori.modules.learner_profiles.errors import OnboardingRequired, UnsupportedLanguagePair
 from mori.modules.learner_profiles.persistence import SqlAlchemyLearnerProfileStore
@@ -25,6 +23,8 @@ from mori.modules.sessions.errors import (
     VoiceEntitlementUnavailable,
 )
 from mori.modules.sessions.models import SessionModel, SessionPlanModel, SessionPlanObjectiveModel
+from mori.modules.users.domain import UserStatus
+from mori.modules.users.persistence import SqlAlchemyUserStore
 
 _KEY_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9:_-]{7,127}\Z")
 _RESERVATION_TTL = timedelta(minutes=10)
@@ -60,7 +60,7 @@ class SessionService:
         async with self._session_maker() as db, db.begin():
             # The account lock serializes duplicate keys and competing attempts
             # to reserve the same final grant, including across API processes.
-            account = await SqlAlchemyAccountStore(db).lock_for_session(user_id)
+            account = await SqlAlchemyUserStore(db).lock_for_session(user_id)
             if account is None or account.status != UserStatus.ACTIVE:
                 raise VoiceEntitlementUnavailable
             if account.onboarding_completed_at is None:

@@ -13,7 +13,6 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException
 
-from mori.modules.accounts.errors import AccountUnavailable
 from mori.modules.identity.errors import (
     AuthenticationRequired,
     CsrfRejected,
@@ -37,6 +36,7 @@ from mori.modules.sessions.errors import (
     SessionNotFound,
     VoiceEntitlementUnavailable,
 )
+from mori.modules.users.errors import AccountUnavailable
 
 logger = structlog.get_logger(__name__)
 

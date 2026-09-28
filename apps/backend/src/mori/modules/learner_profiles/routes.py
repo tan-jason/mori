@@ -10,7 +10,6 @@ from fastapi import APIRouter, Header, Request, Response
 from mori.api.auth import session_token as _session_token
 from mori.api.auth import verify_csrf as _verify_csrf
 from mori.api.contracts import mutation_headers
-from mori.modules.accounts.schemas import MeResponse
 from mori.modules.identity.application import IdentityService
 from mori.modules.learner_profiles.application import LearnerProfileService
 from mori.modules.learner_profiles.errors import (
@@ -24,6 +23,7 @@ from mori.modules.learner_profiles.schemas import (
     LanguagePairsResponse,
     PreferencePatch,
 )
+from mori.modules.users.schemas import MeResponse
 
 router = APIRouter()
 _ETAG_PATTERN = re.compile(r'^"([1-9][0-9]*)"$')

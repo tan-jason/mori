@@ -1,4 +1,4 @@
-"""Account values and the composed current learner view."""
+"""User values and the composed current learner view."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ class UserStatus(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
-class AccountView:
+class UserView:
     id: UUID
     email: str
     display_name: str

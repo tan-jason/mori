@@ -7,12 +7,12 @@ from uuid import UUID
 from pydantic import EmailStr, Field
 
 from mori.api.schemas import ApiModel
-from mori.modules.accounts.domain import CurrentLearner, UserStatus
 from mori.modules.learner_profiles.schemas import (
     LanguageProfileResponse,
     LearningSettingsResponse,
     PreferencesResponse,
 )
+from mori.modules.users.domain import CurrentLearner, UserStatus
 
 
 class UserResponse(ApiModel):

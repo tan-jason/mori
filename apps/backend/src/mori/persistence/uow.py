@@ -7,10 +7,10 @@ from types import TracebackType
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncSessionTransaction, async_sessionmaker
 
 from mori.modules.access.persistence import SqlAlchemyAccessStore
-from mori.modules.accounts.persistence import SqlAlchemyAccountStore
 from mori.modules.curriculum.persistence import SqlAlchemyCourseCatalogStore
 from mori.modules.identity.persistence import SqlAlchemyIdentityStore
 from mori.modules.learner_profiles.persistence import SqlAlchemyLearnerProfileStore
+from mori.modules.users.persistence import SqlAlchemyUserStore
 
 
 class SqlAlchemyUnitOfWork:
@@ -19,7 +19,7 @@ class SqlAlchemyUnitOfWork:
         self._session: AsyncSession | None = None
         self._transaction: AsyncSessionTransaction | None = None
         self._identity: SqlAlchemyIdentityStore | None = None
-        self._accounts: SqlAlchemyAccountStore | None = None
+        self._users: SqlAlchemyUserStore | None = None
         self._profiles: SqlAlchemyLearnerProfileStore | None = None
         self._curriculum: SqlAlchemyCourseCatalogStore | None = None
         self._access: SqlAlchemyAccessStore | None = None
@@ -31,10 +31,10 @@ class SqlAlchemyUnitOfWork:
         return self._identity
 
     @property
-    def accounts(self) -> SqlAlchemyAccountStore:
-        if self._accounts is None:
+    def users(self) -> SqlAlchemyUserStore:
+        if self._users is None:
             raise RuntimeError("unit of work has not been entered")
-        return self._accounts
+        return self._users
 
     @property
     def profiles(self) -> SqlAlchemyLearnerProfileStore:
@@ -58,7 +58,7 @@ class SqlAlchemyUnitOfWork:
         self._session = self._session_maker()
         self._transaction = await self._session.begin()
         self._identity = SqlAlchemyIdentityStore(self._session)
-        self._accounts = SqlAlchemyAccountStore(self._session)
+        self._users = SqlAlchemyUserStore(self._session)
         self._profiles = SqlAlchemyLearnerProfileStore(self._session)
         self._curriculum = SqlAlchemyCourseCatalogStore(self._session)
         self._access = SqlAlchemyAccessStore(self._session)

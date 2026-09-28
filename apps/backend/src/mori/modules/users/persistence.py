@@ -1,4 +1,4 @@
-"""PostgreSQL adapter for application accounts."""
+"""PostgreSQL adapter for application users."""
 
 from __future__ import annotations
 
@@ -8,12 +8,12 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mori.modules.accounts.domain import AccountView, UserStatus
-from mori.modules.accounts.errors import AccountUnavailable
-from mori.modules.accounts.models import UserModel
+from mori.modules.users.domain import UserStatus, UserView
+from mori.modules.users.errors import AccountUnavailable
+from mori.modules.users.models import UserModel
 
 
-class SqlAlchemyAccountStore:
+class SqlAlchemyUserStore:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
@@ -42,7 +42,7 @@ class SqlAlchemyAccountStore:
         await self._session.flush()
         return user.id
 
-    async def active(self, user_id: UUID, *, lock: bool = False) -> AccountView:
+    async def active(self, user_id: UUID, *, lock: bool = False) -> UserView:
         statement = select(UserModel).where(UserModel.id == user_id)
         if lock:
             statement = statement.with_for_update()
@@ -51,7 +51,7 @@ class SqlAlchemyAccountStore:
             raise AccountUnavailable
         return self._view(user)
 
-    async def lock_for_session(self, user_id: UUID) -> AccountView | None:
+    async def lock_for_session(self, user_id: UUID) -> UserView | None:
         user = await self._session.scalar(
             select(UserModel).where(UserModel.id == user_id).with_for_update()
         )
@@ -68,8 +68,8 @@ class SqlAlchemyAccountStore:
         await self._session.flush()
 
     @staticmethod
-    def _view(user: UserModel) -> AccountView:
-        return AccountView(
+    def _view(user: UserModel) -> UserView:
+        return UserView(
             id=user.id,
             email=user.email,
             display_name=user.display_name,

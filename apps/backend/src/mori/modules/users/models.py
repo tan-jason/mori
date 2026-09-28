@@ -1,4 +1,4 @@
-"""Account and account consent persistence entities."""
+"""User and consent persistence entities."""
 
 from __future__ import annotations
 

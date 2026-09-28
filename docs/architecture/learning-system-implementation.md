@@ -26,7 +26,7 @@ Migration rules:
 
 | Module | Receives | Owns and returns | May not decide |
 | --- | --- | --- | --- |
-| Identity/account | Google identity, account details, application session | Authenticated account ID, account status, composed `/me` query | Curriculum eligibility or assessed mastery |
+| Identity/users | Google identity, user details, application session | Authenticated user ID, user status, composed `/me` query | Curriculum eligibility or assessed mastery |
 | Learner profile | Onboarding command, preference edits | Confirmed language profile, practice mode, self-reported level, preferences, optional interests | Assessed mastery |
 | Curriculum | Course publication and content rules | Published pair and versioned eligible content | Entitlement, live turns, session state |
 | Session orchestration and planning | Authenticated learner, profile, learning snapshot, curriculum, idempotency key, connection facts | Valid objective selection, immutable plan and preview, session state, reservation coordination, final watermark | Prompt wording, evidence extraction, level promotion |

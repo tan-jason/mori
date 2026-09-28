@@ -149,7 +149,7 @@ apps/
       runtime/             # Supervisor and worker entry points
       modules/
         identity/
-        accounts/
+        users/
         learner_profiles/
         access/
         curriculum/
@@ -172,7 +172,7 @@ docs/
   plans/
 ```
 
-Each business module adds domain, application, persistence, route, and model files only where they have a clear responsibility. Account and learner profile ownership are separate from authentication. Session planning lives in `sessions/`; curriculum owns published course content. Add subpackages when behavior requires them, not to satisfy a template.
+Each business module adds domain, application, persistence, route, and model files only where they have a clear responsibility. User and learner profile ownership are separate from authentication. Session planning lives in `sessions/`; curriculum owns published course content. Add subpackages when behavior requires them, not to satisfy a template.
 
 ## Documentation map
 
