@@ -21,6 +21,7 @@ This file is the compact decision record for the Mori backend. Update an entry i
 | ADR-009 | Keep manual snapshot review retrospective | Accepted |
 | ADR-010 | Use AWS managed containers as the production baseline | Accepted |
 | ADR-011 | Model operational facts as typed relational records | Accepted |
+| ADR-012 | Separate user and learner profile ownership; keep planning in sessions | Accepted |
 
 ## ADR-001: Python modular monolith with three process types
 
@@ -72,7 +73,7 @@ This file is the compact decision record for the Mori backend. Update an entry i
 **Consequences:**
 
 - Use PKCE, state, nonce, minimal scopes, exact credentialed CORS, and CSRF protection.
-- Provision the application user, language profile, and intro grant idempotently.
+- Provision the application account and intro grant idempotently. The learner confirms a language profile in the separate onboarding command.
 - Do not use Google tokens as application authorization tokens or expose them to the web application.
 
 ## ADR-005: Direct WebRTC with server supervision
@@ -175,6 +176,19 @@ This file is the compact decision record for the Mori backend. Update an entry i
 - Use selective JSONB only for bounded, versioned metadata without relational integrity needs.
 - Include these concepts in the initial ERD and migration plan.
 - Define explicit retention and access rules for audit and safety records.
+
+## ADR-012: User and learner profile ownership
+
+**Decision:** Keep one modular monolith and one PostgreSQL transaction stream. Identity owns external identity and application sessions; the user module owns user details and status; learner profiles own onboarding, language profiles, starting mode, and preferences; access owns grants. Curriculum owns published course data. Session planning and its immutable plan belong to sessions.
+
+**Why:** Authentication, account changes, profile setup, and session planning have different rules and lifecycles. Their modules can cooperate directly and share a transaction without duplicating records or requiring independently deployed services.
+
+**Consequences:**
+
+- Keep the existing `/me` response as a composed read model. Public routes and database tables do not change solely because Python ownership changes.
+- Sign-in coordinates identity, user, and access commands in one transaction. Onboarding coordinates user, profile, and curriculum queries in one transaction.
+- Session orchestration obtains user, profile, and curriculum facts through interfaces owned by those modules. Its planning service will use pinned learning inputs when deterministic planning is implemented.
+- Preserve one ordered Alembic history and one deployable backend image.
 
 ## Technology choices
 

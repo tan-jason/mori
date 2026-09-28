@@ -5,15 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from mori.modules.identity.domain import (
-    CoursePairView,
-    CreateProfile,
-    CurrentLearner,
-    PreferenceChanges,
-)
 from mori.modules.identity.errors import InvalidOAuthFlow, InvalidReturnPath, OAuthProviderFailure
-from mori.modules.identity.ports import GoogleOIDCClient, IdentityUnitOfWorkFactory
+from mori.modules.identity.ports import GoogleOIDCClient
 from mori.modules.identity.security import csrf_token, keyed_digest, random_token
+from mori.persistence.ports import UnitOfWorkFactory
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,7 +29,7 @@ class IdentityService:
     def __init__(
         self,
         *,
-        unit_of_work_factory: IdentityUnitOfWorkFactory,
+        unit_of_work_factory: UnitOfWorkFactory,
         google: GoogleOIDCClient,
         session_key: str,
         oauth_state_key: str,
@@ -106,7 +101,18 @@ class IdentityService:
         )
         expires_at = now + self._session_ttl
         async with self._unit_of_work_factory() as unit_of_work:
-            user_id = await unit_of_work.identity.provision_google_user(claims=claims, now=now)
+            await unit_of_work.identity.lock_google_subject(claims.subject)
+            existing_user_id = await unit_of_work.identity.google_user_id(claims.subject)
+            user_id = await unit_of_work.user.create_or_update(
+                user_id=existing_user_id,
+                email=claims.email,
+                display_name=claims.display_name,
+                now=now,
+            )
+            await unit_of_work.identity.link_google_user(
+                subject=claims.subject, user_id=user_id, now=now
+            )
+            await unit_of_work.access.ensure_intro_grant(user_id=user_id, now=now)
             await unit_of_work.identity.add_auth_session(
                 user_id=user_id,
                 token_digest=session_digest,
@@ -131,48 +137,8 @@ class IdentityService:
                 now=datetime.now(UTC),
             )
 
-    async def current_learner(self, *, session_token: str) -> CurrentLearner:
-        digest = self._session_digest(session_token)
-        async with self._unit_of_work_factory() as unit_of_work:
-            return await unit_of_work.identity.current_learner(
-                token_digest=digest,
-                now=datetime.now(UTC),
-            )
-
-    async def language_pairs(self) -> tuple[CoursePairView, ...]:
-        async with self._unit_of_work_factory() as unit_of_work:
-            return await unit_of_work.identity.language_pairs()
-
-    async def create_profile(
-        self, *, session_token: str, idempotency_key: str, command: CreateProfile
-    ) -> tuple[CurrentLearner, bool]:
-        digest = self._session_digest(session_token)
-        async with self._unit_of_work_factory() as unit_of_work:
-            return await unit_of_work.identity.create_profile(
-                token_digest=digest,
-                idempotency_key=idempotency_key,
-                command=command,
-                now=datetime.now(UTC),
-            )
-
-    async def update_preferences(
-        self,
-        *,
-        session_token: str,
-        expected_version: int,
-        changes: PreferenceChanges,
-    ) -> CurrentLearner:
-        digest = self._session_digest(session_token)
-        async with self._unit_of_work_factory() as unit_of_work:
-            return await unit_of_work.identity.update_preferences(
-                token_digest=digest,
-                expected_version=expected_version,
-                changes=changes,
-                now=datetime.now(UTC),
-            )
-
     async def logout(self, *, session_token: str) -> None:
-        digest = self._session_digest(session_token)
+        digest = self.session_digest(session_token)
         async with self._unit_of_work_factory() as unit_of_work:
             await unit_of_work.identity.revoke_auth_session(
                 token_digest=digest,
@@ -182,7 +148,7 @@ class IdentityService:
     def csrf_token(self, session_token: str) -> str:
         return csrf_token(session_token, self._session_key)
 
-    def _session_digest(self, session_token: str) -> str:
+    def session_digest(self, session_token: str) -> str:
         if not session_token:
             return ""
         return keyed_digest(

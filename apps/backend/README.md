@@ -1,8 +1,9 @@
 # Mori backend development
 
-This directory contains the Python 3.13 backend package. The identity slice includes the
-FastAPI process, PostgreSQL migrations, Google OpenID Connect, opaque database-backed
-application sessions, explicit profile onboarding, preferences, and introductory grant provisioning.
+This directory contains the Python 3.13 backend package. Identity, user, learner
+profiles, curriculum catalog, access, and sessions are modules in one FastAPI application.
+Sign-in links Google identity, updates the application account, and issues the intro grant in
+one transaction. Profile onboarding confirms a published pair and preferences separately.
 The first M2 foundation adds idempotent intro-grant reservation and an immutable placeholder
 session plan. It does not yet connect audio or start a provider call.
 

@@ -14,14 +14,15 @@ from pydantic import BaseModel
 from starlette.exceptions import HTTPException
 
 from mori.modules.identity.errors import (
-    AccountUnavailable,
     AuthenticationRequired,
     CsrfRejected,
     InvalidOAuthFlow,
-    InvalidOnboardingKey,
-    InvalidPrecondition,
     InvalidReturnPath,
     OAuthProviderFailure,
+)
+from mori.modules.learner_profiles.errors import (
+    InvalidOnboardingKey,
+    InvalidPrecondition,
     OnboardingIdempotencyConflict,
     OnboardingRequired,
     PreconditionRequired,
@@ -35,6 +36,7 @@ from mori.modules.sessions.errors import (
     SessionNotFound,
     VoiceEntitlementUnavailable,
 )
+from mori.modules.user.errors import AccountUnavailable
 
 logger = structlog.get_logger(__name__)
 

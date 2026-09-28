@@ -149,6 +149,8 @@ apps/
       runtime/             # Supervisor and worker entry points
       modules/
         identity/
+        user/
+        learner_profiles/
         access/
         curriculum/
         sessions/
@@ -170,7 +172,7 @@ docs/
   plans/
 ```
 
-Each business module should begin with `domain.py`, `service.py`, `repository.py`, and `models.py` only where those files have a clear responsibility. Add subpackages when behavior requires them, not to satisfy a template.
+Each business module adds domain, application, persistence, route, and model files only where they have a clear responsibility. User and learner profile ownership are separate from authentication. Session planning lives in `sessions/`; curriculum owns published course content. Add subpackages when behavior requires them, not to satisfy a template.
 
 ## Documentation map
 

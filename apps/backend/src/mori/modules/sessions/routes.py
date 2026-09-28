@@ -9,10 +9,10 @@ from fastapi import APIRouter, Header, Request, Response
 
 from mori.api.auth import session_token, verify_csrf
 from mori.api.contracts import mutation_headers
-from mori.modules.identity.application import IdentityService
 from mori.modules.sessions.application import SessionService
 from mori.modules.sessions.errors import InvalidIdempotencyKey
 from mori.modules.sessions.schemas import CreateSessionRequest, SessionResponse
+from mori.modules.user.application import UserService
 
 router = APIRouter(prefix="/api/v1/sessions", tags=["sessions"])
 
@@ -28,8 +28,8 @@ async def create_session(
     verify_csrf(request, token)
     if idempotency_key is None:
         raise InvalidIdempotencyKey
-    identity = cast(IdentityService, request.app.state.identity_service)
-    learner = await identity.current_learner(session_token=token)
+    user_service = cast(UserService, request.app.state.user_service)
+    learner = await user_service.current_learner(session_token=token)
     service = cast(SessionService, request.app.state.session_service)
     result, created = await service.create(
         user_id=learner.user_id,
@@ -44,8 +44,8 @@ async def create_session(
 @router.get("/{session_id}", response_model=SessionResponse)
 async def get_session(request: Request, session_id: UUID) -> SessionResponse:
     token = session_token(request)
-    identity = cast(IdentityService, request.app.state.identity_service)
-    learner = await identity.current_learner(session_token=token)
+    user_service = cast(UserService, request.app.state.user_service)
+    learner = await user_service.current_learner(session_token=token)
     service = cast(SessionService, request.app.state.session_service)
     return SessionResponse.from_view(
         await service.get(user_id=learner.user_id, session_id=session_id)

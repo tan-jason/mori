@@ -1,39 +1,18 @@
-"""Ports used by identity application use cases."""
+"""Authentication ports."""
 
 from __future__ import annotations
 
 from datetime import datetime
-from types import TracebackType
-from typing import Protocol, Self
+from typing import Protocol
 from uuid import UUID
 
-from mori.modules.identity.domain import (
-    ApplicationSession,
-    CoursePairView,
-    CreateProfile,
-    CurrentLearner,
-    GoogleClaims,
-    OAuthLoginAttempt,
-    PreferenceChanges,
-)
+from mori.modules.identity.domain import ApplicationSession, GoogleClaims, OAuthLoginAttempt
 
 
 class GoogleOIDCClient(Protocol):
-    async def authorization_url(
-        self,
-        *,
-        state: str,
-        nonce: str,
-        code_verifier: str,
-    ) -> str: ...
+    async def authorization_url(self, *, state: str, nonce: str, code_verifier: str) -> str: ...
 
-    async def exchange_code(
-        self,
-        *,
-        code: str,
-        nonce: str,
-        code_verifier: str,
-    ) -> GoogleClaims: ...
+    async def exchange_code(self, *, code: str, nonce: str, code_verifier: str) -> GoogleClaims: ...
 
 
 class IdentityStore(Protocol):
@@ -49,71 +28,19 @@ class IdentityStore(Protocol):
     ) -> None: ...
 
     async def consume_oauth_attempt(
-        self,
-        *,
-        state_digest: str,
-        now: datetime,
+        self, *, state_digest: str, now: datetime
     ) -> OAuthLoginAttempt: ...
 
-    async def provision_google_user(self, *, claims: GoogleClaims, now: datetime) -> UUID: ...
+    async def lock_google_subject(self, subject: str) -> None: ...
+
+    async def google_user_id(self, subject: str) -> UUID | None: ...
+
+    async def link_google_user(self, *, subject: str, user_id: UUID, now: datetime) -> None: ...
 
     async def add_auth_session(
-        self,
-        *,
-        user_id: UUID,
-        token_digest: str,
-        now: datetime,
-        expires_at: datetime,
+        self, *, user_id: UUID, token_digest: str, now: datetime, expires_at: datetime
     ) -> ApplicationSession: ...
 
-    async def current_learner(
-        self,
-        *,
-        token_digest: str,
-        now: datetime,
-    ) -> CurrentLearner: ...
+    async def authenticated_user_id(self, *, token_digest: str, now: datetime) -> UUID: ...
 
-    async def language_pairs(self) -> tuple[CoursePairView, ...]: ...
-
-    async def create_profile(
-        self,
-        *,
-        token_digest: str,
-        idempotency_key: str,
-        command: CreateProfile,
-        now: datetime,
-    ) -> tuple[CurrentLearner, bool]: ...
-
-    async def update_preferences(
-        self,
-        *,
-        token_digest: str,
-        expected_version: int,
-        changes: PreferenceChanges,
-        now: datetime,
-    ) -> CurrentLearner: ...
-
-    async def revoke_auth_session(
-        self,
-        *,
-        token_digest: str,
-        now: datetime,
-    ) -> None: ...
-
-
-class IdentityUnitOfWork(Protocol):
-    @property
-    def identity(self) -> IdentityStore: ...
-
-    async def __aenter__(self) -> Self: ...
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_value: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> None: ...
-
-
-class IdentityUnitOfWorkFactory(Protocol):
-    def __call__(self) -> IdentityUnitOfWork: ...
+    async def revoke_auth_session(self, *, token_digest: str, now: datetime) -> None: ...
