@@ -12,6 +12,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 
+from mori.modules.identity.domain import (
+    CorrectionPreference,
+    CreateProfile,
+    StartingChoice,
+    TutorPace,
+)
 from mori.modules.sessions.application import SessionService
 from mori.modules.sessions.errors import SessionNotFound, VoiceEntitlementUnavailable
 
@@ -23,7 +29,19 @@ def _sign_in(client: TestClient) -> tuple[str, str]:
         "/auth/google/callback", params={"state": state, "code": "valid-code"}
     ).status_code == 302
     me = client.get("/api/v1/me").json()
-    return me["activeLanguageProfile"]["id"], me["csrfToken"]
+    response = client.post(
+        "/api/v1/language-profiles",
+        json={
+            "baseLanguageId": "english", "targetLanguageId": "mandarin",
+            "startingChoice": "beginner",
+        },
+        headers={
+            "Origin": "http://web.test", "X-CSRF-Token": me["csrfToken"],
+            "Idempotency-Key": "profile-setup-123",
+        },
+    )
+    assert response.status_code == 201, response.text
+    return response.json()["activeLanguageProfile"]["id"], me["csrfToken"]
 
 
 def _create(
@@ -99,6 +117,18 @@ def test_create_requires_auth_csrf_and_idempotency(client: TestClient, database_
     assert _rows(database_url, "SELECT id FROM sessions") == []
 
 
+def test_unfinished_onboarding_cannot_reserve_a_session(client: TestClient) -> None:
+    start = client.get("/auth/google/start")
+    state = parse_qs(urlsplit(start.headers["location"]).query)["state"][0]
+    assert client.get(
+        "/auth/google/callback", params={"state": state, "code": "valid-code"}
+    ).status_code == 302
+    csrf = client.get("/api/v1/me").json()["csrfToken"]
+    response = _create(client, str(uuid4()), csrf)
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "onboarding_required"
+
+
 @pytest.mark.asyncio
 async def test_status_checks_ownership_inside_application(
     client: TestClient, app: FastAPI
@@ -154,7 +184,18 @@ async def test_concurrent_keys_cannot_reserve_the_last_grant(
     # Provision through the existing identity use case without sharing an HTTP client across tasks.
     identity = app.state.identity_service
     started = await identity.start_google_sign_in(return_path="/")
-    await identity.complete_google_sign_in(state=started.state, code="valid-code")
+    signed_in = await identity.complete_google_sign_in(state=started.state, code="valid-code")
+    await identity.create_profile(
+        session_token=signed_in.session_token,
+        idempotency_key="profile-setup-123",
+        command=CreateProfile(
+            base_language_id="english", target_language_id="mandarin",
+            starting_choice=StartingChoice.BEGINNER,
+            correction_preference=CorrectionPreference.BALANCED,
+            tutor_pace=TutorPace.LEVEL,
+            timezone="UTC", interests=(),
+        ),
+    )
     identity_rows = _rows(
         database_url,
         "SELECT u.id, p.id FROM users u JOIN language_profiles p ON p.user_id = u.id",

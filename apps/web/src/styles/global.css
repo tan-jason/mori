@@ -2716,3 +2716,362 @@ a.text-link:hover {
     transition-duration: 0.01ms !important;
   }
 }
+.onboarding-page {
+  width: min(1180px, calc(100% - 3rem));
+  margin: 0 auto;
+  padding: 2.75rem 0 5rem;
+}
+
+.onboarding-intro {
+  max-width: 730px;
+  margin-bottom: 2rem;
+}
+
+.onboarding-intro h1 {
+  margin: 0.45rem 0 1rem;
+}
+
+.onboarding-intro > p:last-child {
+  color: var(--ink-soft);
+}
+
+.onboarding-shell {
+  overflow: hidden;
+  border: 1px solid var(--line-dark);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-raised);
+}
+
+.onboarding-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.2rem 1.8rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.onboarding-top > span {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.onboarding-body {
+  display: grid;
+  grid-template-columns: minmax(0, 225px) minmax(0, 1fr);
+  gap: 1.9rem;
+  min-height: 560px;
+  padding: 1.8rem;
+}
+
+.onboarding-side {
+  min-width: 0;
+  padding-right: 1.5rem;
+  border-right: 1px solid var(--line);
+}
+
+.onboarding-side > p:nth-child(2) {
+  margin: 0.3rem 0 1.5rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.onboarding-steps {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.onboarding-step {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.onboarding-step > span {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  place-items: center;
+  border: 1px solid #b8c8be;
+  border-radius: 50%;
+  font-size: 0.7rem;
+}
+
+.onboarding-step.is-active {
+  border-color: #d0dfd5;
+  background: var(--forest-light);
+  color: var(--ink);
+}
+
+.onboarding-step.is-active > span {
+  border-color: var(--forest);
+  background: var(--forest);
+  color: white;
+}
+
+.onboarding-step.is-done > span {
+  border-color: #c5dacb;
+  background: #dceade;
+  color: var(--forest-dark);
+}
+
+.onboarding-side-note {
+  margin-top: 2rem;
+  padding: 0.9rem;
+  border-radius: var(--radius-sm);
+  background: #f6f4ea;
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+}
+
+.onboarding-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.onboarding-panel > section {
+  flex: 1;
+}
+
+.onboarding-panel h2 {
+  margin: 0.3rem 0 0.5rem;
+  font-size: clamp(2rem, 4vw, 2.7rem);
+}
+
+.onboarding-description {
+  max-width: 660px;
+  margin-bottom: 1.5rem;
+  color: var(--ink-soft);
+}
+
+.onboarding-fields,
+.onboarding-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.onboarding-wide {
+  grid-column: 1 / -1;
+}
+
+.onboarding-wide textarea {
+  width: 100%;
+  min-height: 90px;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line-dark);
+  border-radius: var(--radius-sm);
+  background: white;
+  color: var(--ink);
+  resize: vertical;
+}
+
+.onboarding-availability,
+.onboarding-note,
+.onboarding-confirmation {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #d9e3d8;
+  border-radius: var(--radius-sm);
+  background: var(--forest-light);
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+}
+
+.onboarding-availability {
+  display: flex;
+  gap: 0.8rem;
+  border-color: #e8dac8;
+  background: #f8f1e8;
+}
+
+.onboarding-availability strong {
+  flex: none;
+  color: var(--persimmon-ink);
+}
+
+.onboarding-choice {
+  display: flex;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: white;
+  cursor: pointer;
+}
+
+.onboarding-choice.is-selected {
+  border-color: var(--forest);
+  background: var(--forest-light);
+  box-shadow: inset 0 0 0 1px var(--forest);
+}
+
+.onboarding-choice input {
+  align-self: flex-start;
+  margin-top: 0.25rem;
+  accent-color: var(--forest);
+}
+
+.onboarding-choice strong,
+.onboarding-choice small {
+  display: block;
+}
+
+.onboarding-choice strong {
+  font-size: 0.88rem;
+}
+
+.onboarding-choice small {
+  margin-top: 0.2rem;
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+}
+
+.onboarding-summary {
+  margin: 0;
+}
+
+.onboarding-summary > div {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.onboarding-summary dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.onboarding-summary dd {
+  min-width: 0;
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.onboarding-confirmation strong {
+  display: block;
+  color: var(--ink);
+}
+
+.onboarding-error,
+.onboarding-message {
+  margin-top: 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #e8b9a6;
+  border-radius: var(--radius-sm);
+  background: #fcf0e9;
+  color: #8d4a39;
+  font-size: 0.8rem;
+}
+
+.onboarding-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--line);
+}
+
+.onboarding-actions > span {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.onboarding-back {
+  border-color: transparent;
+  background: transparent;
+  color: var(--forest-dark);
+}
+
+@media (max-width: 850px) {
+  .onboarding-body {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-side {
+    padding: 0 0 1.1rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .onboarding-side > p:nth-child(2),
+  .onboarding-side-note {
+    display: none;
+  }
+
+  .onboarding-steps {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .onboarding-step {
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.5rem 0.1rem;
+    text-align: center;
+    font-size: 0.68rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .onboarding-page {
+    width: calc(100% - 1.5rem);
+    padding-top: 2rem;
+  }
+
+  .onboarding-top,
+  .onboarding-body {
+    padding: 1.1rem;
+  }
+
+  .onboarding-top > span {
+    display: none;
+  }
+
+  .onboarding-fields,
+  .onboarding-choices {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-wide {
+    grid-column: auto;
+  }
+
+  .onboarding-summary > div {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+
+  .onboarding-actions {
+    flex-wrap: wrap;
+  }
+
+  .onboarding-actions > span {
+    order: 3;
+    width: 100%;
+    text-align: center;
+  }
+
+  .onboarding-actions > .button-primary {
+    margin-left: auto;
+  }
+}

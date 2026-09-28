@@ -15,10 +15,17 @@ from mori.config import Settings
 from mori.modules.identity.application import IdentityService
 from mori.modules.identity.errors import (
     InvalidOAuthFlow,
+    InvalidOnboardingKey,
     InvalidPrecondition,
     PreconditionRequired,
 )
-from mori.modules.identity.schemas import MeResponse, PreferencePatch
+from mori.modules.identity.schemas import (
+    CreateProfileRequest,
+    LanguagePairResponse,
+    LanguagePairsResponse,
+    MeResponse,
+    PreferencePatch,
+)
 from mori.modules.identity.security import tokens_match
 
 router = APIRouter()
@@ -125,11 +132,48 @@ async def get_me(request: Request, response: Response) -> MeResponse:
     session_token = _session_token(request)
     service = _service(request)
     learner = await service.current_learner(session_token=session_token)
-    response.headers["ETag"] = f'"{learner.preferences.version}"'
+    response.headers["ETag"] = f'"{learner.version}"'
+    response.headers["Cache-Control"] = "no-store"
     return MeResponse.from_domain(
         learner,
         csrf_token=service.csrf_token(session_token),
     )
+
+
+@router.get("/api/v1/language-pairs", response_model=LanguagePairsResponse)
+async def get_language_pairs(request: Request, response: Response) -> LanguagePairsResponse:
+    response.headers["Cache-Control"] = "no-store"
+    pairs = await _service(request).language_pairs()
+    return LanguagePairsResponse(pairs=[LanguagePairResponse.from_domain(pair) for pair in pairs])
+
+
+@router.post(
+    "/api/v1/language-profiles",
+    response_model=MeResponse,
+    openapi_extra=mutation_headers("Idempotency-Key"),
+)
+async def create_language_profile(
+    request: Request,
+    response: Response,
+    body: CreateProfileRequest,
+    idempotency_key: str | None = Header(default=None, include_in_schema=False),
+) -> MeResponse:
+    session_token = _session_token(request)
+    _verify_csrf(request, session_token)
+    if idempotency_key is None:
+        raise InvalidOnboardingKey
+    service = _service(request)
+    learner, created = await service.create_profile(
+        session_token=session_token,
+        idempotency_key=idempotency_key,
+        command=body.to_domain(),
+    )
+    response.status_code = 201 if created else 200
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["ETag"] = f'"{learner.version}"'
+    if learner.language_profile is not None:
+        response.headers["Location"] = f"/api/v1/language-profiles/{learner.language_profile.id}"
+    return MeResponse.from_domain(learner, csrf_token=service.csrf_token(session_token))
 
 
 @router.patch(
@@ -152,6 +196,8 @@ async def update_preferences(
         expected_version=expected_version,
         changes=patch.to_domain(),
     )
+    if learner.preferences is None:
+        raise RuntimeError("updated profile has no preferences")
     response.headers["ETag"] = f'"{learner.preferences.version}"'
     return MeResponse.from_domain(
         learner,

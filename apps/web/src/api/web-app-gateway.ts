@@ -5,6 +5,8 @@ import type {
 } from "../domain/learning";
 import type {
   CurrentLearner,
+  CreateProfileCommand,
+  LanguagePair,
   UpdatePreferencesCommand,
 } from "../domain/identity";
 
@@ -16,6 +18,11 @@ import type {
  */
 export interface WebAppGateway {
   getCurrentLearner(signal?: AbortSignal): Promise<CurrentLearner>;
+  getLanguagePairs(signal?: AbortSignal): Promise<LanguagePair[]>;
+  createLanguageProfile(
+    command: CreateProfileCommand,
+    signal?: AbortSignal,
+  ): Promise<CurrentLearner>;
   updatePreferences(
     command: UpdatePreferencesCommand,
     signal?: AbortSignal,

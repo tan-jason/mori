@@ -1,6 +1,6 @@
-import { zApiErrorResponse, zMeResponse } from "@mori/api-client/zod";
+import { zApiErrorResponse, zLanguagePairsResponse, zMeResponse } from "@mori/api-client/zod";
 import type { CurrentLearner } from "../domain/identity";
-import { isTargetLanguageId } from "../domain/languages";
+import { isTargetLanguageId, type TargetLanguageId } from "../domain/languages";
 import { getApiOrigin } from "./api-config";
 import { ApiError } from "./api-error";
 import { createMockWebAppGateway } from "./mock-web-app-gateway";
@@ -98,8 +98,11 @@ export function createBackendWebAppGateway(
     const parsed = zMeResponse.safeParse(payload);
     if (
       !parsed.success ||
-      parsed.data.activeLanguageProfile.baseLanguageId !== "english" ||
-      !isTargetLanguageId(parsed.data.activeLanguageProfile.targetLanguageId)
+      (parsed.data.activeLanguageProfile !== null &&
+        (parsed.data.activeLanguageProfile.baseLanguageId !== "english" ||
+          !isTargetLanguageId(parsed.data.activeLanguageProfile.targetLanguageId))) ||
+      (parsed.data.onboarding.complete &&
+        (parsed.data.activeLanguageProfile === null || parsed.data.preferences === null))
     ) {
       throw new ApiError(
         response.status,
@@ -111,17 +114,51 @@ export function createBackendWebAppGateway(
     }
     return {
       ...parsed.data,
-      activeLanguageProfile: {
-        ...parsed.data.activeLanguageProfile,
-        baseLanguageId: "english",
-        targetLanguageId: parsed.data.activeLanguageProfile.targetLanguageId,
-      },
+      activeLanguageProfile: parsed.data.activeLanguageProfile === null
+        ? null
+        : {
+            ...parsed.data.activeLanguageProfile,
+            baseLanguageId: "english",
+            targetLanguageId: parsed.data.activeLanguageProfile.targetLanguageId as TargetLanguageId,
+          },
     };
   };
 
   return {
     async getCurrentLearner(signal) {
       const response = await request("/api/v1/me", { signal });
+      return readCurrentLearner(response);
+    },
+
+    async getLanguagePairs(signal) {
+      const response = await request("/api/v1/language-pairs", { signal });
+      const payload: unknown = await response.json();
+      const parsed = zLanguagePairsResponse.safeParse(payload);
+      if (!parsed.success) {
+        throw new ApiError(response.status, "invalid_response", "Mori returned an invalid course list.");
+      }
+      return parsed.data.pairs;
+    },
+
+    async createLanguageProfile(command, signal) {
+      const response = await request("/api/v1/language-profiles", {
+        method: "POST",
+        signal,
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": command.idempotencyKey,
+          "X-CSRF-Token": command.csrfToken,
+        },
+        body: JSON.stringify({
+          baseLanguageId: command.baseLanguageId,
+          targetLanguageId: command.targetLanguageId,
+          startingChoice: command.startingChoice,
+          correctionPreference: command.correctionPreference,
+          tutorPace: command.tutorPace,
+          timezone: command.timezone,
+          interests: command.interests,
+        }),
+      });
       return readCurrentLearner(response);
     },
 

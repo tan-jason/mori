@@ -16,6 +16,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from mori.persistence.base import Base
@@ -28,6 +29,7 @@ class UserModel(Base):
             "status IN ('active', 'suspended', 'deletion_pending')",
             name="ck_users_status",
         ),
+        CheckConstraint("version > 0", name="ck_users_version"),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
@@ -35,6 +37,7 @@ class UserModel(Base):
     email: Mapped[str] = mapped_column(String(320), nullable=False)
     display_name: Mapped[str] = mapped_column(String(200), nullable=False)
     onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
     )
@@ -102,6 +105,7 @@ class LanguageProfileModel(Base):
     __tablename__ = "language_profiles"
     __table_args__ = (
         CheckConstraint("status IN ('active', 'archived')", name="ck_language_profiles_status"),
+        CheckConstraint("version > 0", name="ck_language_profiles_version"),
         UniqueConstraint(
             "user_id",
             "base_language_id",
@@ -123,6 +127,10 @@ class LanguageProfileModel(Base):
     base_language_id: Mapped[str] = mapped_column(String(32), nullable=False)
     target_language_id: Mapped[str] = mapped_column(String(32), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default="active")
+    language_selection_confirmed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
     )
@@ -140,6 +148,10 @@ class LearnerPreferenceModel(Base):
             name="ck_learner_preferences_tutor_pace",
         ),
         CheckConstraint("version > 0", name="ck_learner_preferences_version"),
+        CheckConstraint(
+            "jsonb_typeof(interests) = 'array'",
+            name="ck_learner_preferences_interests_array",
+        ),
     )
 
     language_profile_id: Mapped[UUID] = mapped_column(
@@ -153,10 +165,87 @@ class LearnerPreferenceModel(Base):
     timezone: Mapped[str] = mapped_column(
         String(64), nullable=False, server_default="America/New_York"
     )
+    interests: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
     )
+
+
+class ProfileLearningSettingsModel(Base):
+    __tablename__ = "profile_learning_settings"
+    __table_args__ = (
+        CheckConstraint(
+            "starting_choice IN ('beginner', 'intermediate', 'advanced', 'fluent', 'unsure')",
+            name="ck_profile_learning_settings_choice",
+        ),
+        CheckConstraint(
+            "(mode = 'practice' AND starting_choice = 'fluent' AND provisional_level IS NULL) "
+            "OR (mode = 'learning' AND starting_choice != 'fluent' "
+            "AND provisional_level IN ('beginner', 'intermediate', 'advanced'))",
+            name="ck_profile_learning_settings_mode",
+        ),
+        CheckConstraint("version > 0", name="ck_profile_learning_settings_version"),
+    )
+
+    language_profile_id: Mapped[UUID] = mapped_column(
+        ForeignKey("language_profiles.id", ondelete="CASCADE"), primary_key=True
+    )
+    starting_choice: Mapped[str] = mapped_column(String(32), nullable=False)
+    mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    provisional_level: Mapped[str | None] = mapped_column(String(32))
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class CourseCatalogModel(Base):
+    __tablename__ = "course_catalog"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('draft', 'published', 'retired')",
+            name="ck_course_catalog_status",
+        ),
+        CheckConstraint(
+            "status != 'published' OR "
+            "(active_curriculum_version IS NOT NULL AND pair_policy_version IS NOT NULL "
+            "AND voice_policy_version IS NOT NULL AND published_at IS NOT NULL)",
+            name="ck_course_catalog_published_bundle",
+        ),
+        UniqueConstraint(
+            "base_language_id", "target_language_id", name="uq_course_catalog_pair"
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    base_language_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_language_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    base_language_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    target_language_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    target_native_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    active_curriculum_version: Mapped[str | None] = mapped_column(String(64))
+    pair_policy_version: Mapped[str | None] = mapped_column(String(64))
+    voice_policy_version: Mapped[str | None] = mapped_column(String(64))
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class OnboardingCommandModel(Base):
+    __tablename__ = "onboarding_commands"
+    __table_args__ = (
+        UniqueConstraint("user_id", "key_digest", name="uq_onboarding_commands_user_key"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    key_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    language_profile_id: Mapped[UUID] = mapped_column(
+        ForeignKey("language_profiles.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class UserConsentModel(Base):

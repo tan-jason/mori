@@ -9,18 +9,28 @@ const learnerResponse = {
     displayName: "Mori Learner",
     status: "active",
   },
-  onboarding: { complete: false },
+  version: 2,
+  onboarding: { complete: true },
   activeLanguageProfile: {
     id: "61a971ee-4cd7-465c-a9f9-1cbfc4342cd4",
     baseLanguageId: "english",
     targetLanguageId: "mandarin",
     status: "active",
+    languageSelectionConfirmed: true,
+    version: 1,
+    learning: {
+      mode: "learning",
+      startingChoice: "beginner",
+      provisionalLevel: "beginner",
+      version: 1,
+    },
   },
   preferences: {
     correctionPreference: "balanced",
     tutorPace: "level",
     captionsEnabled: false,
     timezone: "America/New_York",
+    interests: [],
     version: 1,
   },
   csrfToken: "csrf-token",
@@ -34,6 +44,54 @@ function jsonResponse(payload: unknown, status = 200): Response {
 }
 
 describe("createBackendWebAppGateway", () => {
+  it("accepts a signed-in learner before profile setup", async () => {
+    const fetchMock = vi.fn<typeof window.fetch>();
+    fetchMock.mockResolvedValue(jsonResponse({
+      ...learnerResponse,
+      version: 1,
+      onboarding: { complete: false },
+      activeLanguageProfile: null,
+      preferences: null,
+    }));
+    const gateway = createBackendWebAppGateway({ apiOrigin: "http://api.test", fetch: fetchMock });
+    await expect(gateway.getCurrentLearner()).resolves.toMatchObject({
+      onboarding: { complete: false }, activeLanguageProfile: null, preferences: null,
+    });
+  });
+
+  it("sends explicit choices with an idempotency key", async () => {
+    const fetchMock = vi.fn<typeof window.fetch>();
+    fetchMock.mockResolvedValue(jsonResponse({ pairs: [{
+      baseLanguageId: "english", targetLanguageId: "mandarin",
+      baseLanguageName: "English", targetLanguageName: "Mandarin",
+      targetNativeName: "中文", available: true,
+    }] }));
+    fetchMock.mockResolvedValueOnce(jsonResponse({ pairs: [{
+      baseLanguageId: "english", targetLanguageId: "mandarin",
+      baseLanguageName: "English", targetLanguageName: "Mandarin",
+      targetNativeName: "中文", available: true,
+    }] }));
+    fetchMock.mockResolvedValueOnce(jsonResponse(learnerResponse, 201));
+    const gateway = createBackendWebAppGateway({ apiOrigin: "http://api.test", fetch: fetchMock });
+    await gateway.getLanguagePairs();
+    await gateway.createLanguageProfile({
+      baseLanguageId: "english", targetLanguageId: "mandarin", startingChoice: "unsure",
+      correctionPreference: "balanced", tutorPace: "level", timezone: "UTC",
+      interests: ["Cooking"], idempotencyKey: "profile-setup-123", csrfToken: "csrf-token",
+    });
+    const [url, init] = fetchMock.mock.calls[1] ?? [];
+    expect(url).toEqual(new URL("http://api.test/api/v1/language-profiles"));
+    expect(init).toMatchObject({
+      method: "POST",
+      headers: {
+        "Idempotency-Key": "profile-setup-123", "X-CSRF-Token": "csrf-token",
+      },
+    });
+    expect(typeof init?.body).toBe("string");
+    expect(JSON.parse(init?.body as string)).toMatchObject({
+      baseLanguageId: "english", targetLanguageId: "mandarin", startingChoice: "unsure",
+    });
+  });
   it("restores the learner session with credentials and validates the response", async () => {
     const fetchMock = vi.fn<typeof window.fetch>();
     fetchMock.mockResolvedValue(jsonResponse(learnerResponse));
@@ -82,7 +140,7 @@ describe("createBackendWebAppGateway", () => {
       expectedVersion: 1,
     });
 
-    expect(learner.preferences.version).toBe(2);
+    expect(learner.preferences?.version).toBe(2);
     const [url, init] = fetchMock.mock.calls[0] ?? [];
     expect(url).toEqual(new URL("http://api.test/api/v1/me/preferences"));
     expect(init).toMatchObject({

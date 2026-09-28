@@ -1,5 +1,5 @@
 import type { WebAppGateway } from "./web-app-gateway";
-import type { CurrentLearner } from "../domain/identity";
+import type { CurrentLearner, LanguagePair } from "../domain/identity";
 import type {
   LearningItem,
   LearningTerm,
@@ -8,6 +8,7 @@ import type {
 import {
   BASE_LANGUAGE,
   DEFAULT_TARGET_LANGUAGE_ID,
+  TARGET_LANGUAGES,
   type LanguageProfile,
   type TargetLanguageId,
 } from "../domain/languages";
@@ -316,11 +317,20 @@ const pause = async (signal?: AbortSignal): Promise<void> => {
 
 export function createMockWebAppGateway(
   targetLanguageId: TargetLanguageId = DEFAULT_TARGET_LANGUAGE_ID,
+  startIncomplete = false,
 ): WebAppGateway {
   const languageProfile: LanguageProfile = {
     id: `${BASE_LANGUAGE.id}-${targetLanguageId}`,
     baseLanguageId: BASE_LANGUAGE.id,
     targetLanguageId,
+  };
+  const startingPreferences = {
+    correctionPreference: "balanced" as const,
+    tutorPace: "level" as const,
+    captionsEnabled: false,
+    timezone: "America/New_York",
+    interests: [],
+    version: 1,
   };
   let currentLearner: CurrentLearner = {
     user: {
@@ -329,20 +339,32 @@ export function createMockWebAppGateway(
       displayName: "Jason Tan",
       status: "active",
     },
-    onboarding: { complete: false },
-    activeLanguageProfile: {
+    version: 1,
+    onboarding: { complete: !startIncomplete },
+    activeLanguageProfile: startIncomplete ? null : {
       ...languageProfile,
       status: "active",
-    },
-    preferences: {
-      correctionPreference: "balanced",
-      tutorPace: "level",
-      captionsEnabled: false,
-      timezone: "America/New_York",
+      languageSelectionConfirmed: true,
       version: 1,
+      learning: {
+        mode: "learning",
+        startingChoice: "beginner",
+        provisionalLevel: "beginner",
+        version: 1,
+      },
     },
+    preferences: startIncomplete ? null : startingPreferences,
     csrfToken: "mock-csrf-token",
   };
+  const completedKeys = new Map<string, string>();
+  const languagePairs: LanguagePair[] = TARGET_LANGUAGES.map((target) => ({
+    baseLanguageId: BASE_LANGUAGE.id,
+    targetLanguageId: target.id,
+    baseLanguageName: BASE_LANGUAGE.name,
+    targetLanguageName: target.name,
+    targetNativeName: target.nativeName,
+    available: target.id === "mandarin",
+  }));
 
   const getContent = (languageProfileId: string): LanguageMockContent => {
     if (languageProfileId !== languageProfile.id) {
@@ -359,8 +381,52 @@ export function createMockWebAppGateway(
       return currentLearner;
     },
 
+    async getLanguagePairs(signal) {
+      await pause(signal);
+      return languagePairs;
+    },
+
+    async createLanguageProfile(command, signal) {
+      await pause(signal);
+      const payload = JSON.stringify({ ...command, idempotencyKey: undefined, csrfToken: undefined });
+      const previous = completedKeys.get(command.idempotencyKey);
+      if (previous && previous !== payload) throw new Error("This key was already used.");
+      if (previous) return currentLearner;
+      if (command.baseLanguageId !== "english" || command.targetLanguageId !== "mandarin") {
+        throw new Error("This language course is not available.");
+      }
+      completedKeys.set(command.idempotencyKey, payload);
+      currentLearner = {
+        ...currentLearner,
+        version: currentLearner.version + 1,
+        onboarding: { complete: true },
+        activeLanguageProfile: {
+          ...languageProfile,
+          status: "active",
+          languageSelectionConfirmed: true,
+          version: 1,
+          learning: {
+            mode: command.startingChoice === "fluent" ? "practice" : "learning",
+            startingChoice: command.startingChoice,
+            provisionalLevel: command.startingChoice === "fluent" ? null
+              : command.startingChoice === "unsure" ? "beginner" : command.startingChoice,
+            version: 1,
+          },
+        },
+        preferences: {
+          ...startingPreferences,
+          correctionPreference: command.correctionPreference,
+          tutorPace: command.tutorPace,
+          timezone: command.timezone,
+          interests: command.interests,
+        },
+      };
+      return currentLearner;
+    },
+
     async updatePreferences(command, signal) {
       await pause(signal);
+      if (currentLearner.preferences === null) throw new Error("Complete your setup first.");
       if (command.expectedVersion !== currentLearner.preferences.version) {
         throw new Error("Preferences changed since they were read.");
       }
@@ -474,4 +540,7 @@ export function createMockWebAppGateway(
   };
 }
 
-export const mockWebAppGateway = createMockWebAppGateway();
+export const mockWebAppGateway = createMockWebAppGateway(
+  DEFAULT_TARGET_LANGUAGE_ID,
+  import.meta.env.VITE_MOCK_ONBOARDING === "true",
+);

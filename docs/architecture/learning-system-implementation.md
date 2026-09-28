@@ -225,14 +225,14 @@ Profile creation and onboarding request:
 {
   "baseLanguageId": "english",
   "targetLanguageId": "mandarin",
-  "startingLevel": "beginner",
+  "startingChoice": "beginner",
   "correctionPreference": "balanced",
   "tutorPace": "level",
   "interests": ["cooking", "weekend walks"]
 }
 ```
 
-`startingLevel: "fluent"` selects practice mode immediately. `startingLevel: "unsure"` produces provisional Beginner learning mode. Neither option asserts an assessed level.
+`startingChoice: "fluent"` selects practice mode immediately. `startingChoice: "unsure"` produces provisional Beginner learning mode. Neither option asserts an assessed level.
 
 Session request:
 

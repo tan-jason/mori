@@ -26,6 +26,10 @@ export function ProfilePage() {
   const { gateway } = useAppDependencies();
   const { targetLanguage } = useLanguageProfile();
   const { learner, replaceLearner } = useLearnerSession();
+  const learning = learner.activeLanguageProfile.learning;
+  const levelLabel = learning.mode === "practice"
+    ? "Fluent conversation"
+    : `Learning ${(learning.provisionalLevel ?? "beginner")[0]?.toUpperCase()}${(learning.provisionalLevel ?? "beginner").slice(1)}`;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [correctionPreference, setCorrectionPreference] =
@@ -188,11 +192,13 @@ export function ProfilePage() {
               {targetLanguage.mark}
             </span>
             <div>
-              <small>Current assessed level</small>
-              <strong>Learning Beginner</strong>
-              <p>Short, familiar exchanges with a little support.</p>
+              <small>{learning.mode === "practice" ? "Practice mode" : "Provisional starting level"}</small>
+              <strong>{levelLabel}</strong>
+              <p>{learning.mode === "practice"
+                ? "Natural conversation without unsolicited learning advice."
+                : "Mori will use conversation evidence to understand your level."}</p>
             </div>
-            <span className="evidence-label">Set by conversation evidence</span>
+            <span className="evidence-label">Your starting choice</span>
           </div>
         </section>
 

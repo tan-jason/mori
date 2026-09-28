@@ -16,6 +16,15 @@ export const router = createBrowserRouter([
     errorElement: <RouteErrorPage />,
   },
   {
+    path: "/onboarding",
+    element: (
+      <LanguageProfileProvider>
+        <></>
+      </LanguageProfileProvider>
+    ),
+    errorElement: <RouteErrorPage />,
+  },
+  {
     path: "/",
     element: (
       <LanguageProfileProvider>

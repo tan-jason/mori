@@ -35,6 +35,31 @@ export type ApiErrorResponse = {
 export type CorrectionPreference = 'light' | 'balanced' | 'frequent';
 
 /**
+ * CreateProfileRequest
+ */
+export type CreateProfileRequest = {
+    /**
+     * Baselanguageid
+     */
+    baseLanguageId: string;
+    correctionPreference?: CorrectionPreference;
+    /**
+     * Interests
+     */
+    interests?: Array<string>;
+    startingChoice: StartingChoice;
+    /**
+     * Targetlanguageid
+     */
+    targetLanguageId: string;
+    /**
+     * Timezone
+     */
+    timezone?: string;
+    tutorPace?: TutorPace;
+};
+
+/**
  * CreateSessionRequest
  */
 export type CreateSessionRequest = {
@@ -42,6 +67,46 @@ export type CreateSessionRequest = {
      * Languageprofileid
      */
     languageProfileId: string;
+};
+
+/**
+ * LanguagePairResponse
+ */
+export type LanguagePairResponse = {
+    /**
+     * Available
+     */
+    available: boolean;
+    /**
+     * Baselanguageid
+     */
+    baseLanguageId: string;
+    /**
+     * Baselanguagename
+     */
+    baseLanguageName: string;
+    /**
+     * Targetlanguageid
+     */
+    targetLanguageId: string;
+    /**
+     * Targetlanguagename
+     */
+    targetLanguageName: string;
+    /**
+     * Targetnativename
+     */
+    targetNativeName: string;
+};
+
+/**
+ * LanguagePairsResponse
+ */
+export type LanguagePairsResponse = {
+    /**
+     * Pairs
+     */
+    pairs: Array<LanguagePairResponse>;
 };
 
 /**
@@ -56,11 +121,20 @@ export type LanguageProfileResponse = {
      * Id
      */
     id: string;
+    /**
+     * Languageselectionconfirmed
+     */
+    languageSelectionConfirmed: boolean;
+    learning: LearningSettingsResponse;
     status: LanguageProfileStatus;
     /**
      * Targetlanguageid
      */
     targetLanguageId: string;
+    /**
+     * Version
+     */
+    version: number;
 };
 
 /**
@@ -69,17 +143,39 @@ export type LanguageProfileResponse = {
 export type LanguageProfileStatus = 'active' | 'archived';
 
 /**
+ * LearningMode
+ */
+export type LearningMode = 'learning' | 'practice';
+
+/**
+ * LearningSettingsResponse
+ */
+export type LearningSettingsResponse = {
+    mode: LearningMode;
+    provisionalLevel: StartingChoice | null;
+    startingChoice: StartingChoice;
+    /**
+     * Version
+     */
+    version: number;
+};
+
+/**
  * MeResponse
  */
 export type MeResponse = {
-    activeLanguageProfile: LanguageProfileResponse;
+    activeLanguageProfile: LanguageProfileResponse | null;
     /**
      * Csrftoken
      */
     csrfToken: string;
     onboarding: OnboardingResponse;
-    preferences: PreferencesResponse;
+    preferences: PreferencesResponse | null;
     user: UserResponse;
+    /**
+     * Version
+     */
+    version: number;
 };
 
 /**
@@ -123,6 +219,10 @@ export type PreferencesResponse = {
      */
     captionsEnabled: boolean;
     correctionPreference: CorrectionPreference;
+    /**
+     * Interests
+     */
+    interests: Array<string>;
     /**
      * Timezone
      */
@@ -173,6 +273,11 @@ export type SessionResponse = {
 };
 
 /**
+ * StartingChoice
+ */
+export type StartingChoice = 'beginner' | 'intermediate' | 'advanced' | 'fluent' | 'unsure';
+
+/**
  * TutorPace
  */
 export type TutorPace = 'level' | 'gentle' | 'steady' | 'natural';
@@ -200,6 +305,60 @@ export type UserResponse = {
  * UserStatus
  */
 export type UserStatus = 'active' | 'suspended' | 'deletion_pending';
+
+export type GetLanguagePairsApiV1LanguagePairsGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/language-pairs';
+};
+
+export type GetLanguagePairsApiV1LanguagePairsGetErrors = {
+    /**
+     * Mori error envelope
+     */
+    default: ApiErrorResponse;
+};
+
+export type GetLanguagePairsApiV1LanguagePairsGetError = GetLanguagePairsApiV1LanguagePairsGetErrors[keyof GetLanguagePairsApiV1LanguagePairsGetErrors];
+
+export type GetLanguagePairsApiV1LanguagePairsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: LanguagePairsResponse;
+};
+
+export type GetLanguagePairsApiV1LanguagePairsGetResponse = GetLanguagePairsApiV1LanguagePairsGetResponses[keyof GetLanguagePairsApiV1LanguagePairsGetResponses];
+
+export type CreateLanguageProfileApiV1LanguageProfilesPostData = {
+    body: CreateProfileRequest;
+    headers: {
+        'X-CSRF-Token': string;
+        'Idempotency-Key': string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/language-profiles';
+};
+
+export type CreateLanguageProfileApiV1LanguageProfilesPostErrors = {
+    /**
+     * Mori error envelope
+     */
+    default: ApiErrorResponse;
+};
+
+export type CreateLanguageProfileApiV1LanguageProfilesPostError = CreateLanguageProfileApiV1LanguageProfilesPostErrors[keyof CreateLanguageProfileApiV1LanguageProfilesPostErrors];
+
+export type CreateLanguageProfileApiV1LanguageProfilesPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: MeResponse;
+};
+
+export type CreateLanguageProfileApiV1LanguageProfilesPostResponse = CreateLanguageProfileApiV1LanguageProfilesPostResponses[keyof CreateLanguageProfileApiV1LanguageProfilesPostResponses];
 
 export type GetMeApiV1MeGetData = {
     body?: never;

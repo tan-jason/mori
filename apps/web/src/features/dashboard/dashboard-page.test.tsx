@@ -10,11 +10,11 @@ describe("DashboardPage", () => {
   it("renders the core learner dashboard from the gateway", async () => {
     render(
       <AppProviders>
-        <LanguageProfileProvider>
-          <MemoryRouter>
+        <MemoryRouter>
+          <LanguageProfileProvider>
             <DashboardPage />
-          </MemoryRouter>
-        </LanguageProfileProvider>
+          </LanguageProfileProvider>
+        </MemoryRouter>
       </AppProviders>,
     );
 
@@ -33,11 +33,11 @@ describe("DashboardPage", () => {
       <AppProviders
         dependencies={{ gateway: createMockWebAppGateway("spanish") }}
       >
-        <LanguageProfileProvider>
-          <MemoryRouter>
+        <MemoryRouter>
+          <LanguageProfileProvider>
             <DashboardPage />
-          </MemoryRouter>
-        </LanguageProfileProvider>
+          </LanguageProfileProvider>
+        </MemoryRouter>
       </AppProviders>,
     );
 

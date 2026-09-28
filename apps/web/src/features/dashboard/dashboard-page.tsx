@@ -16,6 +16,11 @@ const stateLabels: Record<LearningState, string> = {
 export function DashboardPage() {
   const { targetLanguage } = useLanguageProfile();
   const { learner } = useLearnerSession();
+  const learning = learner.activeLanguageProfile.learning;
+  const provisional = learning.provisionalLevel ?? "beginner";
+  const levelLabel = learning.mode === "practice"
+    ? "Fluent practice"
+    : `Learning ${provisional.charAt(0).toUpperCase()}${provisional.slice(1)}`;
   const dashboard = useDashboard();
   const currentDateLabel = new Intl.DateTimeFormat("en-US", {
     weekday: "long",
@@ -61,8 +66,8 @@ export function DashboardPage() {
             <small>{targetLanguage.nativeName}</small>
           </div>
           <div className="course-level-summary">
-            <span className="level-pill-label">Course level</span>
-            <strong>{data.learner.level}</strong>
+            <span className="level-pill-label">{learning.mode === "practice" ? "Practice mode" : "Starting level"}</span>
+            <strong>{levelLabel}</strong>
           </div>
         </div>
       </section>

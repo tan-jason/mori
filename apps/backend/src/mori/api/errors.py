@@ -18,11 +18,16 @@ from mori.modules.identity.errors import (
     AuthenticationRequired,
     CsrfRejected,
     InvalidOAuthFlow,
+    InvalidOnboardingKey,
     InvalidPrecondition,
     InvalidReturnPath,
     OAuthProviderFailure,
+    OnboardingIdempotencyConflict,
+    OnboardingRequired,
     PreconditionRequired,
     PreferenceVersionConflict,
+    ProfileAlreadyConfirmed,
+    UnsupportedLanguagePair,
 )
 from mori.modules.sessions.errors import (
     IdempotencyConflict,
@@ -74,6 +79,21 @@ _EXPECTED_ERRORS: dict[type[Exception], ErrorDefinition] = {
     ),
     PreferenceVersionConflict: ErrorDefinition(
         412, "preference_version_conflict", "Preferences changed since they were read."
+    ),
+    InvalidOnboardingKey: ErrorDefinition(
+        400, "invalid_idempotency_key", "A valid Idempotency-Key header is required."
+    ),
+    OnboardingIdempotencyConflict: ErrorDefinition(
+        409, "idempotency_conflict", "This key was already used for another request."
+    ),
+    ProfileAlreadyConfirmed: ErrorDefinition(
+        409, "profile_already_confirmed", "This language profile is already confirmed."
+    ),
+    UnsupportedLanguagePair: ErrorDefinition(
+        409, "unsupported_language_pair", "This language course is not available."
+    ),
+    OnboardingRequired: ErrorDefinition(
+        409, "onboarding_required", "Complete your language setup before practicing."
     ),
     InvalidIdempotencyKey: ErrorDefinition(
         400, "invalid_idempotency_key", "A valid Idempotency-Key header is required."

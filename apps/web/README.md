@@ -3,12 +3,11 @@
 Responsive React foundation for Mori's learner experience. It includes the home,
 pre-session, recap, and remembered-information surfaces described in the PRD.
 
-English is the fixed base language. The mock profile defaults to Mandarin, and the
-webapp supports Spanish, French, Portuguese, Japanese, Korean, and Vietnamese. The
-active language comes from the learner's server-owned language profile. Its profile
-ID is included in query keys and gateway calls so course data stays isolated by
-target language. Changing languages belongs in a separate account workflow rather
-than an inline page control.
+New learners choose their base and target languages, starting point, tutor style, and optional
+interests in a four-step onboarding flow. The catalog shows unpublished courses as unavailable.
+The active language comes from the learner's server-owned language profile. Its profile ID is
+included in query keys and gateway calls so course data stays isolated by target language.
+Changing languages belongs in a separate account workflow rather than an inline page control.
 
 Google sign-in, application session restoration, learner account details, preference
 updates, and sign-out use the backend API. Dashboard, recap, and memory content still
@@ -28,6 +27,8 @@ The webapp reads `VITE_API_ORIGIN` from the root `.env` and defaults to
 webapp without the backend. For end-to-end identity testing, start PostgreSQL, apply
 the backend migrations, run the API, then run the webapp. See the backend README for
 the exact commands and Google OAuth configuration.
+Set `VITE_MOCK_ONBOARDING=true` together with `VITE_USE_MOCK_API=true` to preview a new
+learner's onboarding flow without Google sign-in.
 
 Quality checks:
 

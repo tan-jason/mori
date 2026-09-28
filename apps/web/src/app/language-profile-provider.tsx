@@ -1,9 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { isAuthenticationRequired } from "../api/api-error";
 import { PageErrorState, PageLoadingState } from "../components/async-state";
 import { getTargetLanguage } from "../domain/languages";
+import { isReadyLearner } from "../domain/identity";
+import type { CurrentLearner } from "../domain/identity";
+import { OnboardingPage } from "../features/onboarding/onboarding-page";
 import { useAppDependencies } from "./app-dependencies";
 import { LanguageProfileContext } from "./language-profile-context";
 import { LearnerSessionContext } from "./learner-session-context";
@@ -13,6 +16,7 @@ const currentLearnerQueryKey = ["current-learner"] as const;
 export function LanguageProfileProvider({ children }: PropsWithChildren) {
   const { gateway } = useAppDependencies();
   const queryClient = useQueryClient();
+  const location = useLocation();
   const learner = useQuery({
     queryKey: currentLearnerQueryKey,
     queryFn: ({ signal }) => gateway.getCurrentLearner(signal),
@@ -46,6 +50,22 @@ export function LanguageProfileProvider({ children }: PropsWithChildren) {
   }
 
   const currentLearner = learner.data;
+  if (!isReadyLearner(currentLearner)) {
+    if (location.pathname !== "/onboarding") {
+      return <Navigate to="/onboarding" replace />;
+    }
+    return (
+      <OnboardingPage
+        learner={currentLearner}
+        onComplete={(updatedLearner) => {
+          queryClient.setQueryData(currentLearnerQueryKey, updatedLearner);
+        }}
+      />
+    );
+  }
+  if (location.pathname === "/onboarding") {
+    return <Navigate to="/" replace />;
+  }
   const languageProfile = currentLearner.activeLanguageProfile;
   const languageValue = {
     languageProfile,
@@ -53,7 +73,7 @@ export function LanguageProfileProvider({ children }: PropsWithChildren) {
   };
   const learnerValue = {
     learner: currentLearner,
-    replaceLearner: (updatedLearner: typeof currentLearner) => {
+    replaceLearner: (updatedLearner: CurrentLearner) => {
       queryClient.setQueryData(currentLearnerQueryKey, updatedLearner);
     },
   };
