@@ -26,22 +26,37 @@ Rules:
 - Application use cases coordinate domain services and repository ports and define transaction boundaries.
 - Adapters implement ports for PostgreSQL, OpenAI, Google, Stripe, and object storage.
 - HTTP schemas and persistence entities do not become domain models by default.
-- A module may query another module through its public query interface and mutate it only through its public command interface.
+- A module may use another module's owner-provided query or command interface in the same transaction. It does not construct SQL against tables owned by that module.
 - Read-model composition may join stable projections for reads but cannot bypass commands for writes.
 - Cyclic imports between business modules fail an architecture test.
 
-Session creation may coordinate access and curriculum planning in one unit of work. Realtime control may invoke session commands. Analysis consumes an immutable session bundle and curriculum version, then invokes learning commands. Billing affects access only through the access application interface.
+Session creation may coordinate access, account, profile, curriculum, and learning queries in one unit of work. Realtime control may invoke session commands. Analysis consumes an immutable session bundle and curriculum version, then invokes learning commands. Billing affects access only through the access application interface.
 
 ## Logical modules
 
-### Identity and learner profile
+### Identity
 
-Owns Google identity linking, opaque application sessions, idempotent user provisioning, language profiles, preferences, consent versions, and account status.
+Owns Google identity linking, login attempts, opaque application sessions, and token verification. Sign-in coordinates account provisioning and intro-grant issuance through their owning modules in one transaction.
 
-- Commands: `complete_sign_in`, `update_preferences`, `record_consent`
-- Queries: `current_learner`
-- Records: `users`, `external_identities`, `oauth_login_attempts`, `auth_sessions`,
-  `language_profiles`, `learner_preferences`, `user_consents`
+- Commands: `complete_sign_in`, `logout`
+- Queries: `authenticated_user_id`
+- Records: `external_identities`, `oauth_login_attempts`, `auth_sessions`
+
+### Accounts
+
+Owns the application user, account status, account details, and account consent records. The `/me` read model composes account and active language profile data without changing their write ownership.
+
+- Commands: `create_or_update_account`, `complete_onboarding`, `record_consent`
+- Queries: `current_learner`, `account_status`
+- Records: `users`, `user_consents`
+
+### Learner profiles
+
+Owns explicit pair confirmation, a learner's language profiles, starting mode, tutor preferences, interests, and onboarding command deduplication. Assessed progress belongs to learning.
+
+- Commands: `confirm_profile`, `update_preferences`
+- Queries: `active_profile`, `profile_settings`
+- Records: `language_profiles`, `learner_preferences`, `profile_learning_settings`, `onboarding_commands`
 
 ### Access and billing
 
@@ -53,25 +68,25 @@ Owns the internal plan catalog, intro and paid grants, usage windows, reservatio
 
 The beta weekly window opens Monday at 00:00 in `America/New_York`. Store each window's exact UTC start and end. Do not implement this as a fixed UTC-05:00 offset because daylight saving transitions must follow the IANA zone.
 
-### Curriculum and planning
+### Curriculum
 
-Owns the versioned learning graph, prerequisites, evidence rules, deterministic objective selection, placement, and immutable session plans.
+Owns the published course catalog, versioned learning graph, prerequisites, and evidence rules.
 
-- Commands: `publish_curriculum`, `build_session_plan`
-- Queries: `curriculum_version`, `eligible_objectives`
-- Records: `curriculum_versions`, `curriculum_items`, `curriculum_edges`, `evidence_rules`, `session_plans`, `plan_objectives`
+- Commands: `publish_curriculum`
+- Queries: `published_pairs`, `curriculum_version`, `eligible_objectives`
+- Records: `course_catalog`, `curriculum_versions`, `curriculum_items`, `curriculum_edges`, `evidence_rules`
 
-A plan pins its curriculum version, learner snapshot, selection-rule version, and no more than three objectives. Optional model assistance may shape a theme or ordering, but cannot waive prerequisites, unlock content, or change the learner's level.
+Optional model assistance may shape a theme or ordering, but cannot waive prerequisites, unlock content, or change the learner's level.
 
 ### Session orchestration
 
-Owns the conversation state machine, ownership checks, idempotent creation, connection segments, usable-session policy, reconnect behavior, end reason, transcript watermark, and analysis handoff.
+Owns deterministic session planning, the immutable plan, the conversation state machine, ownership checks, idempotent creation, connection segments, usable-session policy, reconnect behavior, end reason, transcript watermark, and analysis handoff.
 
-- Commands: `create_session`, `begin_connect`, `activate_call`, `request_end`, `finalize_session`
-- Queries: `session_status`, `transcript_bundle`
-- Records: `sessions`, `session_connections`, `session_turns`
+- Commands: `create_session`, `build_session_plan`, `begin_connect`, `activate_call`, `request_end`, `finalize_session`
+- Queries: `session_status`, `transcript_bundle`, `plan_preview`
+- Records: `sessions`, `session_plans`, `session_plan_objectives`, `session_connections`, `session_turns`
 
-Session orchestration is the only module allowed to transition session state. Realtime control supplies normalized facts through session commands instead of updating the session row directly.
+Planning uses pinned account, profile, learning snapshot, and curriculum inputs. A plan pins their relevant versions and no more than three objectives. Session orchestration is the only module allowed to transition session state. Realtime control supplies normalized facts through session commands instead of updating the session row directly.
 
 ### Realtime control
 
@@ -116,10 +131,12 @@ Pydantic HTTP models generate OpenAPI. The generated TypeScript client and runti
 
 | Domain | Purpose | Primary records |
 | --- | --- | --- |
-| Identity | Account, authentication, language profile, preferences, and consent | `users`, `external_identities`, `oauth_login_attempts`, `auth_sessions`, `language_profiles`, `learner_preferences`, `user_consents` |
+| Identity | External identity and application sessions | `external_identities`, `oauth_login_attempts`, `auth_sessions` |
+| Account | User status, details, and consent | `users`, `user_consents` |
+| Learner profile | Confirmed pair, starting mode, preferences, and interests | `language_profiles`, `learner_preferences`, `profile_learning_settings`, `onboarding_commands` |
 | Access | Versioned plans, capabilities, subscriptions, grants, reservations, usage, and provider deduplication | `plan_versions`, `entitlement_rules`, `subscriptions`, `grants`, `usage_reservations`, `usage_events`, `webhook_events` |
-| Live | Session state, immutable plan, connection history, ordered turns, provider facts, leases, and consented audio metadata | `sessions`, `session_connections`, `session_plans`, `plan_objectives`, `session_turns`, `realtime_events`, `supervisor_leases`, `audio_consents`, `session_audio_assets` |
-| Curriculum | Published competency graph, dependencies, and evidence policy | `curriculum_versions`, `curriculum_items`, `curriculum_edges`, `evidence_rules` |
+| Live | Session state, immutable plan, connection history, ordered turns, provider facts, leases, and consented audio metadata | `sessions`, `session_connections`, `session_plans`, `session_plan_objectives`, `session_turns`, `realtime_events`, `supervisor_leases`, `audio_consents`, `session_audio_assets` |
+| Curriculum | Published pair catalog, competency graph, dependencies, and evidence policy | `course_catalog`, `curriculum_versions`, `curriculum_items`, `curriculum_edges`, `evidence_rules` |
 | Learning | Append-only evidence, derived item state, assessments, and immutable snapshots | `learning_evidence`, `learner_item_states`, `level_assessments`, `learner_state_snapshots` |
 | Analysis and privacy | Versioned runs, learner-facing output, bounded memory, retention, deletion, review, safety, and audit | `analysis_runs`, `recaps`, `memories`, `conversation_hooks`, `retention_policies`, `privacy_jobs`, `export_manifests`, `snapshot_reviews`, `safety_reports`, `audit_events` |
 

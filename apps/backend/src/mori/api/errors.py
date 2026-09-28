@@ -13,15 +13,17 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException
 
+from mori.modules.accounts.errors import AccountUnavailable
 from mori.modules.identity.errors import (
-    AccountUnavailable,
     AuthenticationRequired,
     CsrfRejected,
     InvalidOAuthFlow,
-    InvalidOnboardingKey,
-    InvalidPrecondition,
     InvalidReturnPath,
     OAuthProviderFailure,
+)
+from mori.modules.learner_profiles.errors import (
+    InvalidOnboardingKey,
+    InvalidPrecondition,
     OnboardingIdempotencyConflict,
     OnboardingRequired,
     PreconditionRequired,

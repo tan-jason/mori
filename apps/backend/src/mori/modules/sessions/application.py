@@ -13,8 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from mori.modules.access.application import AccessCommands
 from mori.modules.access.usage_models import UsageReservationModel
-from mori.modules.identity.errors import OnboardingRequired, UnsupportedLanguagePair
-from mori.modules.identity.models import CourseCatalogModel, LanguageProfileModel, UserModel
+from mori.modules.accounts.domain import UserStatus
+from mori.modules.accounts.persistence import SqlAlchemyAccountStore
+from mori.modules.curriculum.persistence import SqlAlchemyCourseCatalogStore
+from mori.modules.learner_profiles.errors import OnboardingRequired, UnsupportedLanguagePair
+from mori.modules.learner_profiles.persistence import SqlAlchemyLearnerProfileStore
 from mori.modules.sessions.errors import (
     IdempotencyConflict,
     InvalidIdempotencyKey,
@@ -57,12 +60,10 @@ class SessionService:
         async with self._session_maker() as db, db.begin():
             # The account lock serializes duplicate keys and competing attempts
             # to reserve the same final grant, including across API processes.
-            user = await db.scalar(
-                select(UserModel).where(UserModel.id == user_id).with_for_update()
-            )
-            if user is None or user.status != "active":
+            account = await SqlAlchemyAccountStore(db).lock_for_session(user_id)
+            if account is None or account.status != UserStatus.ACTIVE:
                 raise VoiceEntitlementUnavailable
-            if user.onboarding_completed_at is None:
+            if account.onboarding_completed_at is None:
                 raise OnboardingRequired
             now = datetime.now(UTC)
 
@@ -77,28 +78,13 @@ class SessionService:
                     raise IdempotencyConflict
                 return await self._view(db, existing), False
 
-            profile = await db.scalar(
-                select(LanguageProfileModel).where(
-                    LanguageProfileModel.id == language_profile_id,
-                    LanguageProfileModel.user_id == user_id,
-                    LanguageProfileModel.status == "active",
-                )
+            pair = await SqlAlchemyLearnerProfileStore(db).active_pair(
+                user_id=user_id, profile_id=language_profile_id
             )
-            if profile is None:
+            if pair is None:
                 raise OnboardingRequired
-            if profile.language_selection_confirmed_at is None:
-                raise OnboardingRequired
-            pair = await db.scalar(
-                select(CourseCatalogModel).where(
-                    CourseCatalogModel.base_language_id == profile.base_language_id,
-                    CourseCatalogModel.target_language_id == profile.target_language_id,
-                )
-            )
-            if (
-                pair is None or pair.status != "published"
-                or pair.active_curriculum_version is None
-                or pair.pair_policy_version is None
-                or pair.voice_policy_version is None
+            if not await SqlAlchemyCourseCatalogStore(db).is_available(
+                base_language_id=pair[0], target_language_id=pair[1]
             ):
                 raise UnsupportedLanguagePair
 
@@ -114,8 +100,12 @@ class SessionService:
                 if previous.state != "planned":
                     raise VoiceEntitlementUnavailable
                 await self._transition(
-                    db, previous.id, expected="planned", version=previous.row_version,
-                    target="setup_failed", now=now,
+                    db,
+                    previous.id,
+                    expected="planned",
+                    version=previous.row_version,
+                    target="setup_failed",
+                    now=now,
                 )
                 await AccessCommands.release_expired(db, reservation_id=held.id, now=now)
 
@@ -195,7 +185,12 @@ class SessionService:
 
     @staticmethod
     async def _transition(
-        db: AsyncSession, session_id: UUID, *, expected: str, version: int, target: str,
+        db: AsyncSession,
+        session_id: UUID,
+        *,
+        expected: str,
+        version: int,
+        target: str,
         now: datetime,
     ) -> None:
         result = await db.execute(

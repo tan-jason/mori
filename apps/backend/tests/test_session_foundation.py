@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 
-from mori.modules.identity.domain import (
+from mori.modules.learner_profiles.domain import (
     CorrectionPreference,
     CreateProfile,
     StartingChoice,
@@ -185,7 +185,7 @@ async def test_concurrent_keys_cannot_reserve_the_last_grant(
     identity = app.state.identity_service
     started = await identity.start_google_sign_in(return_path="/")
     signed_in = await identity.complete_google_sign_in(state=started.state, code="valid-code")
-    await identity.create_profile(
+    await app.state.learner_profile_service.create_profile(
         session_token=signed_in.session_token,
         idempotency_key="profile-setup-123",
         command=CreateProfile(

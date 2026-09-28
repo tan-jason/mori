@@ -21,13 +21,17 @@ from mori.api.errors import ApiErrorResponse, install_exception_handlers
 from mori.api.middleware import security_headers_middleware
 from mori.config import Environment, Settings
 from mori.db import create_engine, create_session_maker
+from mori.modules.accounts.application import AccountService
+from mori.modules.accounts.routes import router as account_router
 from mori.modules.identity.application import IdentityService
 from mori.modules.identity.google import GoogleOIDC
-from mori.modules.identity.persistence import SqlAlchemyIdentityUnitOfWorkFactory
 from mori.modules.identity.ports import GoogleOIDCClient
 from mori.modules.identity.routes import router as identity_router
+from mori.modules.learner_profiles.application import LearnerProfileService
+from mori.modules.learner_profiles.routes import router as learner_profile_router
 from mori.modules.sessions.application import SessionService
 from mori.modules.sessions.routes import router as session_router
+from mori.persistence.uow import SqlAlchemyUnitOfWorkFactory
 
 
 def _configure_logging() -> None:
@@ -59,13 +63,14 @@ def create_app(
     runtime_settings = settings or Settings()  # type: ignore[call-arg]
     runtime_engine = engine or create_engine(runtime_settings.database_url)
     session_maker = create_session_maker(runtime_engine)
+    unit_of_work_factory = SqlAlchemyUnitOfWorkFactory(session_maker)
     google_client = google or GoogleOIDC(
         client_id=runtime_settings.google_client_id,
         client_secret=runtime_settings.google_client_secret.get_secret_value(),
         redirect_uri=runtime_settings.google_redirect_uri,
     )
     service = IdentityService(
-        unit_of_work_factory=SqlAlchemyIdentityUnitOfWorkFactory(session_maker),
+        unit_of_work_factory=unit_of_work_factory,
         google=google_client,
         session_key=runtime_settings.session_signing_key.get_secret_value(),
         oauth_state_key=runtime_settings.oauth_state_key.get_secret_value(),
@@ -90,6 +95,12 @@ def create_app(
     app.state.database_engine = runtime_engine
     app.state.session_maker = session_maker
     app.state.identity_service = service
+    app.state.account_service = AccountService(
+        unit_of_work_factory=unit_of_work_factory, identity=service
+    )
+    app.state.learner_profile_service = LearnerProfileService(
+        unit_of_work_factory=unit_of_work_factory, identity=service
+    )
     app.state.session_service = SessionService(
         session_maker=session_maker,
     )
@@ -112,6 +123,8 @@ def create_app(
         "default": {"model": ApiErrorResponse, "description": "Mori error envelope"}
     }
     app.include_router(identity_router, responses=error_contract)
+    app.include_router(account_router, responses=error_contract)
+    app.include_router(learner_profile_router, responses=error_contract)
     app.include_router(session_router, responses=error_contract)
 
     @app.get("/health", tags=["operations"])

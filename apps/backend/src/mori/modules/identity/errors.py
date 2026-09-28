@@ -1,4 +1,4 @@
-"""Expected identity use-case failures."""
+"""Authentication failures."""
 
 
 class IdentityError(Exception):
@@ -6,10 +6,6 @@ class IdentityError(Exception):
 
 
 class AuthenticationRequired(IdentityError):
-    pass
-
-
-class AccountUnavailable(IdentityError):
     pass
 
 
@@ -25,37 +21,5 @@ class InvalidReturnPath(IdentityError):
     pass
 
 
-class PreferenceVersionConflict(IdentityError):
-    pass
-
-
 class CsrfRejected(IdentityError):
-    pass
-
-
-class PreconditionRequired(IdentityError):
-    pass
-
-
-class InvalidPrecondition(IdentityError):
-    pass
-
-
-class UnsupportedLanguagePair(IdentityError):
-    pass
-
-
-class OnboardingRequired(IdentityError):
-    pass
-
-
-class OnboardingIdempotencyConflict(IdentityError):
-    pass
-
-
-class ProfileAlreadyConfirmed(IdentityError):
-    pass
-
-
-class InvalidOnboardingKey(IdentityError):
     pass

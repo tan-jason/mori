@@ -26,9 +26,10 @@ Migration rules:
 
 | Module | Receives | Owns and returns | May not decide |
 | --- | --- | --- | --- |
-| Identity/profile | Google identity, onboarding command, preference edits | Confirmed language profile, practice mode, self-reported level, preferences, optional interests, versioned query | Curriculum eligibility or assessed mastery |
-| Curriculum/planning | Published course, planning context, session setup | Valid objective selection, daily topic, immutable plan and preview | Entitlement, live turn ingestion, level promotion |
-| Session orchestration | Authenticated learner, idempotency key, plan, connection facts | Session state, reservation coordination, plan attachment, final watermark | Prompt wording or evidence extraction |
+| Identity/account | Google identity, account details, application session | Authenticated account ID, account status, composed `/me` query | Curriculum eligibility or assessed mastery |
+| Learner profile | Onboarding command, preference edits | Confirmed language profile, practice mode, self-reported level, preferences, optional interests | Assessed mastery |
+| Curriculum | Course publication and content rules | Published pair and versioned eligible content | Entitlement, live turns, session state |
+| Session orchestration and planning | Authenticated learner, profile, learning snapshot, curriculum, idempotency key, connection facts | Valid objective selection, immutable plan and preview, session state, reservation coordination, final watermark | Prompt wording, evidence extraction, level promotion |
 | Prompt compiler | Pinned plan, profile languages, selected safe context, policy versions | Server-only instructions and voice configuration | Durable learner state changes |
 | Realtime supervisor | Provider sideband events, call identity, plan/call metadata | Normalized ordered turns, leases, time enforcement, interruption and finalization | Curriculum eligibility or memory writes |
 | Analysis/learning | Final session bundle, transcript turns, curriculum and rule versions, current consent | Validated evidence, deterministic item state, level assessment, recap, snapshot, permitted memories | Entitlement or unvalidated model-owned writes |
