@@ -12,7 +12,7 @@ from mori.modules.learner_profiles.schemas import (
     LearningSettingsResponse,
     PreferencesResponse,
 )
-from mori.modules.users.domain import CurrentLearner, UserStatus
+from mori.modules.user.domain import CurrentLearner, UserStatus
 
 
 class UserResponse(ApiModel):

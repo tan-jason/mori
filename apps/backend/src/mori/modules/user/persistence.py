@@ -1,4 +1,4 @@
-"""PostgreSQL adapter for application users."""
+"""PostgreSQL adapter for the user module."""
 
 from __future__ import annotations
 
@@ -8,9 +8,9 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mori.modules.users.domain import UserStatus, UserView
-from mori.modules.users.errors import AccountUnavailable
-from mori.modules.users.models import UserModel
+from mori.modules.user.domain import UserStatus, UserView
+from mori.modules.user.errors import AccountUnavailable
+from mori.modules.user.models import UserModel
 
 
 class SqlAlchemyUserStore:

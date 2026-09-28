@@ -8,8 +8,8 @@ from fastapi import APIRouter, Request, Response
 
 from mori.api.auth import session_token as _session_token
 from mori.modules.identity.application import IdentityService
-from mori.modules.users.application import UserService
-from mori.modules.users.schemas import MeResponse
+from mori.modules.user.application import UserService
+from mori.modules.user.schemas import MeResponse
 
 router = APIRouter()
 

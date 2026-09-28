@@ -6,12 +6,12 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from mori.modules.identity.application import IdentityService
-from mori.modules.users.domain import CurrentLearner
+from mori.modules.user.domain import CurrentLearner
 from mori.persistence.ports import UnitOfWork, UnitOfWorkFactory
 
 
 async def current_learner_for_user(unit_of_work: UnitOfWork, user_id: UUID) -> CurrentLearner:
-    user = await unit_of_work.users.active(user_id)
+    user = await unit_of_work.user.active(user_id)
     profile, preferences = await unit_of_work.profiles.current(user_id)
     return CurrentLearner(
         user_id=user.id,

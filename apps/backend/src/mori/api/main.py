@@ -29,8 +29,8 @@ from mori.modules.learner_profiles.application import LearnerProfileService
 from mori.modules.learner_profiles.routes import router as learner_profile_router
 from mori.modules.sessions.application import SessionService
 from mori.modules.sessions.routes import router as session_router
-from mori.modules.users.application import UserService
-from mori.modules.users.routes import router as user_router
+from mori.modules.user.application import UserService
+from mori.modules.user.routes import router as user_router
 from mori.persistence.uow import SqlAlchemyUnitOfWorkFactory
 
 

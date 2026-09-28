@@ -23,8 +23,8 @@ from mori.modules.sessions.errors import (
     VoiceEntitlementUnavailable,
 )
 from mori.modules.sessions.models import SessionModel, SessionPlanModel, SessionPlanObjectiveModel
-from mori.modules.users.domain import UserStatus
-from mori.modules.users.persistence import SqlAlchemyUserStore
+from mori.modules.user.domain import UserStatus
+from mori.modules.user.persistence import SqlAlchemyUserStore
 
 _KEY_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9:_-]{7,127}\Z")
 _RESERVATION_TTL = timedelta(minutes=10)

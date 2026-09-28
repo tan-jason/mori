@@ -179,7 +179,7 @@ This file is the compact decision record for the Mori backend. Update an entry i
 
 ## ADR-012: User and learner profile ownership
 
-**Decision:** Keep one modular monolith and one PostgreSQL transaction stream. Identity owns external identity and application sessions; users own user details and status; learner profiles own onboarding, language profiles, starting mode, and preferences; access owns grants. Curriculum owns published course data. Session planning and its immutable plan belong to sessions.
+**Decision:** Keep one modular monolith and one PostgreSQL transaction stream. Identity owns external identity and application sessions; the user module owns user details and status; learner profiles own onboarding, language profiles, starting mode, and preferences; access owns grants. Curriculum owns published course data. Session planning and its immutable plan belong to sessions.
 
 **Why:** Authentication, account changes, profile setup, and session planning have different rules and lifecycles. Their modules can cooperate directly and share a transaction without duplicating records or requiring independently deployed services.
 

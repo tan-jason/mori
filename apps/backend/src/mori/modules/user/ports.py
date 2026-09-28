@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from mori.modules.users.domain import UserView
+from mori.modules.user.domain import UserView
 
 
 class UserStore(Protocol):

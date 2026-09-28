@@ -14,7 +14,7 @@ from mori.modules.curriculum import models as curriculum_models  # noqa: F401
 from mori.modules.identity import models as identity_models  # noqa: F401
 from mori.modules.learner_profiles import models as learner_profile_models  # noqa: F401
 from mori.modules.sessions import models as session_models  # noqa: F401
-from mori.modules.users import models as user_models  # noqa: F401
+from mori.modules.user import models as user_models  # noqa: F401
 from mori.persistence.base import Base
 
 config = context.config

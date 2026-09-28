@@ -23,7 +23,7 @@ from mori.modules.learner_profiles.schemas import (
     LanguagePairsResponse,
     PreferencePatch,
 )
-from mori.modules.users.schemas import MeResponse
+from mori.modules.user.schemas import MeResponse
 
 router = APIRouter()
 _ETAG_PATTERN = re.compile(r'^"([1-9][0-9]*)"$')

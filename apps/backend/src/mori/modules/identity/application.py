@@ -103,7 +103,7 @@ class IdentityService:
         async with self._unit_of_work_factory() as unit_of_work:
             await unit_of_work.identity.lock_google_subject(claims.subject)
             existing_user_id = await unit_of_work.identity.google_user_id(claims.subject)
-            user_id = await unit_of_work.users.create_or_update(
+            user_id = await unit_of_work.user.create_or_update(
                 user_id=existing_user_id,
                 email=claims.email,
                 display_name=claims.display_name,

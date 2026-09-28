@@ -1,6 +1,6 @@
 # Mori backend development
 
-This directory contains the Python 3.13 backend package. Authentication, users, learner
+This directory contains the Python 3.13 backend package. Identity, user, learner
 profiles, curriculum catalog, access, and sessions are modules in one FastAPI application.
 Sign-in links Google identity, updates the application account, and issues the intro grant in
 one transaction. Profile onboarding confirms a published pair and preferences separately.

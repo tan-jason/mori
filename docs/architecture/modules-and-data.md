@@ -42,7 +42,7 @@ Owns Google identity linking, login attempts, opaque application sessions, and t
 - Queries: `authenticated_user_id`
 - Records: `external_identities`, `oauth_login_attempts`, `auth_sessions`
 
-### Users
+### User
 
 Owns the application user, status, details, and consent records. The `/me` read model composes user and active language profile data without changing their write ownership.
 

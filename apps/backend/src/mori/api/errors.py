@@ -36,7 +36,7 @@ from mori.modules.sessions.errors import (
     SessionNotFound,
     VoiceEntitlementUnavailable,
 )
-from mori.modules.users.errors import AccountUnavailable
+from mori.modules.user.errors import AccountUnavailable
 
 logger = structlog.get_logger(__name__)
 

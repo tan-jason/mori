@@ -149,7 +149,7 @@ apps/
       runtime/             # Supervisor and worker entry points
       modules/
         identity/
-        users/
+        user/
         learner_profiles/
         access/
         curriculum/
