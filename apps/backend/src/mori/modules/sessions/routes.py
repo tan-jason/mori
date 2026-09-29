@@ -35,6 +35,8 @@ async def create_session(
         user_id=learner.user_id,
         language_profile_id=body.language_profile_id,
         idempotency_key=idempotency_key,
+        topic=body.topic,
+        requested_words=body.requested_words,
     )
     response.status_code = 201 if created else 200
     response.headers["Location"] = f"/api/v1/sessions/{result.id}"

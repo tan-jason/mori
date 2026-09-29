@@ -9,6 +9,7 @@ from uuid import UUID
 from mori.modules.learner_profiles.domain import (
     CreateProfile,
     LanguageProfileView,
+    PlanningProfile,
     PreferenceChanges,
     PreferencesView,
 )
@@ -42,4 +43,4 @@ class LearnerProfileStore(Protocol):
         now: datetime,
     ) -> None: ...
 
-    async def active_pair(self, *, user_id: UUID, profile_id: UUID) -> tuple[str, str] | None: ...
+    async def for_planning(self, *, user_id: UUID, profile_id: UUID) -> PlanningProfile | None: ...

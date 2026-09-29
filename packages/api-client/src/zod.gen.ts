@@ -31,7 +31,9 @@ export const zCorrectionPreference = z.enum([
  * CreateSessionRequest
  */
 export const zCreateSessionRequest = z.object({
-    languageProfileId: z.uuid()
+    languageProfileId: z.uuid(),
+    requestedWords: z.array(z.string().min(1).max(48)).max(8).optional().default([]),
+    topic: z.string().max(160).nullish()
 });
 
 /**
@@ -71,6 +73,13 @@ export const zOnboardingResponse = z.object({
 });
 
 /**
+ * PlanPreviewResponse
+ */
+export const zPlanPreviewResponse = z.object({
+    objectives: z.array(z.string())
+});
+
+/**
  * SessionResponse
  */
 export const zSessionResponse = z.object({
@@ -78,7 +87,9 @@ export const zSessionResponse = z.object({
     connectedMs: z.int(),
     createdAt: z.iso.datetime(),
     id: z.uuid(),
+    mode: z.string(),
     objective: z.string(),
+    planPreview: zPlanPreviewResponse,
     reservationExpiresAt: z.iso.datetime(),
     rowVersion: z.int(),
     state: z.string()

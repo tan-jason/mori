@@ -33,6 +33,8 @@ from mori.modules.learner_profiles.errors import (
 from mori.modules.sessions.errors import (
     IdempotencyConflict,
     InvalidIdempotencyKey,
+    InvalidSessionSetup,
+    PlanUnavailable,
     SessionNotFound,
     VoiceEntitlementUnavailable,
 )
@@ -107,6 +109,10 @@ _EXPECTED_ERRORS: dict[type[Exception], ErrorDefinition] = {
         409, "voice_entitlement_unavailable", "No voice session is available right now."
     ),
     SessionNotFound: ErrorDefinition(404, "session_not_found", "The session was not found."),
+    PlanUnavailable: ErrorDefinition(409, "plan_unavailable", "A session plan is not available."),
+    InvalidSessionSetup: ErrorDefinition(
+        422, "session_setup_invalid", "The session setup is invalid."
+    ),
 }
 
 
@@ -137,6 +143,11 @@ def install_exception_handlers(app: FastAPI) -> None:
         request: Request,
         _error: RequestValidationError,
     ) -> JSONResponse:
+        if request.url.path == "/api/v1/sessions" and request.method == "POST":
+            return error_response(
+                request,
+                ErrorDefinition(422, "session_setup_invalid", "The session setup is invalid."),
+            )
         return error_response(
             request,
             ErrorDefinition(422, "invalid_request", "The request is invalid."),

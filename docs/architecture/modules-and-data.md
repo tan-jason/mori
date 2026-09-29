@@ -55,7 +55,7 @@ Owns the application user, status, details, and consent records. The `/me` read 
 Owns explicit pair confirmation, a learner's language profiles, starting mode, tutor preferences, interests, and onboarding command deduplication. Assessed progress belongs to learning.
 
 - Commands: `confirm_profile`, `update_preferences`
-- Queries: `active_profile`, `profile_settings`
+- Queries: `active_profile`, `profile_settings`, locked `for_planning` projection
 - Records: `language_profiles`, `learner_preferences`, `profile_learning_settings`, `onboarding_commands`
 
 ### Access and billing
@@ -70,11 +70,10 @@ The beta weekly window opens Monday at 00:00 in `America/New_York`. Store each w
 
 ### Curriculum
 
-Owns the published course catalog, versioned learning graph, prerequisites, and evidence rules.
+Owns the versioned course definitions in Python code, learning graph, prerequisites, and evidence rules.
 
-- Commands: `publish_curriculum`
 - Queries: `published_pairs`, `curriculum_version`, `eligible_objectives`
-- Records: `course_catalog`, `curriculum_versions`, `curriculum_items`, `curriculum_edges`, `evidence_rules`
+- Source: versioned `mori.modules.curriculum.catalog` definitions
 
 Optional model assistance may shape a theme or ordering, but cannot waive prerequisites, unlock content, or change the learner's level.
 
@@ -136,7 +135,7 @@ Pydantic HTTP models generate OpenAPI. The generated TypeScript client and runti
 | Learner profile | Confirmed pair, starting mode, preferences, and interests | `language_profiles`, `learner_preferences`, `profile_learning_settings`, `onboarding_commands` |
 | Access | Versioned plans, capabilities, subscriptions, grants, reservations, usage, and provider deduplication | `plan_versions`, `entitlement_rules`, `subscriptions`, `grants`, `usage_reservations`, `usage_events`, `webhook_events` |
 | Live | Session state, immutable plan, connection history, ordered turns, provider facts, leases, and consented audio metadata | `sessions`, `session_connections`, `session_plans`, `session_plan_objectives`, `session_turns`, `realtime_events`, `supervisor_leases`, `audio_consents`, `session_audio_assets` |
-| Curriculum | Published pair catalog, competency graph, dependencies, and evidence policy | `course_catalog`, `curriculum_versions`, `curriculum_items`, `curriculum_edges`, `evidence_rules` |
+| Curriculum | Published pair catalog, competency graph, dependencies, and evidence policy | Versioned Python definitions in `mori.modules.curriculum.catalog` |
 | Learning | Append-only evidence, derived item state, assessments, and immutable snapshots | `learning_evidence`, `learner_item_states`, `level_assessments`, `learner_state_snapshots` |
 | Analysis and privacy | Versioned runs, learner-facing output, bounded memory, retention, deletion, review, safety, and audit | `analysis_runs`, `recaps`, `memories`, `conversation_hooks`, `retention_policies`, `privacy_jobs`, `export_manifests`, `snapshot_reviews`, `safety_reports`, `audit_events` |
 

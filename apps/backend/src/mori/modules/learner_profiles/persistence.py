@@ -14,6 +14,7 @@ from mori.modules.learner_profiles.domain import (
     LanguageProfileStatus,
     LanguageProfileView,
     LearningMode,
+    PlanningProfile,
     PreferenceChanges,
     PreferencesView,
     StartingChoice,
@@ -244,15 +245,43 @@ class SqlAlchemyLearnerProfileStore:
         preferences.updated_at = now
         await self._session.flush()
 
-    async def active_pair(self, *, user_id: UUID, profile_id: UUID) -> tuple[str, str] | None:
-        profile = await self._session.scalar(
-            select(LanguageProfileModel).where(
-                LanguageProfileModel.id == profile_id,
-                LanguageProfileModel.user_id == user_id,
-                LanguageProfileModel.status == LanguageProfileStatus.ACTIVE.value,
-                LanguageProfileModel.language_selection_confirmed_at.is_not(None),
+    async def for_planning(self, *, user_id: UUID, profile_id: UUID) -> PlanningProfile | None:
+        row = (
+            await self._session.execute(
+                select(LanguageProfileModel, LearnerPreferenceModel, ProfileLearningSettingsModel)
+                .join(
+                    LearnerPreferenceModel,
+                    LearnerPreferenceModel.language_profile_id == LanguageProfileModel.id,
+                )
+                .join(
+                    ProfileLearningSettingsModel,
+                    ProfileLearningSettingsModel.language_profile_id == LanguageProfileModel.id,
+                )
+                .where(
+                    LanguageProfileModel.id == profile_id,
+                    LanguageProfileModel.user_id == user_id,
+                    LanguageProfileModel.status == LanguageProfileStatus.ACTIVE.value,
+                    LanguageProfileModel.language_selection_confirmed_at.is_not(None),
+                )
+                .with_for_update(
+                    of=(LanguageProfileModel, LearnerPreferenceModel, ProfileLearningSettingsModel)
+                )
             )
-        )
-        if profile is None:
+        ).one_or_none()
+        if row is None:
             return None
-        return profile.base_language_id, profile.target_language_id
+        profile, preferences, settings = row
+        return PlanningProfile(
+            id=profile.id,
+            base_language_id=profile.base_language_id,
+            target_language_id=profile.target_language_id,
+            mode=LearningMode(settings.mode),
+            provisional_level=(
+                StartingChoice(settings.provisional_level)
+                if settings.provisional_level is not None
+                else None
+            ),
+            profile_version=profile.version,
+            preference_version=preferences.version,
+            settings_version=settings.version,
+        )

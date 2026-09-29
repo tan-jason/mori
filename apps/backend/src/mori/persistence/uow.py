@@ -7,7 +7,7 @@ from types import TracebackType
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncSessionTransaction, async_sessionmaker
 
 from mori.modules.access.persistence import SqlAlchemyAccessStore
-from mori.modules.curriculum.persistence import SqlAlchemyCourseCatalogStore
+from mori.modules.curriculum.catalog import CodeCourseCatalog
 from mori.modules.identity.persistence import SqlAlchemyIdentityStore
 from mori.modules.learner_profiles.persistence import SqlAlchemyLearnerProfileStore
 from mori.modules.user.persistence import SqlAlchemyUserStore
@@ -21,7 +21,7 @@ class SqlAlchemyUnitOfWork:
         self._identity: SqlAlchemyIdentityStore | None = None
         self._user: SqlAlchemyUserStore | None = None
         self._profiles: SqlAlchemyLearnerProfileStore | None = None
-        self._curriculum: SqlAlchemyCourseCatalogStore | None = None
+        self._curriculum: CodeCourseCatalog | None = None
         self._access: SqlAlchemyAccessStore | None = None
 
     @property
@@ -43,7 +43,7 @@ class SqlAlchemyUnitOfWork:
         return self._profiles
 
     @property
-    def curriculum(self) -> SqlAlchemyCourseCatalogStore:
+    def curriculum(self) -> CodeCourseCatalog:
         if self._curriculum is None:
             raise RuntimeError("unit of work has not been entered")
         return self._curriculum
@@ -60,7 +60,7 @@ class SqlAlchemyUnitOfWork:
         self._identity = SqlAlchemyIdentityStore(self._session)
         self._user = SqlAlchemyUserStore(self._session)
         self._profiles = SqlAlchemyLearnerProfileStore(self._session)
-        self._curriculum = SqlAlchemyCourseCatalogStore(self._session)
+        self._curriculum = CodeCourseCatalog()
         self._access = SqlAlchemyAccessStore(self._session)
         return self
 

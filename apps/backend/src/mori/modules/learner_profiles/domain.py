@@ -63,6 +63,18 @@ class PreferencesView:
 
 
 @dataclass(frozen=True, slots=True)
+class PlanningProfile:
+    id: UUID
+    base_language_id: str
+    target_language_id: str
+    mode: LearningMode
+    provisional_level: StartingChoice | None
+    profile_version: int
+    preference_version: int
+    settings_version: int
+
+
+@dataclass(frozen=True, slots=True)
 class PreferenceChanges:
     correction_preference: CorrectionPreference | None = None
     tutor_pace: TutorPace | None = None

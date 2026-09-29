@@ -1,8 +1,6 @@
 export type LearningLevel =
   | "Beginner"
-  | "Learning Beginner"
   | "Intermediate"
-  | "Conversational"
   | "Advanced"
   | "Fluent";
 

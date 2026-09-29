@@ -101,6 +101,29 @@
             "format": "uuid",
             "title": "Languageprofileid",
             "type": "string"
+          },
+          "requestedWords": {
+            "default": [],
+            "items": {
+              "maxLength": 48,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Requestedwords",
+            "type": "array"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
           }
         },
         "required": [
@@ -324,6 +347,22 @@
         "title": "OnboardingResponse",
         "type": "object"
       },
+      "PlanPreviewResponse": {
+        "properties": {
+          "objectives": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Objectives",
+            "type": "array"
+          }
+        },
+        "required": [
+          "objectives"
+        ],
+        "title": "PlanPreviewResponse",
+        "type": "object"
+      },
       "PreferencePatch": {
         "additionalProperties": false,
         "properties": {
@@ -411,9 +450,16 @@
             "title": "Id",
             "type": "string"
           },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
           "objective": {
             "title": "Objective",
             "type": "string"
+          },
+          "planPreview": {
+            "$ref": "#/components/schemas/PlanPreviewResponse"
           },
           "reservationExpiresAt": {
             "format": "date-time",
@@ -437,6 +483,8 @@
           "connectedMs",
           "reservationExpiresAt",
           "objective",
+          "mode",
+          "planPreview",
           "createdAt"
         ],
         "title": "SessionResponse",

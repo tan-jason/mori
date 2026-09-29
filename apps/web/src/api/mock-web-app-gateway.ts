@@ -453,7 +453,7 @@ export function createMockWebAppGateway(
       return {
         learner: {
           displayName: "Jason",
-          level: "Learning Beginner",
+          level: "Beginner",
           levelDescription:
             "You can handle short, familiar exchanges with a little support.",
         },
