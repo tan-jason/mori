@@ -101,12 +101,14 @@ Verification:
 
 **Objective:** Prove one real voice session can start, produce durable turns, and end safely under server control.
 
+The initial published English-to-Mandarin curriculum and deterministic `learning_plan_v1` session plans were implemented ahead of this milestone. M2 uses those pinned plans during voice bootstrap; it does not create another placeholder plan shape. The session setup API accepts bounded topic and requested-word inputs, while the browser setup flow remains for the live slice. The initial evidence rules remain disabled until progression thresholds are approved.
+
 Use a temporary two-minute cap in non-production environments to accelerate testing. The domain policy remains configurable and the production target remains 20 minutes.
 
 Deliverables:
 
 - Implement intro-grant reservation, consumption, release, expiry, and idempotent session creation.
-- Persist a deterministic placeholder session plan with pinned versions.
+- Read the existing deterministic, pinned session plan during voice bootstrap.
 - Implement the session state machine and connection segments.
 - Add the SDP proxy endpoint and OpenAI Realtime adapter.
 - Persist provider call ID and absolute server deadline before activation is complete.
@@ -158,8 +160,8 @@ Verification:
 
 Deliverables:
 
-- Publish the initial versioned curriculum graph, prerequisites, evidence rules, placement, and promotion gates.
-- Replace placeholder planning with deterministic objective selection and immutable session plans.
+- Extend the published curriculum with evaluated promotion gates and production content.
+- Connect committed snapshots, due items, and repairs to the deterministic selector; preserve legacy plan reads.
 - Complete reconnect behavior using persisted connected segments and the server timer.
 - Add Basic weekly windows, two-session allowance, access decisions, and daylight saving transition coverage.
 - Integrate Stripe checkout and signed lifecycle webhooks with an internal plan projection.
@@ -244,7 +246,7 @@ This lane owns learning correctness. It publishes pinned session bundles and exp
 - Keep Node 22.13 or newer and npm 10 for the existing web application.
 - Install Docker Desktop or another Docker-compatible runtime for PostgreSQL and Testcontainers.
 - Approve the polyglot monorepo with one uv lockfile and the existing npm lockfile.
-- Provide committed seed data for one published curriculum version.
+- Provide a versioned Python definition for one published curriculum.
 
 ### OpenAI
 
@@ -277,7 +279,7 @@ This lane owns learning correctness. It publishes pinned session bundles and exp
 
 ### Product and operations
 
-- Provide the first published curriculum graph and promotion rules as versioned source data.
+- Provide the first published curriculum graph and promotion rules as versioned Python source definitions.
 - Create a gold transcript evaluation set across all four levels and verify live-call transport. Add consented retained-audio evaluation only before pronunciation-derived progress or acoustic-quality claims are enabled.
 - Approve memory retention, transcript evaluator thresholds, and rollback policy. Approve audio consent copy and retention before storing learner audio.
 - Select the OpenTelemetry backend, alert destinations, and incident owner.

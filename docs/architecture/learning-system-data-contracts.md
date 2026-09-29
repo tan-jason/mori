@@ -29,13 +29,9 @@ erDiagram
     language_profiles ||--o{ memories : remembers
     memories ||--o{ conversation_hooks : supports
     language_profiles ||--o{ memory_suppressions : suppresses
-    course_catalog ||--o{ curriculum_versions : publishes
-    curriculum_versions ||--o{ curriculum_items : contains
-    curriculum_versions ||--o{ curriculum_edges : orders
-    curriculum_versions ||--o{ evidence_rules : evaluates
 ```
 
-Existing `users`, `language_profiles`, `learner_preferences`, `sessions`, `session_plans`, and `session_plan_objectives` are extended. The other records are new. A profile belongs to exactly one base/target pair; a session pins exactly one profile and course version. Profile changes never transfer evidence or memories to another pair.
+Existing `users`, `language_profiles`, `learner_preferences`, `sessions`, `session_plans`, and `session_plan_objectives` are extended. The other records are new. Shared course definitions are versioned Python code, outside the relational model. A profile belongs to exactly one base/target pair; a session pins exactly one profile and course version. Profile changes never transfer evidence or memories to another pair.
 
 ## 2. Shared values and ownership
 
@@ -80,40 +76,31 @@ type ProfileLearningSettings = { // new table: profile_learning_settings
   version: number; createdAt: Instant; updatedAt: Instant;
 };
 
-type CourseCatalog = { // new table: course_catalog
-  id: UUID; baseLanguageId: string; targetLanguageId: string;
-  status: "draft" | "published" | "retired";
-  activeCurriculumVersionId?: UUID; pairPolicyVersion?: string;
-  voicePolicyVersion?: string; publishedAt?: Instant;
+type CourseDefinition = { // versioned Python source: mori.modules.curriculum.catalog
+  baseLanguageId: string; targetLanguageId: string;
+  curriculumVersion: string; pairPolicyVersion: string; voicePolicyVersion: string;
+  pairPolicy: string; voicePolicy: string;
+  items: CurriculumItem[];
 };
 
-type CurriculumVersion = { // new table: curriculum_versions
-  id: UUID; courseCatalogId: UUID; version: string;
-  status: "draft" | "published" | "retired"; publishedAt?: Instant;
-  contentDigest: string;
-};
-
-type CurriculumItem = { // new table: curriculum_items
-  id: UUID; curriculumVersionId: UUID; itemKey: string;
-  kind: "vocabulary" | "grammar" | "conversation" | "pronunciation";
+type CurriculumItem = { // versioned Python source
+  key: string; kind: "vocabulary" | "grammar" | "conversation" | "pronunciation";
+  purpose: "diagnostic" | "skill";
   level: AssessedLevel; learnerLabel: string; targetLanguageContent: string;
-  selectionWeight: number; enabled: boolean;
+  selectionWeight: number; topicTags: string[]; wordTags: string[];
+  prerequisiteKeys: string[]; enabled: boolean;
 };
 
-type CurriculumEdge = { // new table: curriculum_edges
-  curriculumVersionId: UUID; prerequisiteItemId: UUID; dependentItemId: UUID;
-  kind: "requires";
-};
-
-type EvidenceRule = { // new table: evidence_rules
-  id: UUID; curriculumVersionId: UUID; itemId: UUID;
+type EvidenceRule = { // versioned Python source
   ruleVersion: string; evidenceKind: "use" | "comprehension" | "repair";
   minimumDistinctTurns: number; confidenceThreshold: number;
-  masteryThreshold: number; enabled: boolean;
+  masteryThreshold: number; requirement: string; enabled: boolean;
 };
 ```
 
-`users.onboardingCompletedAt` is nullable until an owned profile has an explicitly confirmed published pair and starting mode. The existing unique `(userId, baseLanguageId, targetLanguageId)` and one-active-profile partial unique index remain. `language_profiles.version` and `profile_learning_settings.version` advance on their own edits. Interests are normalized, deduplicated, length limited, and never treated as learning evidence. A catalog pair is selectable only when its active curriculum and pair/voice policies are published. Curriculum item keys are unique within a version, edges cannot cross versions or form cycles, and published course records are immutable. Pronunciation items may be presented live, but their evidence rules remain disabled for progression until an approved audio evaluator exists.
+`users.onboardingCompletedAt` is nullable until an owned profile has an explicitly confirmed published pair and starting mode. The existing unique `(userId, baseLanguageId, targetLanguageId)` and one-active-profile partial unique index remain. `language_profiles.version` and `profile_learning_settings.version` advance on their own edits. Interests are normalized, deduplicated, length limited, and never treated as learning evidence. A pair is selectable only when a complete course definition is present in the code catalog. Curriculum item keys are unique within a version, prerequisites cannot point outside it or form cycles, and published versions remain available when new versions are added. Pronunciation items may be presented live, but their evidence rules remain disabled for progression until an approved audio evaluator exists.
+
+The first published course defines a diagnostic and starter conversation items at each learning level. Its evidence rules are present but disabled while numeric progression and evaluation thresholds await approval. Publication and planning do not imply that those rules can promote mastery.
 
 ## 4. Session setup and Realtime records
 
@@ -131,7 +118,7 @@ type SessionPlan = { // existing table: session_plans
   sessionId: UUID; schemaVersion: "learning_plan_v1"; mode: Mode;
   sourceSnapshotId?: UUID;
   profileVersion: number; preferenceVersion: number; settingsVersion: number;
-  curriculumVersionId: UUID; selectionRuleVersion: string;
+  curriculumVersion: string; selectionRuleVersion: string;
   basePolicyVersion: string; pairPolicyVersion: string; levelBlockVersion: string;
   selectedLevel?: AssessedLevel; topic?: string; requestedWords: string[];
   setupRequestDigest: string; objectiveCount: 1 | 2 | 3; createdAt: Instant;
@@ -139,7 +126,7 @@ type SessionPlan = { // existing table: session_plans
 
 type PlanObjective = { // existing table: session_plan_objectives
   sessionId: UUID; ordinal: 1 | 2 | 3; kind: ObjectiveKind;
-  curriculumItemId?: UUID; learnerLabel: string;
+  curriculumItemKey?: string; learnerLabel: string;
 };
 
 type SessionPlanMemoryRef = { // new table: session_plan_memory_refs
@@ -167,7 +154,7 @@ type SessionTurn = { // new table: session_turns
 };
 ```
 
-`SessionState` remains the existing database state union. `setupRequestDigest` binds idempotency to topic, requested words, and profile ID. A plan is written once for a session and is never silently edited after creation. A graded objective requires a same-version curriculum item; a conversation focus has no item. A memory reference is eligibility only, never a copy of text. The prompt build is one per call attempt; its selected IDs are an audit manifest, while the compiler filters currently revoked or expired memories before every provider bootstrap. Reconnect creates a new call attempt and prompt build under the same plan. `session_turns` is unique by `(sessionId, sequence)` and by `(callAttemptId, providerEventId)` to deduplicate provider replay. Only finalized turns at or below `finalTurnSequence` enter analysis. Do not store raw instructions, audio, or memory text in general logs.
+`SessionState` remains the existing database state union. `setupRequestDigest` binds idempotency to topic, requested words, and profile ID. A plan is written once for a session and is never silently edited after creation. A graded objective requires a key from the pinned curriculum version; a conversation focus has no item. A memory reference is eligibility only, never a copy of text. The prompt build is one per call attempt; its selected IDs are an audit manifest, while the compiler filters currently revoked or expired memories before every provider bootstrap. Reconnect creates a new call attempt and prompt build under the same plan. `session_turns` is unique by `(sessionId, sequence)` and by `(callAttemptId, providerEventId)` to deduplicate provider replay. Only finalized turns at or below `finalTurnSequence` enter analysis. Do not store raw instructions, audio, or memory text in general logs.
 
 The `SessionPlan` type above applies to new plans. Existing placeholder rows receive `schemaVersion: "legacy_placeholder"` and retain the original string `curriculum_version`, `selection_rule_version`, and `prompt_version` columns. A migration adds new nullable columns without changing historical rows; the application requires new-plan fields when `schemaVersion` is `learning_plan_v1` and reads legacy rows through a compatibility adapter. The existing objective `text` column remains the source for `learnerLabel` until a versioned migration renames it.
 
@@ -177,19 +164,19 @@ The `SessionPlan` type above applies to new plans. Existing placeholder rows rec
 type AnalysisRun = { // new table: analysis_runs
   id: UUID; sessionId: UUID; analysisPolicyVersion: string;
   extractionSchemaVersion: string; extractionModelAlias: string;
-  curriculumVersionId: UUID; evidenceRuleVersion: string;
+  curriculumVersion: string; evidenceRuleVersion: string;
   mode: Mode; finalTurnSequence: number; status: AnalysisStatus;
   startedAt?: Instant; completedAt?: Instant; failureCode?: string;
 };
 
 type LearningEvidence = { // new table: learning_evidence
   id: UUID; analysisRunId: UUID; sessionId: UUID; languageProfileId: UUID;
-  curriculumItemId: UUID; kind: "use" | "comprehension" | "repair";
+  curriculumItemKey: string; kind: "use" | "comprehension" | "repair";
   sourceTurnIds: UUID[]; confidence: number; acceptedAt: Instant;
 };
 
 type LearnerItemState = { // new table: learner_item_states, append-only decisions
-  id: UUID; languageProfileId: UUID; curriculumItemId: UUID;
+  id: UUID; languageProfileId: UUID; curriculumItemKey: string;
   sourceAnalysisRunId: UUID; state: "new" | "practicing" | "review_due" | "mastered";
   evidenceCount: number; nextReviewAt?: Instant; decidedAt: Instant;
 };
@@ -202,9 +189,9 @@ type LevelAssessment = { // new table: level_assessments, append-only decisions
 
 type LearnerStateSnapshot = { // new table: learner_state_snapshots
   id: UUID; languageProfileId: UUID; sourceAnalysisRunId: UUID;
-  curriculumVersionId: UUID; selectorStateSchemaVersion: string;
+  curriculumVersion: string; selectorStateSchemaVersion: string;
   assessedLevel?: AssessedLevel; levelConfidence?: number;
-  itemStateIds: UUID[]; dueItemIds: UUID[]; repairItemIds: UUID[];
+  itemStateIds: UUID[]; dueItemKeys: string[]; repairItemKeys: string[];
   createdAt: Instant;
 };
 

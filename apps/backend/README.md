@@ -1,11 +1,19 @@
 # Mori backend development
 
 This directory contains the Python 3.13 backend package. Identity, user, learner
-profiles, curriculum catalog, access, and sessions are modules in one FastAPI application.
+profiles, the code-backed curriculum catalog, access, and sessions are modules in one
+FastAPI application.
 Sign-in links Google identity, updates the application account, and issues the intro grant in
 one transaction. Profile onboarding confirms a published pair and preferences separately.
-The first M2 foundation adds idempotent intro-grant reservation and an immutable placeholder
-session plan. It does not yet connect audio or start a provider call.
+The session foundation adds idempotent intro-grant reservation and an immutable,
+versioned learning plan. It does not yet connect audio or start a provider call.
+
+Shared language pairs, curriculum items, prerequisites, evidence rules, and pair/voice
+policies are defined in `src/mori/modules/curriculum/catalog.py`. Add a new published
+version there, retain older versions in the registry for existing sessions, and update
+the active version pointer when ready. Each session's selected objectives and version
+strings remain in PostgreSQL. Migration 0005 removes the former shared course tables
+and converts existing objective references to stable item keys.
 
 ## Prerequisites
 

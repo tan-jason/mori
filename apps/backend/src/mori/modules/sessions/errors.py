@@ -15,3 +15,11 @@ class VoiceEntitlementUnavailable(Exception):
 
 class SessionNotFound(Exception):
     pass
+
+
+class PlanUnavailable(Exception):
+    pass
+
+
+class InvalidSessionSetup(Exception):
+    pass

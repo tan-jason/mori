@@ -552,7 +552,7 @@ No model call receives unrestricted database access or directly mutates learner 
 - `session_connections`
 - `session_plans`
 - `session_turns`
-- `curriculum_items`
+- versioned curriculum items in application code
 - `learner_item_states`
 - `learning_evidence`
 - `level_assessments`

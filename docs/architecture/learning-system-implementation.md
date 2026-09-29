@@ -1,6 +1,6 @@
 # Learning system implementation design
 
-**Status:** Approved design for implementation handoff
+**Status:** Approved design; onboarding and deterministic planning foundations implemented
 
 **Date:** September 26, 2026
 
@@ -8,19 +8,19 @@
 
 This design fits the approved modular-monolith architecture. It specifies how onboarding, planning, Realtime prompting, evidence, memory, and read models exchange information. The first implementation should support one published language pair; the contracts must require explicit selection and support more pairs without changing their shape.
 
-## 1. Current state and migration boundary
+## 1. Starting state and migration boundary
 
-The repository already has Google sign-in, an opaque application session, an intro grant, per-profile correction and pace preferences, `POST /api/v1/sessions`, a reserved session, and a one-objective placeholder plan. It does not yet have a published curriculum, learning snapshots, memory persistence, a prompt compiler, a live Realtime adapter, or post-session analysis.
+At the September 26 design handoff, the repository had Google sign-in, an opaque application session, an intro grant, per-profile correction and pace preferences, `POST /api/v1/sessions`, a reserved session, and a one-objective placeholder plan. The current implementation has explicit onboarding, a versioned first English-to-Mandarin course and policy bundle in Python code, and deterministic versioned session plans. It does not yet have learning snapshots, memory persistence, a prompt compiler, a live Realtime adapter, or post-session analysis.
 
-The current sign-in path creates an English-to-Mandarin profile automatically. `GET /api/v1/me` joins through that profile and returns a non-null `activeLanguageProfile`; the web validator also requires it. The current level type and earlier PRD contain six values. Those are migration inputs, not the new product contract.
+The former sign-in path created an English-to-Mandarin profile automatically. `GET /api/v1/me` formerly required a non-null `activeLanguageProfile`. The former dashboard type contained six levels. Those were migration inputs, not the current product contract. The live dashboard preview now uses the four display levels; the real assessed-level read model remains pending.
 
 Migration rules:
 
 1. New sign-in creates an account and intro grant, but no language profile. `GET /me` succeeds with `activeLanguageProfile: null`, `preferences: null`, and `onboarding.complete: false`.
 2. Existing auto-created profiles get `language_selection_confirmed_at = NULL`. They cannot start new sessions until the learner explicitly chooses a supported pair. Do not preselect the legacy pair in onboarding. If the learner chooses it, confirm the existing row; if they choose another pair, activate the selected profile and archive the unused legacy row under the one-active-profile rule.
 3. The original six-value mock and UI contract moves to `beginner | intermediate | advanced | fluent`. There is no automatic persisted-level mapping because the assessment tables are not implemented. Any future migration of assessed records must re-evaluate evidence under a versioned four-level rubric.
-4. Existing session rows and placeholder plans remain readable with their pinned placeholder versions. Add a plan schema discriminator and new nullable columns first; backfill legacy rows as `legacy_placeholder`, then require the complete new contract for newly created plans. The read path handles both shapes. New planning never edits an old plan.
-5. `GET /me`, the generated client, runtime validators, and onboarding routes must land together before auto-provisioning is removed.
+4. Existing session rows and placeholder plans remain readable with their pinned placeholder versions. The plan schema discriminator backfills legacy rows as `legacy_placeholder`; new planning writes `learning_plan_v1` plans with pinned profile, preference, settings, curriculum, and policy versions. The read path handles both shapes. New planning never edits an old plan.
+5. `GET /me`, the generated client, runtime validators, and onboarding routes landed together before auto-provisioning was removed.
 
 ## 2. Module ownership and information flow
 
@@ -102,8 +102,9 @@ sequenceDiagram
     participant DB as PostgreSQL
     Web->>API: GET /api/v1/language-pairs + GET /api/v1/me
     API->>Identity: Load catalog and current learner
-    Identity->>DB: Read published pair and account
-    DB-->>Identity: Catalog; nullable active profile
+    Identity->>DB: Read account and active profile
+    DB-->>Identity: Nullable active profile
+    Identity->>Identity: Read supported pairs from code catalog
     Identity-->>API: Onboarding view
     API-->>Web: Supported choices and current state
     Web->>API: POST /api/v1/language-profiles (explicit pair, level, preferences)
@@ -128,8 +129,9 @@ sequenceDiagram
     Web->>API: POST /api/v1/sessions (profileId, topic, words, Idempotency-Key)
     API->>DB: Check profile, pair, entitlement; reserve capacity
     DB-->>API: Reservation and pinned versions
-    API->>DB: Read course, settings, latest committed snapshot, due items, safe memory refs
-    DB-->>API: Bounded planning context
+    API->>DB: Read settings, latest committed snapshot, due items, safe memory refs
+    DB-->>API: Bounded learner context
+    API->>API: Read versioned course from code catalog
     API->>Planner: build_session_plan(context, curriculum, ruleVersion)
     Planner-->>API: Eligible objectives or Fluent focus
     API->>DB: Check versions; commit immutable plan in short transaction
@@ -138,6 +140,8 @@ sequenceDiagram
 ```
 
 If planning fails, the reservation is released or expires. If profile, preference, or settings versions change before commit, the API reloads context and recomputes. A first session has no snapshot; a delayed analysis never exposes an uncommitted one.
+
+The current selector has no external calls and reads a bounded published course. The implementation locks the account, profile, preferences, and settings, selects objectives, and commits reservation plus plan in one short transaction. A selection failure rolls the entire transaction back. Split this into the two transactions shown above before planning adds slow or external work; preserve the version check and recoverable reservation behavior then. Snapshot, due-item, and repair inputs enter this selector when the analysis state tables land.
 
 #### 3. Voice bootstrap and live supervision
 
@@ -251,7 +255,7 @@ Error codes to freeze with OpenAPI include `onboarding_required`, `language_pair
 
 ## 5. Persistence contract
 
-PostgreSQL remains the source of truth. Core relationships use foreign keys and uniqueness constraints; bounded JSONB is limited to versioned structured context or candidate payloads. `timestamptz` stores instants. The companion [data contract and object structure](learning-system-data-contracts.md) defines every new record, the extended existing records, API read models, and cross-record invariants.
+PostgreSQL remains the source of truth for learner and session state. Shared curriculum and policy definitions live in versioned Python code. Core stored relationships use foreign keys and uniqueness constraints; bounded JSONB is limited to versioned structured context or candidate payloads. `timestamptz` stores instants. The companion [data contract and object structure](learning-system-data-contracts.md) defines every new record, the extended existing records, API read models, and cross-record invariants.
 
 ### Existing tables to extend
 
@@ -260,18 +264,17 @@ PostgreSQL remains the source of truth. Core relationships use foreign keys and 
 | `users` | Keep `onboarding_completed_at`; add account `version`; sign-in no longer implies a profile. | The timestamp is written only with a confirmed supported profile and starting mode. Account version advances on onboarding completion and active-profile changes for `If-Match`. |
 | `language_profiles` | Add `language_selection_confirmed_at` and profile `version`. Existing base/target fields remain required for rows that exist. | New user has no row until onboarding. Keep one active profile per user and unique user/pair. Legacy auto-created rows remain unconfirmed until explicit selection. |
 | `learner_preferences` | Add bounded `interests` structured payload under existing optimistic `version`. | Enforce item count, normalized text length, and safe edit semantics. Preferences remain profile-scoped. |
-| `session_plans` | Add `schema_version`, mode, nullable snapshot ID, profile/preference/settings versions, selected level, topic, setup digest, published curriculum FK, and base/pair/level policy versions. Retain old string version columns for `legacy_placeholder` reads. | One immutable plan per session. New rows require the full new contract; old rows remain readable. First session has no snapshot; objectives count remains one to three including a single ungraded Fluent conversation focus. |
-| `session_plan_objectives` | Add objective kind and nullable curriculum-item reference; keep ordinal. Map the existing `text` to the learner-facing label in the new read model. | `curriculum_item_id` is required for graded curriculum objectives and absent for ungraded Fluent focus. |
+| `session_plans` | Add `schema_version`, mode, nullable snapshot ID, profile/preference/settings versions, selected level, topic, setup digest, curriculum version string, and base/pair/level policy versions. Retain old string version columns for `legacy_placeholder` reads. | One immutable plan per session. New rows require the full new contract; old rows remain readable. First session has no snapshot; objectives count remains one to three including a single ungraded Fluent conversation focus. |
+| `session_plan_objectives` | Add objective kind and nullable curriculum-item key; keep ordinal. Map the existing `text` to the learner-facing label in the new read model. | `curriculum_item_key` is required for graded curriculum objectives and absent for ungraded Fluent focus. |
 | `sessions` | Keep owner, profile ID, state, idempotency digest, and duration. Add a request digest if stored outside the plan. | Same idempotency key with changed setup body is a conflict. Profile and plan are pinned for the session. |
 
 ### New records
 
+Shared pair metadata, curriculum items, prerequisite edges, evidence rules, and pair/voice policies live in versioned Python definitions under `mori.modules.curriculum.catalog`. New versions retain prior definitions for historical session reconstruction. Session plans store the selected item keys and version strings, not foreign keys to shared course tables. Migration 0005 removes those tables after backfilling the selected keys.
+
 | Record | Key fields | Invariant |
 | --- | --- | --- |
 | `profile_learning_settings` | `language_profile_id` PK/FK, raw starting choice, provisional level, `mode`, `version`, created/updated times. | `unsure` remains distinguishable from a chosen Beginner. `fluent` selects practice mode. Assessed level comes from validated assessments, not this row. |
-| `course_catalog` | ID, base-language ID, target-language ID, availability, pair-policy version, voice-policy version. | Unique language pair. A pair is selectable only when it has a published curriculum and language-pair voice policy. |
-| `curriculum_versions` | ID, course-catalog ID, version, publication status and time. | Unique pair/version. Only a published version can enter a new plan; published content is immutable. |
-| `curriculum_items`, `curriculum_edges`, `evidence_rules` | Versioned item key, skill type, level, prerequisite edges, and rule definitions. | References stay within one curriculum version. Cycles fail publication. |
 | `session_plan_memory_refs` | Session-plan ID and memory ID. | Deletion/revocation removes eligibility. It never embeds raw memory text in the plan. |
 | `session_call_attempts` | Session ID, attempt number, provider call ID, status and timestamps. | A reconnect creates a new attempt under the same immutable plan; prompt builds and turns refer to an exact attempt. |
 | `session_prompt_builds` | Call attempt ID, plan ID, base-policy version, pair-policy version, level-block version, model/voice config versions, selected memory IDs, instructions hash, creation time. | One build per call attempt. No raw instructions or memory text in general logs. Reconnect can rebuild from the same plan with revoked context removed. |
@@ -280,7 +283,7 @@ PostgreSQL remains the source of truth. Core relationships use foreign keys and 
 | `recaps` | Session ID, mode, status, brief summary, versioned learning-only fields where applicable. | One current recap per analyzed session. Practice recaps have no objective outcomes, corrections, or level advice. |
 | `memories`, `conversation_hooks`, `memory_suppressions` | Profile, source session/turns, normalized fact or hook, confidence, sensitivity, expiry, revocation; suppression source identity. | Only explicitly volunteered safe content. A deletion tombstone prevents analysis retry or newer-version replay from resurrecting the same fact. |
 
-Index the latest snapshot per profile, due item state, published curriculum by language, active memories by profile/expiry, analysis-run idempotency, and session recovery by state/deadline. Keep memory and evidence provenance linked to the source session so approved cascade deletion can remove and rebuild derived state.
+Index the latest snapshot per profile, due item state, active memories by profile/expiry, analysis-run idempotency, and session recovery by state/deadline. Keep memory and evidence provenance linked to the source session so approved cascade deletion can remove and rebuild derived state.
 
 ### Immutable and deletable data
 
@@ -288,11 +291,11 @@ A plan pins the profile version, selected curriculum, selector version, prompt p
 
 ## 6. Planning and prompt contracts
 
-`build_session_plan(context, published_curriculum, rule_version) -> SessionPlan` is a pure domain function. It returns one to three eligible objectives in learning mode, or one ungraded conversation focus in practice mode. Selection inputs are typed and bounded. Deterministic tie-breakers make replays stable. A model may propose topic wording after selection, but cannot alter objective IDs or prerequisites.
+`build_session_plan(context, published_curriculum, rule_version) -> SessionPlan` is a pure domain function. It returns one to three eligible objectives in learning mode, or one ungraded conversation focus in practice mode. Selection inputs are typed and bounded. Deterministic tie-breakers make replays stable. A model may propose topic wording after selection, but cannot alter objective keys or prerequisites.
 
 `compile_realtime_config(plan, profile, pair_policy, level_policy, selected_memories, policy_versions) -> RealtimeConfig` is pure and separately testable. It composes one generic versioned base prompt, one published language-pair module, one level block, and bounded current plan and historical context. It validates required profile languages, prompt size, memory eligibility, and unsupported policy combinations. The output includes instructions, a voice configuration, and a build manifest. The API owns the provider call; the compiler never contacts OpenAI or writes learner state.
 
-The first pair module can specialize English as the base language and Mandarin as the target language: Standard Mandarin voice delivery, brief English rescue scaffolds, Mandarin examples, and pair-specific pronunciation wording. It must be selected from the confirmed profile and course catalog, never from an application default. The generic base prompt keeps reusable tutor behavior, turn shape, uncertainty handling, and memory safety; the pair module must not repeat these rules. Changing pair wording increments its own version so evaluations can isolate a language-specific change from a base or level change.
+The first pair module can specialize English as the base language and Mandarin as the target language: Standard Mandarin voice delivery, brief English rescue scaffolds, Mandarin examples, and pair-specific pronunciation wording. It must be selected from the confirmed profile and code catalog, never from an application default. The generic base prompt keeps reusable tutor behavior, turn shape, uncertainty handling, and memory safety; the pair module must not repeat these rules. Changing pair wording increments its own version so evaluations can isolate a language-specific change from a base or level change.
 
 Prompt sections follow the current [OpenAI Realtime prompting guide](https://developers.openai.com/api/docs/guides/voice-prompting): role, selected target and base language, tone and turn shape, injected level behavior, proactive conversation flow, pronunciation support, current objectives and historical context, unclear audio, tool policy when tools exist, and safety. Keep target-language selection separate from tutor accent and playback speed. Use context labels and freshness so old memories cannot be mistaken for current facts. Test the provider's default preamble behavior before adding a rule. Model alias and reasoning effort remain configurable and are selected by voice evaluations.
 
@@ -326,6 +329,8 @@ The initial evaluator uses transcripts, including tutor turns that offer a pronu
 
 ## 9. Delivery slices and gates
 
+Implementation status as of September 29, 2026: slice 1's explicit onboarding path and slice 2's first published course, pure selector, setup request, and versioned plan are implemented. The planned profile-scoped preference, active-profile, and learning-settings routes remain outstanding. The selector supports due and repair input, but those inputs stay empty until analysis state is persisted. The seeded evidence rules are disabled until evaluation thresholds and progression gates are approved. Slices 3 through 6 remain outstanding.
+
 1. **Profile and onboarding:** nullable `GET /me`, supported-pair catalog, explicit onboarding mutation, legacy-profile confirmation migration, four-level web type, optional interests. Gate: new and legacy accounts cannot start without explicit supported selection; old auth behavior remains valid.
 2. **Curriculum and deterministic planning:** published first course, starter objectives, placement and review rules, session topic/word inputs, pure selector, immutable plan migration. Gate: fixtures and PostgreSQL tests prove eligibility, deterministic replay, idempotent creation, and reservation cleanup.
 3. **Prompt compiler:** versioned generic prompt, published pair modules, level blocks, proactive conversation and pronunciation rules, bounded memory selector, call-level build manifest. Gate: prompt snapshots, prompt-conflict checks, explicit English-to-Mandarin selection, and memory deletion before bootstrap.
@@ -333,7 +338,7 @@ The initial evaluator uses transcripts, including tutor turns that offer a pronu
 5. **Analysis and read models:** structured candidate schemas, validation, deterministic progression, snapshots, memories and suppressions, learning/practice recaps, dashboard projections. Gate: exact-turn provenance, Fluent isolation, retry safety, deletion and rebuild tests.
 6. **Transcript-based product evaluation:** four-level scripted and captured transcript fixtures for language adherence, proactive follow-up, scaffold length, whether tutor-offered pronunciation repair is gentle and appropriately uncertain, memory safety, and extraction validity. Gate: published transcript thresholds pass before the feature is enabled for learners. This gate makes no claim about acoustic pronunciation accuracy or audio quality; validate live call transport separately. Add retained-audio evaluation before pronunciation can affect progress.
 
-The existing backend implementation plan schedules complete planning after the first live and analysis slices. Pure curriculum selection and prompt compilation can be built earlier behind their module interfaces. Do not treat a prompt snapshot test as proof of live spoken behavior.
+The backend milestone plan schedules the live Realtime slice next. Its later M4 planning work now means connecting committed snapshots, due items, and repairs to this selector, then evaluating progression gates against analyzed sessions. The pure selector and initial curriculum have landed ahead of the live slice. Do not treat a prompt snapshot test as proof of live spoken behavior.
 
 ## 10. Decisions still required before release
 

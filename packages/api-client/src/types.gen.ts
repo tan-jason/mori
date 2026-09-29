@@ -67,6 +67,14 @@ export type CreateSessionRequest = {
      * Languageprofileid
      */
     languageProfileId: string;
+    /**
+     * Requestedwords
+     */
+    requestedWords?: Array<string>;
+    /**
+     * Topic
+     */
+    topic?: string | null;
 };
 
 /**
@@ -189,6 +197,16 @@ export type OnboardingResponse = {
 };
 
 /**
+ * PlanPreviewResponse
+ */
+export type PlanPreviewResponse = {
+    /**
+     * Objectives
+     */
+    objectives: Array<string>;
+};
+
+/**
  * PreferencePatch
  */
 export type PreferencePatch = {
@@ -255,9 +273,14 @@ export type SessionResponse = {
      */
     id: string;
     /**
+     * Mode
+     */
+    mode: string;
+    /**
      * Objective
      */
     objective: string;
+    planPreview: PlanPreviewResponse;
     /**
      * Reservationexpiresat
      */

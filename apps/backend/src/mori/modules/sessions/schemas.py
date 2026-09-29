@@ -3,17 +3,37 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from mori.modules.sessions.application import SessionView
+from mori.modules.sessions.domain import normalize_requested_words, normalize_topic
 
 
 class CreateSessionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     language_profile_id: UUID = Field(alias="languageProfileId")
+    topic: str | None = Field(default=None, max_length=160)
+    requested_words: tuple[Annotated[str, Field(min_length=1, max_length=48)], ...] = Field(
+        default=(), alias="requestedWords", max_length=8
+    )
+
+    @field_validator("topic")
+    @classmethod
+    def clean_topic(cls, value: str | None) -> str | None:
+        return normalize_topic(value)
+
+    @field_validator("requested_words")
+    @classmethod
+    def clean_words(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        return normalize_requested_words(value)
+
+
+class PlanPreviewResponse(BaseModel):
+    objectives: list[str]
 
 
 class SessionResponse(BaseModel):
@@ -26,6 +46,8 @@ class SessionResponse(BaseModel):
     connected_ms: int = Field(alias="connectedMs")
     reservation_expires_at: datetime = Field(alias="reservationExpiresAt")
     objective: str
+    mode: str
+    plan_preview: PlanPreviewResponse = Field(alias="planPreview")
     created_at: datetime = Field(alias="createdAt")
 
     @classmethod
@@ -38,5 +60,7 @@ class SessionResponse(BaseModel):
             connectedMs=view.connected_ms,
             reservationExpiresAt=view.reservation_expires_at,
             objective=view.objective,
+            mode=view.mode,
+            planPreview=PlanPreviewResponse(objectives=list(view.objectives)),
             createdAt=view.created_at,
         )
