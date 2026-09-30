@@ -35,6 +35,7 @@ from mori.modules.sessions.errors import (
     InvalidIdempotencyKey,
     InvalidSessionSetup,
     PlanUnavailable,
+    SessionNotConnectable,
     SessionNotFound,
     VoiceEntitlementUnavailable,
 )
@@ -110,6 +111,9 @@ _EXPECTED_ERRORS: dict[type[Exception], ErrorDefinition] = {
     ),
     SessionNotFound: ErrorDefinition(404, "session_not_found", "The session was not found."),
     PlanUnavailable: ErrorDefinition(409, "plan_unavailable", "A session plan is not available."),
+    SessionNotConnectable: ErrorDefinition(
+        409, "session_not_connectable", "This session cannot connect right now."
+    ),
     InvalidSessionSetup: ErrorDefinition(
         422, "session_setup_invalid", "The session setup is invalid."
     ),

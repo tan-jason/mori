@@ -23,3 +23,7 @@ class PlanUnavailable(Exception):
 
 class InvalidSessionSetup(Exception):
     pass
+
+
+class SessionNotConnectable(Exception):
+    pass

@@ -1,6 +1,6 @@
 # Learning system implementation design
 
-**Status:** Approved design; onboarding and deterministic planning foundations implemented
+**Status:** Approved design; onboarding, deterministic planning, and first prompt compiler implemented
 
 **Date:** September 26, 2026
 
@@ -10,7 +10,7 @@ This design fits the approved modular-monolith architecture. It specifies how on
 
 ## 1. Starting state and migration boundary
 
-At the September 26 design handoff, the repository had Google sign-in, an opaque application session, an intro grant, per-profile correction and pace preferences, `POST /api/v1/sessions`, a reserved session, and a one-objective placeholder plan. The current implementation has explicit onboarding, a versioned first English-to-Mandarin course and policy bundle in Python code, and deterministic versioned session plans. It does not yet have learning snapshots, memory persistence, a prompt compiler, a live Realtime adapter, or post-session analysis.
+At the September 26 design handoff, the repository had Google sign-in, an opaque application session, an intro grant, per-profile correction and pace preferences, `POST /api/v1/sessions`, a reserved session, and a one-objective placeholder plan. The current implementation has explicit onboarding, a versioned first English-to-Mandarin course and policy bundle in Python code, deterministic versioned session plans, and a pure prompt compiler that loads pinned plans through an eligibility-checked application method. It does not yet have learning snapshots, memory persistence, a live Realtime adapter, or post-session analysis.
 
 The former sign-in path created an English-to-Mandarin profile automatically. `GET /api/v1/me` formerly required a non-null `activeLanguageProfile`. The former dashboard type contained six levels. Those were migration inputs, not the current product contract. The live dashboard preview now uses the four display levels; the real assessed-level read model remains pending.
 
@@ -329,16 +329,16 @@ The initial evaluator uses transcripts, including tutor turns that offer a pronu
 
 ## 9. Delivery slices and gates
 
-Implementation status as of September 29, 2026: slice 1's explicit onboarding path and slice 2's first published course, pure selector, setup request, and versioned plan are implemented. The planned profile-scoped preference, active-profile, and learning-settings routes remain outstanding. The selector supports due and repair input, but those inputs stay empty until analysis state is persisted. The seeded evidence rules are disabled until evaluation thresholds and progression gates are approved. Slices 3 through 6 remain outstanding.
+Implementation status as of September 30, 2026: slice 1's explicit onboarding path and slice 2's first published course, pure selector, setup request, and versioned plan are implemented. Slice 3's pure base, pair, and level compiler and persisted-plan loading are implemented. The planned profile-scoped preference, active-profile, and learning-settings routes remain outstanding. The selector supports due and repair input, but those inputs stay empty until analysis state is persisted. The seeded evidence rules are disabled until evaluation thresholds and progression gates are approved. Live voice, memory, and post-session analysis remain outstanding.
 
 1. **Profile and onboarding:** nullable `GET /me`, supported-pair catalog, explicit onboarding mutation, legacy-profile confirmation migration, four-level web type, optional interests. Gate: new and legacy accounts cannot start without explicit supported selection; old auth behavior remains valid.
 2. **Curriculum and deterministic planning:** published first course, starter objectives, placement and review rules, session topic/word inputs, pure selector, immutable plan migration. Gate: fixtures and PostgreSQL tests prove eligibility, deterministic replay, idempotent creation, and reservation cleanup.
-3. **Prompt compiler:** versioned generic prompt, published pair modules, level blocks, proactive conversation and pronunciation rules, bounded memory selector, call-level build manifest. Gate: prompt snapshots, prompt-conflict checks, explicit English-to-Mandarin selection, and memory deletion before bootstrap.
-4. **Realtime integration:** SDP adapter and supervisor send server-built configuration, record build version, persist turns, handle reconnect and mid-call memory revocation. Gate: a real voice session follows the plan and remains recoverable after process loss.
-5. **Analysis and read models:** structured candidate schemas, validation, deterministic progression, snapshots, memories and suppressions, learning/practice recaps, dashboard projections. Gate: exact-turn provenance, Fluent isolation, retry safety, deletion and rebuild tests.
+3. **Prompt compiler:** versioned generic prompt, published pair modules, level blocks, proactive conversation and pronunciation rules. Gate: deterministic output, prompt-conflict checks, pinned course and profile validation, and Fluent isolation.
+4. **Realtime integration:** SDP adapter and supervisor send server-built configuration, persist a call-level build manifest, record build version, persist turns, and handle reconnect. Gate: a real voice session follows the plan and remains recoverable after process loss.
+5. **Analysis, memory, and read models:** structured candidate schemas, validation, deterministic progression, snapshots, memory capture and bounded prompt selection, suppressions and revocation, learning/practice recaps, dashboard projections. Gate: exact-turn provenance, Fluent isolation, retry safety, deletion and rebuild tests, including memory deletion before bootstrap and during an active call.
 6. **Transcript-based product evaluation:** four-level scripted and captured transcript fixtures for language adherence, proactive follow-up, scaffold length, whether tutor-offered pronunciation repair is gentle and appropriately uncertain, memory safety, and extraction validity. Gate: published transcript thresholds pass before the feature is enabled for learners. This gate makes no claim about acoustic pronunciation accuracy or audio quality; validate live call transport separately. Add retained-audio evaluation before pronunciation can affect progress.
 
-The backend milestone plan schedules the live Realtime slice next. Its later M4 planning work now means connecting committed snapshots, due items, and repairs to this selector, then evaluating progression gates against analyzed sessions. The pure selector and initial curriculum have landed ahead of the live slice. Do not treat a prompt snapshot test as proof of live spoken behavior.
+The backend milestone plan schedules the live Realtime slice next. Connect committed snapshots, due items, and repairs to the selector in the durable learning-loop milestone so an analyzed session can change the next plan. The pure selector, initial curriculum, and first prompt compiler have landed ahead of the live slice. Do not treat a prompt snapshot test as proof of live spoken behavior.
 
 ## 10. Decisions still required before release
 

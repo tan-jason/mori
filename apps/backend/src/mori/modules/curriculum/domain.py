@@ -36,6 +36,8 @@ class CurriculumItem:
 
 @dataclass(frozen=True, slots=True)
 class PublishedCourse:
+    base_language_id: str
+    target_language_id: str
     curriculum_version: str
     pair_policy_version: str
     voice_policy_version: str
@@ -65,7 +67,10 @@ class PlannedObjective:
 def validate_published_course(course: PublishedCourse) -> None:
     """Reject incomplete, cross-version, or cyclic publication data."""
     if (
-        not course.items
+        not course.base_language_id
+        or not course.target_language_id
+        or course.base_language_id == course.target_language_id
+        or not course.items
         or not course.pair_policy_version
         or not course.voice_policy_version
         or not course.pair_policy

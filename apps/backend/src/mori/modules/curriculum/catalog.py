@@ -69,6 +69,8 @@ def _item(
 
 
 MANDARIN_FOUNDATIONS_V1 = PublishedCourse(
+    base_language_id="english",
+    target_language_id="mandarin",
     curriculum_version="mandarin-foundations-v1",
     pair_policy_version="en-zh-pair-v1",
     voice_policy_version="mandarin-voice-v1",
@@ -219,7 +221,11 @@ class CodeCourseCatalog:
 
 
 for _key, _course in _VERSIONS.items():
-    if _key[2] != _course.curriculum_version:
+    if _key != (
+        _course.base_language_id,
+        _course.target_language_id,
+        _course.curriculum_version,
+    ):
         raise ValueError("course registry version does not match its definition")
     validate_published_course(_course)
     if _course is MANDARIN_FOUNDATIONS_V1 and set(MANDARIN_FOUNDATIONS_V1_EVIDENCE_RULES) != {

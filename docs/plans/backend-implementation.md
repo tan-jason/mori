@@ -1,6 +1,6 @@
 # Backend implementation plan
 
-**Status:** M1 in progress
+**Status:** M1 foundation in progress; deterministic planning and first prompt compiler landed ahead of M2
 
 **Sequence:** M0 through M5, with no calendar estimate implied
 
@@ -109,6 +109,7 @@ Deliverables:
 
 - Implement intro-grant reservation, consumption, release, expiry, and idempotent session creation.
 - Read the existing deterministic, pinned session plan during voice bootstrap.
+- Use the versioned prompt compiler and persist a build manifest for each provider call attempt.
 - Implement the session state machine and connection segments.
 - Add the SDP proxy endpoint and OpenAI Realtime adapter.
 - Persist provider call ID and absolute server deadline before activation is complete.
@@ -140,6 +141,7 @@ Deliverables:
 - Validate candidate schema, exact turn provenance, confidence, allowed memory, and curriculum references.
 - Implement pure deterministic evidence, progression, item-state, and level-assessment rules for the initial curriculum slice.
 - Atomically commit evidence, item state, assessment, recap, memories, conversation hooks, snapshot, and analysis run status.
+- Feed the latest committed snapshot, due items, and repairs into the next deterministic plan.
 - Implement recap processing, success, and failure responses through the generated client.
 - Add repair and replay commands that preserve historical runs.
 - Create a pinned transcript fixture corpus for success, ambiguity, invalid provenance, language-policy behavior, and provider failure.
@@ -161,7 +163,7 @@ Verification:
 Deliverables:
 
 - Extend the published curriculum with evaluated promotion gates and production content.
-- Connect committed snapshots, due items, and repairs to the deterministic selector; preserve legacy plan reads.
+- Preserve legacy plan reads as learner state and curriculum versions expand.
 - Complete reconnect behavior using persisted connected segments and the server timer.
 - Add Basic weekly windows, two-session allowance, access decisions, and daylight saving transition coverage.
 - Integrate Stripe checkout and signed lifecycle webhooks with an internal plan projection.
