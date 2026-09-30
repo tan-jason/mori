@@ -21,7 +21,11 @@ from mori.modules.learner_profiles.domain import (
     TutorPace,
 )
 from mori.modules.sessions.application import SessionService
-from mori.modules.sessions.errors import SessionNotFound, VoiceEntitlementUnavailable
+from mori.modules.sessions.errors import (
+    SessionNotConnectable,
+    SessionNotFound,
+    VoiceEntitlementUnavailable,
+)
 
 
 def _sign_in(client: TestClient, choice: str = "beginner") -> tuple[str, str]:
@@ -162,6 +166,33 @@ def test_fluent_plan_has_ungraded_focus(client: TestClient, database_url: str) -
         database_url,
         "SELECT kind, curriculum_item_key FROM session_plan_objectives",
     ) == [("conversation_focus", None)]
+
+
+@pytest.mark.asyncio
+async def test_saved_plan_compiles_and_stale_preferences_block_connection(
+    client: TestClient, app: FastAPI, database_url: str
+) -> None:
+    profile_id, csrf = _sign_in(client)
+    created = _create(client, profile_id, csrf)
+    assert created.status_code == 201
+    user_id = _rows(database_url, "SELECT id FROM users")[0][0]
+    assert isinstance(user_id, UUID)
+    session_id = UUID(created.json()["id"])
+    service: SessionService = app.state.session_service
+
+    compiled = await service.load_realtime_config(user_id=user_id, session_id=session_id)
+    assert compiled.pair_policy_version == "en-zh-pair-v1"
+    assert "Use short, predictable sentences" in compiled.instructions
+    assert "Share a simple introduction and answer a follow-up." in compiled.instructions
+
+    updated = client.patch(
+        "/api/v1/me/preferences",
+        json={"tutorPace": "gentle"},
+        headers={"Origin": "http://web.test", "X-CSRF-Token": csrf, "If-Match": '"1"'},
+    )
+    assert updated.status_code == 200
+    with pytest.raises(SessionNotConnectable):
+        await service.load_realtime_config(user_id=user_id, session_id=session_id)
 
 
 def test_invalid_setup_does_not_reserve(client: TestClient, database_url: str) -> None:

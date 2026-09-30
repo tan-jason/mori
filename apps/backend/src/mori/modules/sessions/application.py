@@ -24,6 +24,7 @@ from mori.modules.curriculum.domain import (
 )
 from mori.modules.learner_profiles.domain import PlanningProfile
 from mori.modules.learner_profiles.errors import OnboardingRequired, UnsupportedLanguagePair
+from mori.modules.learner_profiles.models import LearnerPreferenceModel
 from mori.modules.learner_profiles.persistence import SqlAlchemyLearnerProfileStore
 from mori.modules.sessions.domain import normalize_requested_words, normalize_topic
 from mori.modules.sessions.errors import (
@@ -31,16 +32,24 @@ from mori.modules.sessions.errors import (
     InvalidIdempotencyKey,
     InvalidSessionSetup,
     PlanUnavailable,
+    SessionNotConnectable,
     SessionNotFound,
     VoiceEntitlementUnavailable,
 )
 from mori.modules.sessions.models import SessionModel, SessionPlanModel, SessionPlanObjectiveModel
+from mori.modules.sessions.prompt import (
+    BASE_POLICY_VERSION,
+    CompiledRealtimeConfig,
+    PromptObjective,
+    PromptPlan,
+    PromptProfile,
+    compile_realtime_config,
+)
 from mori.modules.user.domain import UserStatus
 from mori.modules.user.persistence import SqlAlchemyUserStore
 
 _KEY_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9:_-]{7,127}\Z")
 _RESERVATION_TTL = timedelta(minutes=10)
-_BASE_POLICY_VERSION = "base-v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -266,7 +275,7 @@ class SessionService:
                 session_id=session.id,
                 curriculum_version=course.curriculum_version,
                 selection_rule_version=SELECTION_RULE_VERSION,
-                prompt_version=_BASE_POLICY_VERSION,
+                prompt_version=BASE_POLICY_VERSION,
                 schema_version="learning_plan_v1",
                 mode=mode,
                 profile_version=profile.profile_version,
@@ -276,7 +285,7 @@ class SessionService:
                 topic=setup.topic,
                 requested_words=list(setup.requested_words),
                 setup_digest=setup.request_digest,
-                base_policy_version=_BASE_POLICY_VERSION,
+                base_policy_version=BASE_POLICY_VERSION,
                 pair_policy_version=course.pair_policy_version,
                 level_policy_version=("practice-v1" if mode == "practice" else f"{level}-v1"),
                 objective_count=len(objectives),
@@ -319,6 +328,113 @@ class SessionService:
             if session is None:
                 raise SessionNotFound
             return await self._view(db, session)
+
+    async def load_realtime_config(
+        self, *, user_id: UUID, session_id: UUID
+    ) -> CompiledRealtimeConfig:
+        """Compile the saved plan after checking its current connection eligibility.
+
+        The later provider bootstrap must repeat these checks in its own short
+        transaction before it creates a call attempt. No provider request belongs
+        in this read transaction.
+        """
+        async with self._session_maker() as db:
+            session = await db.scalar(
+                select(SessionModel).where(
+                    SessionModel.id == session_id, SessionModel.user_id == user_id
+                )
+            )
+            if session is None:
+                raise SessionNotFound
+            reservation = await db.scalar(
+                select(UsageReservationModel).where(
+                    UsageReservationModel.session_id == session_id
+                )
+            )
+            if (
+                session.state != "planned"
+                or reservation is None
+                or reservation.state != "reserved"
+                or reservation.expires_at <= datetime.now(UTC)
+            ):
+                raise SessionNotConnectable
+            plan = await db.get(SessionPlanModel, session_id)
+            if (
+                plan is None
+                or plan.schema_version != "learning_plan_v1"
+                or plan.prompt_version != plan.base_policy_version
+                or plan.setup_digest != session.request_digest
+            ):
+                raise SessionNotConnectable
+            profile = await SqlAlchemyLearnerProfileStore(db).for_planning(
+                user_id=user_id, profile_id=session.language_profile_id
+            )
+            if profile is None or (
+                plan.profile_version,
+                plan.preference_version,
+                plan.settings_version,
+            ) != (
+                profile.profile_version,
+                profile.preference_version,
+                profile.settings_version,
+            ):
+                raise SessionNotConnectable
+            if plan.mode != profile.mode.value or (
+                plan.snapshot_id is None
+                and plan.selected_level
+                != (profile.provisional_level.value if profile.provisional_level else None)
+            ):
+                raise SessionNotConnectable
+            preferences = await db.get(LearnerPreferenceModel, profile.id)
+            course = CodeCourseCatalog().course_version(
+                base_language_id=profile.base_language_id,
+                target_language_id=profile.target_language_id,
+                version=plan.curriculum_version,
+            )
+            if preferences is None or course is None or plan.requested_words is None:
+                raise SessionNotConnectable
+            objectives = (
+                await db.scalars(
+                    select(SessionPlanObjectiveModel)
+                    .where(SessionPlanObjectiveModel.session_id == session_id)
+                    .order_by(SessionPlanObjectiveModel.ordinal)
+                )
+            ).all()
+            if len(objectives) != plan.objective_count or any(
+                objective.kind is None for objective in objectives
+            ):
+                raise SessionNotConnectable
+            prompt_plan = PromptPlan(
+                schema_version=plan.schema_version,
+                mode=plan.mode or "",
+                selected_level=plan.selected_level,
+                curriculum_version=plan.curriculum_version,
+                base_policy_version=plan.base_policy_version or "",
+                pair_policy_version=plan.pair_policy_version or "",
+                level_policy_version=plan.level_policy_version or "",
+                topic=plan.topic,
+                requested_words=tuple(plan.requested_words),
+                objectives=tuple(
+                    PromptObjective(
+                        kind=objective.kind or "",
+                        label=objective.text,
+                        curriculum_item_key=objective.curriculum_item_key,
+                    )
+                    for objective in objectives
+                ),
+            )
+            prompt_profile = PromptProfile(
+                base_language_id=profile.base_language_id,
+                target_language_id=profile.target_language_id,
+                correction_preference=preferences.correction_preference,
+                tutor_pace=preferences.tutor_pace,
+            )
+            try:
+                return compile_realtime_config(
+                    plan=prompt_plan, profile=prompt_profile, course=course
+                )
+            except ValueError as error:
+                raise SessionNotConnectable from error
 
     async def _view(self, db: AsyncSession, session: SessionModel) -> SessionView:
         plan = await db.get(SessionPlanModel, session.id)

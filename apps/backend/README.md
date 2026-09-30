@@ -6,7 +6,9 @@ FastAPI application.
 Sign-in links Google identity, updates the application account, and issues the intro grant in
 one transaction. Profile onboarding confirms a published pair and preferences separately.
 The session foundation adds idempotent intro-grant reservation and an immutable,
-versioned learning plan. It does not yet connect audio or start a provider call.
+versioned learning plan. A pure prompt compiler loads that pinned plan, validates
+its course and policy versions, and builds server-only tutor instructions. Audio
+connection and provider calls follow in the live voice slice.
 
 Shared language pairs, curriculum items, prerequisites, evidence rules, and pair/voice
 policies are defined in `src/mori/modules/curriculum/catalog.py`. Add a new published

@@ -89,7 +89,9 @@ def _course() -> PublishedCourse:
         ),
         item("advanced-check", "Advanced diagnostic", "advanced", "diagnostic", 1, (), (), ()),
     )
-    return PublishedCourse("v1", "pair-v1", "voice-v1", "pair policy", "voice policy", items)
+    return PublishedCourse(
+        "english", "mandarin", "v1", "pair-v1", "voice-v1", "pair policy", "voice policy", items
+    )
 
 
 def test_first_session_uses_placement_diagnostic_and_practice_is_ungraded() -> None:
