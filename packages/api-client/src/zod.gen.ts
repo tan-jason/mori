@@ -206,6 +206,14 @@ export const zMeResponse = z.object({
 });
 
 /**
+ * VoiceAvailabilityResponse
+ */
+export const zVoiceAvailabilityResponse = z.object({
+    available: z.boolean(),
+    maxCallSeconds: z.int()
+});
+
+/**
  * Successful Response
  */
 export const zGetLanguagePairsApiV1LanguagePairsGetResponse = zLanguagePairsResponse;
@@ -251,6 +259,11 @@ export const zCreateSessionApiV1SessionsPostHeaders = z.object({
  */
 export const zCreateSessionApiV1SessionsPostResponse = zSessionResponse;
 
+/**
+ * Successful Response
+ */
+export const zVoiceAvailabilityApiV1SessionsAvailabilityGetResponse = zVoiceAvailabilityResponse;
+
 export const zGetSessionApiV1SessionsSessionIdGetPath = z.object({
     session_id: z.uuid()
 });
@@ -259,6 +272,34 @@ export const zGetSessionApiV1SessionsSessionIdGetPath = z.object({
  * Successful Response
  */
 export const zGetSessionApiV1SessionsSessionIdGetResponse = zSessionResponse;
+
+export const zAcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostPath = z.object({
+    session_id: z.uuid(),
+    attempt_id: z.uuid()
+});
+
+/**
+ * Successful Response
+ */
+export const zAcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostResponse = z.void();
+
+export const zEndSessionApiV1SessionsSessionIdEndPostPath = z.object({
+    session_id: z.uuid()
+});
+
+/**
+ * Successful Response
+ */
+export const zEndSessionApiV1SessionsSessionIdEndPostResponse = z.void();
+
+export const zExchangeWebrtcApiV1SessionsSessionIdWebrtcPostPath = z.object({
+    session_id: z.uuid()
+});
+
+/**
+ * Successful Response
+ */
+export const zExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponse = z.string();
 
 export const zLogoutAuthLogoutPostHeaders = z.object({
     'X-CSRF-Token': z.string()

@@ -1,5 +1,6 @@
 import type { WebAppGateway } from "./web-app-gateway";
 import type { CurrentLearner, LanguagePair } from "../domain/identity";
+import type { PlannedSession } from "../domain/session";
 import type {
   LearningItem,
   LearningTerm,
@@ -357,6 +358,8 @@ export function createMockWebAppGateway(
     csrfToken: "mock-csrf-token",
   };
   const completedKeys = new Map<string, string>();
+  const plannedSessions = new Map<string, PlannedSession>();
+  const sessionKeys = new Map<string, { payload: string; id: string }>();
   const languagePairs: LanguagePair[] = TARGET_LANGUAGES.map((target) => ({
     baseLanguageId: BASE_LANGUAGE.id,
     targetLanguageId: target.id,
@@ -444,6 +447,57 @@ export function createMockWebAppGateway(
 
     async logout(_csrfToken, signal) {
       await pause(signal);
+    },
+
+    async createSession(command, signal) {
+      await pause(signal);
+      if (!currentLearner.onboarding.complete || command.languageProfileId !== languageProfile.id) {
+        throw new Error("Complete your language setup first.");
+      }
+      const payload = JSON.stringify({
+        languageProfileId: command.languageProfileId,
+        topic: command.topic,
+        requestedWords: command.requestedWords,
+      });
+      const previous = sessionKeys.get(command.idempotencyKey);
+      if (previous && previous.payload !== payload) throw new Error("This key was already used.");
+      if (previous) {
+        const existing = plannedSessions.get(previous.id);
+        if (existing) return existing;
+      }
+      if (plannedSessions.size > 0) throw new Error("No voice session is available right now.");
+      const id = crypto.randomUUID();
+      const now = new Date();
+      const focus = command.topic
+        ? `Have a conversation about ${command.topic}.`
+        : `Have a conversation in ${targetLanguageId}.`;
+      const session: PlannedSession = {
+        id,
+        state: "planned",
+        rowVersion: 3,
+        connectedLimitMs: 1_200_000,
+        connectedMs: 0,
+        reservationExpiresAt: new Date(now.getTime() + 10 * 60_000).toISOString(),
+        objective: focus,
+        planPreview: { objectives: [focus] },
+        mode: currentLearner.activeLanguageProfile?.learning.mode ?? "learning",
+        createdAt: now.toISOString(),
+      };
+      plannedSessions.set(id, session);
+      sessionKeys.set(command.idempotencyKey, { payload, id });
+      return session;
+    },
+
+    async getSession(sessionId, signal) {
+      await pause(signal);
+      const session = plannedSessions.get(sessionId);
+      if (!session) throw new Error("The session was not found.");
+      return session;
+    },
+
+    async getVoiceAvailability(signal) {
+      await pause(signal);
+      return { available: false, maxCallSeconds: 120 };
     },
 
     async getDashboard(languageProfileId, signal) {

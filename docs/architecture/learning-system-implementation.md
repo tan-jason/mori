@@ -30,7 +30,7 @@ Migration rules:
 | Learner profile | Onboarding command, preference edits | Confirmed language profile, practice mode, self-reported level, preferences, optional interests | Assessed mastery |
 | Curriculum | Course publication and content rules | Published pair and versioned eligible content | Entitlement, live turns, session state |
 | Session orchestration and planning | Authenticated learner, profile, learning snapshot, curriculum, idempotency key, connection facts | Valid objective selection, immutable plan and preview, session state, reservation coordination, final watermark | Prompt wording, evidence extraction, level promotion |
-| Prompt compiler | Pinned plan, profile languages, selected safe context, policy versions | Server-only instructions and voice configuration | Durable learner state changes |
+| Prompt compiler | Pinned plan, profile languages, selected safe context, policy versions | Server-only tutor instructions, hash, and policy identifiers | Durable learner state changes |
 | Realtime supervisor | Provider sideband events, call identity, plan/call metadata | Normalized ordered turns, leases, time enforcement, interruption and finalization | Curriculum eligibility or memory writes |
 | Analysis/learning | Final session bundle, transcript turns, curriculum and rule versions, current consent | Validated evidence, deterministic item state, level assessment, recap, snapshot, permitted memories | Entitlement or unvalidated model-owned writes |
 | Read models | Module queries | Dashboard, plan preview, recap, memory list | Source-of-truth writes |
@@ -158,7 +158,7 @@ sequenceDiagram
     API->>DB: Recheck owner, reservation, plan, active memories
     DB-->>API: Pinned plan and eligible context
     API->>Compiler: Base + selected pair + level + plan + safe memories
-    Compiler-->>API: Instructions, voice config, build manifest
+    Compiler-->>API: Instructions, hash, policy identifiers
     API->>DB: Create call attempt and prompt build
     API->>Realtime: SDP bootstrap with server instructions
     Realtime-->>API: SDP answer and call identity
@@ -293,7 +293,7 @@ A plan pins the profile version, selected curriculum, selector version, prompt p
 
 `build_session_plan(context, published_curriculum, rule_version) -> SessionPlan` is a pure domain function. It returns one to three eligible objectives in learning mode, or one ungraded conversation focus in practice mode. Selection inputs are typed and bounded. Deterministic tie-breakers make replays stable. A model may propose topic wording after selection, but cannot alter objective keys or prerequisites.
 
-`compile_realtime_config(plan, profile, pair_policy, level_policy, selected_memories, policy_versions) -> RealtimeConfig` is pure and separately testable. It composes one generic versioned base prompt, one published language-pair module, one level block, and bounded current plan and historical context. It validates required profile languages, prompt size, memory eligibility, and unsupported policy combinations. The output includes instructions, a voice configuration, and a build manifest. The API owns the provider call; the compiler never contacts OpenAI or writes learner state.
+`compile_realtime_config(plan, profile, course) -> CompiledRealtimeConfig` is pure and separately testable. It composes the current base prompt, the plan's published language-pair policy, one level block, and bounded session requests. It validates the plan, profile languages, policy identifiers, and prompt size. The output contains server-only instructions, their hash, and policy identifiers. The Realtime integration selects provider voice settings and persists the per-attempt build manifest. The compiler never contacts OpenAI or writes learner state. Policy identifiers record provenance; they do not require the compiler to execute retired base-prompt versions.
 
 The first pair module can specialize English as the base language and Mandarin as the target language: Standard Mandarin voice delivery, brief English rescue scaffolds, Mandarin examples, and pair-specific pronunciation wording. It must be selected from the confirmed profile and code catalog, never from an application default. The generic base prompt keeps reusable tutor behavior, turn shape, uncertainty handling, and memory safety; the pair module must not repeat these rules. Changing pair wording increments its own version so evaluations can isolate a language-specific change from a base or level change.
 
@@ -329,7 +329,7 @@ The initial evaluator uses transcripts, including tutor turns that offer a pronu
 
 ## 9. Delivery slices and gates
 
-Implementation status as of September 30, 2026: slice 1's explicit onboarding path and slice 2's first published course, pure selector, setup request, and versioned plan are implemented. Slice 3's pure base, pair, and level compiler and persisted-plan loading are implemented. The planned profile-scoped preference, active-profile, and learning-settings routes remain outstanding. The selector supports due and repair input, but those inputs stay empty until analysis state is persisted. The seeded evidence rules are disabled until evaluation thresholds and progression gates are approved. Live voice, memory, and post-session analysis remain outstanding.
+Implementation status as of September 30, 2026: slice 1's explicit onboarding path and slice 2's first published course, pure selector, setup request, and versioned plan are implemented. Slice 3's pure base, pair, and level compiler and persisted-plan loading are implemented. The realtime browser transport, SDP route, persisted deadline, lease-based supervisor, and finalized transcript turn storage are implemented but still need a real provider call and process-loss drill. The planned profile-scoped preference, active-profile, and learning-settings routes remain outstanding. The selector supports due and repair input, but those inputs stay empty until analysis state is persisted. The seeded evidence rules are disabled until evaluation thresholds and progression gates are approved. Memory and post-session analysis remain outstanding.
 
 1. **Profile and onboarding:** nullable `GET /me`, supported-pair catalog, explicit onboarding mutation, legacy-profile confirmation migration, four-level web type, optional interests. Gate: new and legacy accounts cannot start without explicit supported selection; old auth behavior remains valid.
 2. **Curriculum and deterministic planning:** published first course, starter objectives, placement and review rules, session topic/word inputs, pure selector, immutable plan migration. Gate: fixtures and PostgreSQL tests prove eligibility, deterministic replay, idempotent creation, and reservation cleanup.

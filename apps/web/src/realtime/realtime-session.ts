@@ -12,10 +12,12 @@ export interface RealtimeSession {
   connect(): Promise<void>;
   end(reason: "learner_ended" | "time_limit" | "connection_failed"): Promise<void>;
   setPlaybackRate(rate: number): Promise<void>;
+  subscribe(listener: (state: RealtimeSessionState) => void): () => void;
 }
 
 export interface RealtimeSessionFactory {
-  create(sessionId: string): RealtimeSession;
+  readonly available: boolean;
+  create(sessionId: string, csrfToken: string): RealtimeSession;
 }
 
 /**
@@ -24,7 +26,8 @@ export interface RealtimeSessionFactory {
  * provider API key must never be placed in the browser bundle.
  */
 export const unconfiguredRealtimeSessionFactory: RealtimeSessionFactory = {
+  available: false,
   create() {
-    throw new Error("Realtime sessions are not configured in this scaffold.");
+    throw new Error("Voice practice is not available yet.");
   },
 };

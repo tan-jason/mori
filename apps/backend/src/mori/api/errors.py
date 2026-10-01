@@ -38,6 +38,8 @@ from mori.modules.sessions.errors import (
     SessionNotConnectable,
     SessionNotFound,
     VoiceEntitlementUnavailable,
+    VoiceNotConfigured,
+    VoiceProviderUnavailable,
 )
 from mori.modules.user.errors import AccountUnavailable
 
@@ -116,6 +118,10 @@ _EXPECTED_ERRORS: dict[type[Exception], ErrorDefinition] = {
     ),
     InvalidSessionSetup: ErrorDefinition(
         422, "session_setup_invalid", "The session setup is invalid."
+    ),
+    VoiceNotConfigured: ErrorDefinition(503, "voice_unavailable", "Voice practice is unavailable."),
+    VoiceProviderUnavailable: ErrorDefinition(
+        502, "voice_provider_unavailable", "The voice connection could not start."
     ),
 }
 

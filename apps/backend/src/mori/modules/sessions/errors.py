@@ -27,3 +27,11 @@ class InvalidSessionSetup(Exception):
 
 class SessionNotConnectable(Exception):
     pass
+
+
+class VoiceNotConfigured(Exception):
+    pass
+
+
+class VoiceProviderUnavailable(Exception):
+    pass

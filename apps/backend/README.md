@@ -7,8 +7,16 @@ Sign-in links Google identity, updates the application account, and issues the i
 one transaction. Profile onboarding confirms a published pair and preferences separately.
 The session foundation adds idempotent intro-grant reservation and an immutable,
 versioned learning plan. A pure prompt compiler loads that pinned plan, validates
-its course and policy versions, and builds server-only tutor instructions. Audio
-connection and provider calls follow in the live voice slice.
+its course and policy versions, and builds server-only tutor instructions.
+
+Realtime bootstrap persists a call attempt and prompt-build manifest before a provider
+request. The API exchanges SDP server-side, and an asyncio supervisor owns each call
+through a renewable PostgreSQL lease. It persists an absolute deadline, hangs up
+expired or ended calls, and stores finalized transcript turns. Browser acknowledgement
+waits for the server sideband stream. A second API process can claim an expired lease
+after process loss; a gap in the transcript marks analysis as failed. The webapp enables
+voice only when the supervisor reports healthy. A real provider call and process-loss
+drill remain to be verified before treating this as the complete M2 gate.
 
 Shared language pairs, curriculum items, prerequisites, evidence rules, and pair/voice
 policies are defined in `src/mori/modules/curriculum/catalog.py`. Add a new published
@@ -77,14 +85,18 @@ The Google client must register the redirect URI exactly, including scheme, port
 
 | Variable | Source | Local value or requirement |
 | --- | --- | --- |
-| `OPENAI_API_KEY` | OpenAI development project | Project-scoped API key. This is the standard variable read by the OpenAI SDK. |
-| `OPENAI_REALTIME_MODEL` | Mori configuration | Leave empty until the realtime evaluation selects a model. |
+| `OPENAI_API_KEY` | OpenAI development project | Project-scoped API key used by the server Realtime adapter. |
+| `OPENAI_REALTIME_MODEL` | Mori configuration | Defaults to `gpt-realtime-2.1`; pin or change after live evaluation. |
+| `OPENAI_REALTIME_VOICE` | Mori configuration | Defaults to `marin`. |
 | `OPENAI_EXTRACTOR_MODEL` | Mori configuration | Leave empty until the extraction evaluation selects a model. |
 | `OPENAI_SAFETY_ID_SECRET` | Generate locally | Independent random 32-byte or longer secret used to derive privacy-preserving safety identifiers. |
 
 The model and safety variables are Mori configuration, not values issued by OpenAI. A project-scoped API key does not require an additional organization or project ID variable for the initial integration.
 
 Never expose these variables to Vite or prefix them with `VITE_`. All provider calls and secret handling belong to the backend.
+Both `OPENAI_API_KEY` and `OPENAI_SAFETY_ID_SECRET` must be set before the voice
+availability endpoint enables calls. Non-production calls have a 120-second absolute
+server cap. Production uses the entitlement cap, currently 20 minutes.
 
 ## Dependency workflow
 

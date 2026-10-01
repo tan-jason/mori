@@ -28,7 +28,9 @@ from mori.modules.identity.routes import router as identity_router
 from mori.modules.learner_profiles.application import LearnerProfileService
 from mori.modules.learner_profiles.routes import router as learner_profile_router
 from mori.modules.sessions.application import SessionService
+from mori.modules.sessions.realtime_provider import OpenAIRealtimeProvider
 from mori.modules.sessions.routes import router as session_router
+from mori.modules.sessions.supervisor import RealtimeSupervisor
 from mori.modules.user.application import UserService
 from mori.modules.user.routes import router as user_router
 from mori.persistence.uow import SqlAlchemyUnitOfWorkFactory
@@ -79,10 +81,35 @@ def create_app(
         allowed_return_paths=runtime_settings.auth_return_paths,
     )
 
+    session_service = SessionService(session_maker=session_maker)
+    api_key = runtime_settings.openai_api_key
+    safety_secret = runtime_settings.openai_safety_id_secret
+    provider = (
+        OpenAIRealtimeProvider(api_key=api_key.get_secret_value())
+        if api_key is not None and safety_secret is not None
+        else None
+    )
+    supervisor = (
+        RealtimeSupervisor(
+            session_maker=session_maker,
+            service=session_service,
+            provider=provider,
+            api_key=api_key.get_secret_value(),
+        )
+        if provider is not None and api_key is not None
+        else None
+    )
+
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-        yield
-        await runtime_engine.dispose()
+        if supervisor is not None:
+            supervisor.start()
+        try:
+            yield
+        finally:
+            if supervisor is not None:
+                await supervisor.stop()
+            await runtime_engine.dispose()
 
     app = FastAPI(
         title="Mori API",
@@ -101,9 +128,9 @@ def create_app(
     app.state.learner_profile_service = LearnerProfileService(
         unit_of_work_factory=unit_of_work_factory, identity=service
     )
-    app.state.session_service = SessionService(
-        session_maker=session_maker,
-    )
+    app.state.session_service = session_service
+    app.state.realtime_provider = provider
+    app.state.realtime_supervisor = supervisor
 
     app.add_middleware(
         CORSMiddleware,
@@ -111,7 +138,9 @@ def create_app(
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
         allow_headers=["Accept", "Content-Type", "Idempotency-Key", "If-Match", "X-CSRF-Token"],
-        expose_headers=["ETag", "Location", "X-Request-ID"],
+        expose_headers=[
+            "ETag", "Location", "X-Request-ID", "X-Call-Attempt-ID", "X-Call-Deadline-At"
+        ],
     )
     allowed_hosts = [runtime_settings.api_host]
     if runtime_settings.environment == Environment.TEST:

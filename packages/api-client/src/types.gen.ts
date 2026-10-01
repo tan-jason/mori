@@ -329,6 +329,20 @@ export type UserResponse = {
  */
 export type UserStatus = 'active' | 'suspended' | 'deletion_pending';
 
+/**
+ * VoiceAvailabilityResponse
+ */
+export type VoiceAvailabilityResponse = {
+    /**
+     * Available
+     */
+    available: boolean;
+    /**
+     * Maxcallseconds
+     */
+    maxCallSeconds: number;
+};
+
 export type GetLanguagePairsApiV1LanguagePairsGetData = {
     body?: never;
     path?: never;
@@ -466,6 +480,31 @@ export type CreateSessionApiV1SessionsPostResponses = {
 
 export type CreateSessionApiV1SessionsPostResponse = CreateSessionApiV1SessionsPostResponses[keyof CreateSessionApiV1SessionsPostResponses];
 
+export type VoiceAvailabilityApiV1SessionsAvailabilityGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/sessions/availability';
+};
+
+export type VoiceAvailabilityApiV1SessionsAvailabilityGetErrors = {
+    /**
+     * Mori error envelope
+     */
+    default: ApiErrorResponse;
+};
+
+export type VoiceAvailabilityApiV1SessionsAvailabilityGetError = VoiceAvailabilityApiV1SessionsAvailabilityGetErrors[keyof VoiceAvailabilityApiV1SessionsAvailabilityGetErrors];
+
+export type VoiceAvailabilityApiV1SessionsAvailabilityGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: VoiceAvailabilityResponse;
+};
+
+export type VoiceAvailabilityApiV1SessionsAvailabilityGetResponse = VoiceAvailabilityApiV1SessionsAvailabilityGetResponses[keyof VoiceAvailabilityApiV1SessionsAvailabilityGetResponses];
+
 export type GetSessionApiV1SessionsSessionIdGetData = {
     body?: never;
     path: {
@@ -495,6 +534,100 @@ export type GetSessionApiV1SessionsSessionIdGetResponses = {
 };
 
 export type GetSessionApiV1SessionsSessionIdGetResponse = GetSessionApiV1SessionsSessionIdGetResponses[keyof GetSessionApiV1SessionsSessionIdGetResponses];
+
+export type AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+        /**
+         * Attempt Id
+         */
+        attempt_id: string;
+    };
+    query?: never;
+    url: '/api/v1/sessions/{session_id}/connections/{attempt_id}/ack';
+};
+
+export type AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostErrors = {
+    /**
+     * Mori error envelope
+     */
+    default: ApiErrorResponse;
+};
+
+export type AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostError = AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostErrors[keyof AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostErrors];
+
+export type AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostResponse = AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostResponses[keyof AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostResponses];
+
+export type EndSessionApiV1SessionsSessionIdEndPostData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query?: never;
+    url: '/api/v1/sessions/{session_id}/end';
+};
+
+export type EndSessionApiV1SessionsSessionIdEndPostErrors = {
+    /**
+     * Mori error envelope
+     */
+    default: ApiErrorResponse;
+};
+
+export type EndSessionApiV1SessionsSessionIdEndPostError = EndSessionApiV1SessionsSessionIdEndPostErrors[keyof EndSessionApiV1SessionsSessionIdEndPostErrors];
+
+export type EndSessionApiV1SessionsSessionIdEndPostResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type EndSessionApiV1SessionsSessionIdEndPostResponse = EndSessionApiV1SessionsSessionIdEndPostResponses[keyof EndSessionApiV1SessionsSessionIdEndPostResponses];
+
+export type ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query?: never;
+    url: '/api/v1/sessions/{session_id}/webrtc';
+};
+
+export type ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostErrors = {
+    /**
+     * Mori error envelope
+     */
+    default: ApiErrorResponse;
+};
+
+export type ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostError = ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostErrors[keyof ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostErrors];
+
+export type ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: string;
+};
+
+export type ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponse = ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponses[keyof ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponses];
 
 export type LogoutAuthLogoutPostData = {
     body?: never;

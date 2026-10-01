@@ -1,6 +1,6 @@
 # Backend implementation plan
 
-**Status:** M1 foundation in progress; deterministic planning and first prompt compiler landed ahead of M2
+**Status:** M1 foundation in progress; M2 live path implemented, provider and recovery drills pending
 
 **Sequence:** M0 through M5, with no calendar estimate implied
 
@@ -102,6 +102,8 @@ Verification:
 **Objective:** Prove one real voice session can start, produce durable turns, and end safely under server control.
 
 The initial published English-to-Mandarin curriculum and deterministic `learning_plan_v1` session plans were implemented ahead of this milestone. M2 uses those pinned plans during voice bootstrap; it does not create another placeholder plan shape. The session setup API accepts bounded topic and requested-word inputs, while the browser setup flow remains for the live slice. The initial evidence rules remain disabled until progression thresholds are approved.
+
+Bootstrap intent, prompt-build metadata, the server-side SDP adapter, web browser transport, public call routes, durable deadline, renewable PostgreSQL lease, and transcript turn storage are implemented. The remaining M2 gate needs a real provider call, deadline and process-loss drills, and final connection-segment and event-watermark verification.
 
 Use a temporary two-minute cap in non-production environments to accelerate testing. The domain policy remains configurable and the production target remains 20 minutes.
 

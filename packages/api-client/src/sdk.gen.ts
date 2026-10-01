@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateLanguageProfileApiV1LanguageProfilesPostData, CreateLanguageProfileApiV1LanguageProfilesPostErrors, CreateLanguageProfileApiV1LanguageProfilesPostResponses, CreateSessionApiV1SessionsPostData, CreateSessionApiV1SessionsPostErrors, CreateSessionApiV1SessionsPostResponses, GetLanguagePairsApiV1LanguagePairsGetData, GetLanguagePairsApiV1LanguagePairsGetErrors, GetLanguagePairsApiV1LanguagePairsGetResponses, GetMeApiV1MeGetData, GetMeApiV1MeGetErrors, GetMeApiV1MeGetResponses, GetSessionApiV1SessionsSessionIdGetData, GetSessionApiV1SessionsSessionIdGetErrors, GetSessionApiV1SessionsSessionIdGetResponses, HealthHealthGetData, HealthHealthGetResponses, LogoutAuthLogoutPostData, LogoutAuthLogoutPostErrors, LogoutAuthLogoutPostResponses, ReadyReadyGetData, ReadyReadyGetResponses, UpdatePreferencesApiV1MePreferencesPatchData, UpdatePreferencesApiV1MePreferencesPatchErrors, UpdatePreferencesApiV1MePreferencesPatchResponses } from './types.gen';
+import type { AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostData, AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostErrors, AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostResponses, CreateLanguageProfileApiV1LanguageProfilesPostData, CreateLanguageProfileApiV1LanguageProfilesPostErrors, CreateLanguageProfileApiV1LanguageProfilesPostResponses, CreateSessionApiV1SessionsPostData, CreateSessionApiV1SessionsPostErrors, CreateSessionApiV1SessionsPostResponses, EndSessionApiV1SessionsSessionIdEndPostData, EndSessionApiV1SessionsSessionIdEndPostErrors, EndSessionApiV1SessionsSessionIdEndPostResponses, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostData, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostErrors, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponses, GetLanguagePairsApiV1LanguagePairsGetData, GetLanguagePairsApiV1LanguagePairsGetErrors, GetLanguagePairsApiV1LanguagePairsGetResponses, GetMeApiV1MeGetData, GetMeApiV1MeGetErrors, GetMeApiV1MeGetResponses, GetSessionApiV1SessionsSessionIdGetData, GetSessionApiV1SessionsSessionIdGetErrors, GetSessionApiV1SessionsSessionIdGetResponses, HealthHealthGetData, HealthHealthGetResponses, LogoutAuthLogoutPostData, LogoutAuthLogoutPostErrors, LogoutAuthLogoutPostResponses, ReadyReadyGetData, ReadyReadyGetResponses, UpdatePreferencesApiV1MePreferencesPatchData, UpdatePreferencesApiV1MePreferencesPatchErrors, UpdatePreferencesApiV1MePreferencesPatchResponses, VoiceAvailabilityApiV1SessionsAvailabilityGetData, VoiceAvailabilityApiV1SessionsAvailabilityGetErrors, VoiceAvailabilityApiV1SessionsAvailabilityGetResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -65,9 +65,29 @@ export const createSessionApiV1SessionsPost = <ThrowOnError extends boolean = fa
 });
 
 /**
+ * Voice Availability
+ */
+export const voiceAvailabilityApiV1SessionsAvailabilityGet = <ThrowOnError extends boolean = false>(options?: Options<VoiceAvailabilityApiV1SessionsAvailabilityGetData, ThrowOnError>) => (options?.client ?? client).get<VoiceAvailabilityApiV1SessionsAvailabilityGetResponses, VoiceAvailabilityApiV1SessionsAvailabilityGetErrors, ThrowOnError>({ url: '/api/v1/sessions/availability', ...options });
+
+/**
  * Get Session
  */
 export const getSessionApiV1SessionsSessionIdGet = <ThrowOnError extends boolean = false>(options: Options<GetSessionApiV1SessionsSessionIdGetData, ThrowOnError>) => (options.client ?? client).get<GetSessionApiV1SessionsSessionIdGetResponses, GetSessionApiV1SessionsSessionIdGetErrors, ThrowOnError>({ url: '/api/v1/sessions/{session_id}', ...options });
+
+/**
+ * Acknowledge Connection
+ */
+export const acknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPost = <ThrowOnError extends boolean = false>(options: Options<AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostData, ThrowOnError>) => (options.client ?? client).post<AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostResponses, AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostErrors, ThrowOnError>({ url: '/api/v1/sessions/{session_id}/connections/{attempt_id}/ack', ...options });
+
+/**
+ * End Session
+ */
+export const endSessionApiV1SessionsSessionIdEndPost = <ThrowOnError extends boolean = false>(options: Options<EndSessionApiV1SessionsSessionIdEndPostData, ThrowOnError>) => (options.client ?? client).post<EndSessionApiV1SessionsSessionIdEndPostResponses, EndSessionApiV1SessionsSessionIdEndPostErrors, ThrowOnError>({ url: '/api/v1/sessions/{session_id}/end', ...options });
+
+/**
+ * Exchange Webrtc
+ */
+export const exchangeWebrtcApiV1SessionsSessionIdWebrtcPost = <ThrowOnError extends boolean = false>(options: Options<ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostData, ThrowOnError>) => (options.client ?? client).post<ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponses, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostErrors, ThrowOnError>({ url: '/api/v1/sessions/{session_id}/webrtc', ...options });
 
 /**
  * Logout

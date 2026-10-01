@@ -6,6 +6,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -14,6 +15,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -123,3 +125,88 @@ class SessionPlanObjectiveModel(Base):
     text: Mapped[str] = mapped_column(Text, nullable=False)
     kind: Mapped[str | None] = mapped_column(String(32))
     curriculum_item_key: Mapped[str | None] = mapped_column(String(80))
+
+
+class SessionCallAttemptModel(Base):
+    __tablename__ = "session_call_attempts"
+    __table_args__ = (
+        CheckConstraint("attempt_number > 0", name="ck_session_call_attempt_number"),
+        CheckConstraint(
+            "state IN ('bootstrap_pending', 'awaiting_client', 'active', 'ending', "
+            "'ended', 'provider_failed', 'ambiguous', 'cleanup_pending')",
+            name="ck_session_call_attempt_state",
+        ),
+        UniqueConstraint("session_id", "attempt_number", name="uq_session_call_attempt_number"),
+        Index(
+            "uq_session_call_attempt_open",
+            "session_id",
+            unique=True,
+            postgresql_where=text(
+                "state IN ('bootstrap_pending', 'awaiting_client', 'active', 'ending', "
+                "'ambiguous', 'cleanup_pending')"
+            ),
+        ),
+        Index("ix_session_call_attempt_recovery", "state", "pending_expires_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    session_id: Mapped[UUID] = mapped_column(
+        ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    state: Mapped[str] = mapped_column(String(32), nullable=False)
+    provider_call_id: Mapped[str | None] = mapped_column(String(160), unique=True)
+    pending_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    hard_deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    client_ack_deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    connected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    end_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sideband_ready_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    transcript_gap: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    lease_owner: Mapped[UUID | None] = mapped_column()
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class SessionTurnModel(Base):
+    __tablename__ = "session_turns"
+    __table_args__ = (
+        UniqueConstraint(
+            "session_id", "provider_item_id", "role", name="uq_session_turn_item_role"
+        ),
+        UniqueConstraint("session_id", "sequence", name="uq_session_turn_sequence"),
+        CheckConstraint("sequence > 0", name="ck_session_turn_sequence"),
+        CheckConstraint("role IN ('learner', 'tutor')", name="ck_session_turn_role"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    session_id: Mapped[UUID] = mapped_column(
+        ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    provider_item_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class SessionPromptBuildModel(Base):
+    __tablename__ = "session_prompt_builds"
+
+    call_attempt_id: Mapped[UUID] = mapped_column(
+        ForeignKey("session_call_attempts.id", ondelete="CASCADE"), primary_key=True
+    )
+    session_id: Mapped[UUID] = mapped_column(
+        ForeignKey("session_plans.session_id", ondelete="CASCADE"), nullable=False
+    )
+    base_policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    pair_policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    level_policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    voice_policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    model_alias: Mapped[str] = mapped_column(String(128), nullable=False)
+    voice_alias: Mapped[str] = mapped_column(String(128), nullable=False)
+    instructions_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

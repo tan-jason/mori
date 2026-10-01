@@ -44,6 +44,48 @@ function jsonResponse(payload: unknown, status = 200): Response {
 }
 
 describe("createBackendWebAppGateway", () => {
+  it("creates a session with the selected profile and validates the saved plan", async () => {
+    const fetchMock = vi.fn<typeof window.fetch>();
+    const session = {
+      id: "a92983a7-1476-47d9-b6f0-39d8c2d9ebf1",
+      state: "planned",
+      rowVersion: 3,
+      connectedLimitMs: 1_200_000,
+      connectedMs: 0,
+      reservationExpiresAt: "2026-09-30T12:10:00Z",
+      objective: "Share a simple introduction.",
+      planPreview: { objectives: ["Share a simple introduction."] },
+      mode: "learning",
+      createdAt: "2026-09-30T12:00:00Z",
+    };
+    fetchMock.mockResolvedValue(jsonResponse(session, 201));
+    const gateway = createBackendWebAppGateway({ apiOrigin: "http://api.test", fetch: fetchMock });
+
+    await expect(gateway.createSession({
+      languageProfileId: learnerResponse.activeLanguageProfile.id,
+      topic: "my weekend",
+      requestedWords: ["market"],
+      idempotencyKey: "session-setup-123",
+      csrfToken: "csrf-token",
+    })).resolves.toMatchObject({ id: session.id, planPreview: session.planPreview });
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toEqual(new URL("http://api.test/api/v1/sessions"));
+    expect(init).toMatchObject({
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": "session-setup-123",
+        "X-CSRF-Token": "csrf-token",
+      },
+    });
+    expect(JSON.parse(init?.body as string)).toEqual({
+      languageProfileId: learnerResponse.activeLanguageProfile.id,
+      topic: "my weekend",
+      requestedWords: ["market"],
+    });
+  });
+
   it("accepts a signed-in learner before profile setup", async () => {
     const fetchMock = vi.fn<typeof window.fetch>();
     fetchMock.mockResolvedValue(jsonResponse({

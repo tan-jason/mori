@@ -74,13 +74,13 @@ class AccessCommands:
                 id=reserved.id,
                 session_id=reserved.session_id,
                 expires_at=reserved.expires_at,
-            ) if reserved is not None else None,
+            )
+            if reserved is not None
+            else None,
         )
 
     @staticmethod
-    async def release_expired(
-        db: AsyncSession, *, reservation_id: UUID, now: datetime
-    ) -> None:
+    async def release_expired(db: AsyncSession, *, reservation_id: UUID, now: datetime) -> None:
         reservation = await db.get(UsageReservationModel, reservation_id)
         if reservation is None or reservation.state != "reserved" or reservation.expires_at > now:
             raise RuntimeError("reservation is not releasable")
@@ -97,8 +97,48 @@ class AccessCommands:
         await db.flush()
 
     @staticmethod
+    async def release_setup_failure(
+        db: AsyncSession, *, reservation_id: UUID, now: datetime
+    ) -> None:
+        reservation = await db.get(UsageReservationModel, reservation_id)
+        if reservation is None or reservation.state != "reserved":
+            raise RuntimeError("reservation is not releasable")
+        reservation.state = "released"
+        reservation.updated_at = now
+        db.add(
+            UsageEventModel(
+                reservation_id=reservation_id,
+                kind="released",
+                idempotency_key=f"reservation:{reservation_id}:setup-failed",
+                created_at=now,
+            )
+        )
+        await db.flush()
+
+    @staticmethod
+    async def consume_intro(db: AsyncSession, *, reservation_id: UUID, now: datetime) -> None:
+        reservation = await db.get(UsageReservationModel, reservation_id)
+        if reservation is None or reservation.state != "reserved":
+            raise RuntimeError("reservation is not consumable")
+        reservation.state = "consumed"
+        reservation.updated_at = now
+        db.add(
+            UsageEventModel(
+                reservation_id=reservation_id,
+                kind="consumed",
+                idempotency_key=f"reservation:{reservation_id}:first-turn",
+                created_at=now,
+            )
+        )
+        await db.flush()
+
+    @staticmethod
     async def reserve_intro(
-        db: AsyncSession, *, grant_id: UUID, session_id: UUID, now: datetime,
+        db: AsyncSession,
+        *,
+        grant_id: UUID,
+        session_id: UUID,
+        now: datetime,
         ttl: timedelta,
     ) -> datetime:
         reservation = UsageReservationModel(

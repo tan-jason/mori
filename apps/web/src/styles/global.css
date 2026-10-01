@@ -1917,6 +1917,71 @@ a.text-link:hover {
   line-height: 1.5;
 }
 
+.session-plan-preview {
+  margin: 1.5rem 0;
+  padding: 1rem 1.15rem;
+  border: 1px solid #bdcbbf;
+  border-radius: var(--radius-sm);
+  background: var(--forest-light);
+}
+
+.session-plan-preview strong {
+  color: var(--forest-dark);
+  font-size: 0.8rem;
+}
+
+.session-plan-preview ul {
+  margin: 0.6rem 0 0;
+  padding-left: 1.25rem;
+  line-height: 1.5;
+}
+
+.session-error {
+  margin: 1rem 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgb(141 74 57 / 30%);
+  border-radius: var(--radius-sm);
+  color: #8d4a39;
+  background: #f6ece7;
+}
+
+.session-setup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.session-setup-field > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.session-setup-field strong {
+  font-size: 0.8rem;
+}
+
+.session-setup-field small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.session-setup-field input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--line-dark);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.session-setup-field input:disabled {
+  opacity: 0.65;
+}
+
 .session-preferences {
   padding: 1.8rem;
   border: 1px solid var(--line-dark);

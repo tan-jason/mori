@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type PropsWithChildren } from "react";
 import { createBackendWebAppGateway } from "../api/backend-web-app-gateway";
 import { mockWebAppGateway } from "../api/mock-web-app-gateway";
+import { createBackendRealtimeTransport } from "../realtime/backend-realtime-transport";
+import { createBrowserRealtimeSessionFactory } from "../realtime/browser-realtime-session";
 import {
   AppDependenciesContext,
   type AppDependencies,
@@ -12,6 +14,9 @@ const defaultDependencies: AppDependencies = {
     import.meta.env.MODE === "test" || import.meta.env.VITE_USE_MOCK_API === "true"
       ? mockWebAppGateway
       : createBackendWebAppGateway(),
+  realtime: import.meta.env.MODE === "test" || import.meta.env.VITE_USE_MOCK_API === "true"
+    ? undefined
+    : createBrowserRealtimeSessionFactory(createBackendRealtimeTransport()),
 };
 
 interface AppProvidersProps extends PropsWithChildren {
