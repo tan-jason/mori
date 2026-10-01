@@ -193,7 +193,7 @@ async def test_webapp_call_consumes_once_and_supervisor_finishes(
         assert restricted.status_code == 409
         assert restricted.json()["error"]["code"] == "voice_session_limit_reached"
         assert restricted.json()["error"]["message"] == (
-            "You've reached your plan's one-time limit of 1 session."
+            "You've reached your plan's limit of 1 session in total."
         )
     finally:
         app.state.session_service = service

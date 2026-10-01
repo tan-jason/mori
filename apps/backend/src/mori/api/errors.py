@@ -159,13 +159,16 @@ def install_exception_handlers(app: FastAPI) -> None:
     ) -> JSONResponse:
         count = error.max_sessions
         noun = "session" if count == 1 else "sessions"
-        window = "one-time" if error.reset_period is None else error.reset_period
+        window = {
+            None: "in total",
+            "weekly": "per week",
+        }.get(error.reset_period, "in the current plan window")
         return error_response(
             request,
             ErrorDefinition(
                 409,
                 "voice_session_limit_reached",
-                f"You've reached your plan's {window} limit of {count} {noun}.",
+                f"You've reached your plan's limit of {count} {noun} {window}.",
             ),
         )
 
