@@ -144,8 +144,10 @@ class SessionService:
         self,
         *,
         session_maker: async_sessionmaker[AsyncSession],
+        allow_repeated_intro_sessions: bool = False,
     ) -> None:
         self._session_maker = session_maker
+        self._allow_repeated_intro_sessions = allow_repeated_intro_sessions
 
     async def create(
         self,
@@ -238,9 +240,23 @@ class SessionService:
         return _SelectedPlan(profile=profile, course=course, objectives=objectives)
 
     async def _claim_grant(self, db: AsyncSession, *, user_id: UUID, now: datetime) -> IntroGrant:
-        grant = await AccessCommands.claim_intro_grant(db, user_id=user_id, now=now)
+        grant = await AccessCommands.claim_intro_grant(
+            db,
+            user_id=user_id,
+            now=now,
+            allow_consumed=self._allow_repeated_intro_sessions,
+        )
         if grant is None:
             raise VoiceEntitlementUnavailable
+        if self._allow_repeated_intro_sessions:
+            in_progress = await db.scalar(
+                select(SessionModel.id).where(
+                    SessionModel.user_id == user_id,
+                    SessionModel.state.in_(("connecting", "active", "reconnecting", "ending")),
+                )
+            )
+            if in_progress is not None:
+                raise VoiceEntitlementUnavailable
         held = grant.held
         if held is not None:
             previous = await db.get(SessionModel, held.session_id)

@@ -30,7 +30,7 @@ class IntroGrant:
 class AccessCommands:
     @staticmethod
     async def claim_intro_grant(
-        db: AsyncSession, *, user_id: UUID, now: datetime
+        db: AsyncSession, *, user_id: UUID, now: datetime, allow_consumed: bool = False
     ) -> IntroGrant | None:
         grant = await db.scalar(
             select(GrantModel)
@@ -53,14 +53,15 @@ class AccessCommands:
         )
         if rule is None or rule.allowance != 1 or rule.reset_period is not None:
             return None
-        consumed = await db.scalar(
-            select(UsageReservationModel.id).where(
-                UsageReservationModel.grant_id == grant.id,
-                UsageReservationModel.state == "consumed",
+        if not allow_consumed:
+            consumed = await db.scalar(
+                select(UsageReservationModel.id).where(
+                    UsageReservationModel.grant_id == grant.id,
+                    UsageReservationModel.state == "consumed",
+                )
             )
-        )
-        if consumed is not None:
-            return None
+            if consumed is not None:
+                return None
         reserved = await db.scalar(
             select(UsageReservationModel).where(
                 UsageReservationModel.grant_id == grant.id,

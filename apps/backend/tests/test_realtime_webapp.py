@@ -162,6 +162,15 @@ async def test_webapp_call_consumes_once_and_supervisor_finishes(
         (2, "你好！"),
     ]
     assert _sql(database_url, "SELECT state FROM usage_reservations") == [("consumed",)]
+    profile_id = client.get("/api/v1/me").json()["activeLanguageProfile"]["id"]
+    next_session_headers = {**headers, "Idempotency-Key": "next-session-realtime-webapp"}
+    overlapping = client.post(
+        "/api/v1/sessions",
+        json={"languageProfileId": profile_id},
+        headers=next_session_headers,
+    )
+    assert overlapping.status_code == 409
+    assert overlapping.json()["error"]["code"] == "voice_entitlement_unavailable"
     assert client.post(f"/api/v1/sessions/{session_id}/end", headers=headers).status_code == 204
     await supervisor._scan()
     for _ in range(100):
@@ -174,6 +183,27 @@ async def test_webapp_call_consumes_once_and_supervisor_finishes(
         ("analysis_pending", 2)
     ]
     assert _sql(database_url, "SELECT state FROM usage_reservations") == [("consumed",)]
+    app.state.session_service = SessionService(session_maker=app.state.session_maker)
+    try:
+        restricted = client.post(
+            "/api/v1/sessions",
+            json={"languageProfileId": profile_id},
+            headers=next_session_headers,
+        )
+        assert restricted.status_code == 409
+        assert restricted.json()["error"]["code"] == "voice_entitlement_unavailable"
+    finally:
+        app.state.session_service = service
+    repeated = client.post(
+        "/api/v1/sessions",
+        json={"languageProfileId": profile_id},
+        headers=next_session_headers,
+    )
+    assert repeated.status_code == 201
+    assert sorted(_sql(database_url, "SELECT state FROM usage_reservations")) == [
+        ("consumed",),
+        ("reserved",),
+    ]
 
 
 @pytest.mark.asyncio

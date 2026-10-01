@@ -81,7 +81,11 @@ def create_app(
         allowed_return_paths=runtime_settings.auth_return_paths,
     )
 
-    session_service = SessionService(session_maker=session_maker)
+    # TODO(launch): Remove this testing bypass and enforce the one-time intro grant everywhere.
+    session_service = SessionService(
+        session_maker=session_maker,
+        allow_repeated_intro_sessions=runtime_settings.environment != Environment.PRODUCTION,
+    )
     api_key = runtime_settings.openai_api_key
     safety_secret = runtime_settings.openai_safety_id_secret
     provider = (
