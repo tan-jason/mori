@@ -4,6 +4,7 @@ import { createBrowserRealtimeSessionFactory } from "./browser-realtime-session"
 function browserHarness() {
   const stop = vi.fn();
   const close = vi.fn();
+  const send = vi.fn();
   const enabledWhenAdded: boolean[] = [];
   const track = { enabled: true, stop } as unknown as MediaStreamTrack;
   const stream = {
@@ -15,7 +16,7 @@ function browserHarness() {
     connectionState: "connected",
     localDescription: { type: "offer", sdp: "v=0\r\noffer" },
     addTrack: vi.fn((addedTrack: MediaStreamTrack) => { enabledWhenAdded.push(addedTrack.enabled); }),
-    createDataChannel: () => ({ readyState: "open" }),
+    createDataChannel: () => ({ readyState: "open", send }),
     createOffer: () => Promise.resolve({ type: "offer", sdp: "v=0\r\noffer" }),
     setLocalDescription: vi.fn(async () => {}),
     setRemoteDescription: vi.fn(async () => {}),
@@ -24,6 +25,7 @@ function browserHarness() {
   return {
     stop,
     close,
+    send,
     enabledWhenAdded,
     track,
     connection,
@@ -58,9 +60,11 @@ describe("browser realtime session", () => {
     expect(browser.enabledWhenAdded).toEqual([false]);
     expect(session.state).toBe("connecting");
     expect(browser.track.enabled).toBe(false);
+    expect(browser.send).not.toHaveBeenCalled();
     resolveAck();
     await connecting;
     expect(browser.track.enabled).toBe(true);
+    expect(browser.send).toHaveBeenCalledExactlyOnceWith(JSON.stringify({ type: "response.create" }));
     await session.end("learner_ended");
   });
 
@@ -101,6 +105,7 @@ describe("browser realtime session", () => {
     await expect(session.connect()).rejects.toThrow("ack failed");
     expect(session.state).toBe("failed");
     expect(requestEnd).toHaveBeenCalledOnce();
+    expect(browser.send).not.toHaveBeenCalled();
     expect(browser.track.enabled).toBe(false);
     expect(browser.stop).toHaveBeenCalledOnce();
     expect(browser.close).toHaveBeenCalledOnce();

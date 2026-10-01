@@ -148,6 +148,7 @@ class BrowserRealtimeSession implements RealtimeSession {
       await this.transport.acknowledge(this.sessionId, answer.attemptId, this.csrfToken);
       this.ensureOpen();
       for (const track of this.microphoneStream.getAudioTracks()) track.enabled = true;
+      channel.send(JSON.stringify({ type: "response.create" }));
       this.setState("connected");
       this.deadlineTimer = window.setTimeout(() => {
         void this.end("time_limit").catch(() => {});
