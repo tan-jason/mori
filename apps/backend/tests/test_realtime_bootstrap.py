@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock
 from urllib.parse import parse_qs, urlsplit
 from uuid import UUID
 
@@ -19,6 +21,7 @@ from mori.modules.sessions.realtime_provider import (
     DefinitiveProviderFailure,
     OpenAIRealtimeProvider,
 )
+from mori.modules.sessions.supervisor import RealtimeSupervisor
 
 
 def _planned_session(client: TestClient, database_url: str) -> tuple[UUID, UUID]:
@@ -67,6 +70,23 @@ def _rows(database_url: str, sql: str) -> list[tuple[object, ...]]:
         engine.dispose()
 
 
+def _retry_session(client: TestClient, database_url: str, key: str) -> tuple[int, str]:
+    profile_id = _rows(database_url, "SELECT id FROM language_profiles")[0][0]
+    csrf = client.get("/api/v1/me").json()["csrfToken"]
+    response = client.post(
+        "/api/v1/sessions",
+        json={"languageProfileId": str(profile_id)},
+        headers={
+            "Origin": "http://web.test",
+            "X-CSRF-Token": csrf,
+            "Idempotency-Key": key,
+        },
+    )
+    return response.status_code, response.json().get(
+        "id", response.json().get("error", {}).get("code")
+    )
+
+
 @pytest.mark.asyncio
 async def test_prepare_call_commits_manifest_before_provider_and_blocks_duplicate(
     client: TestClient, app: FastAPI, database_url: str
@@ -104,7 +124,87 @@ async def test_prepare_call_commits_manifest_before_provider_and_blocks_duplicat
 
 
 @pytest.mark.asyncio
-async def test_known_provider_failure_releases_grant_but_ambiguous_failure_blocks_retry(
+async def test_ambiguous_failure_releases_grant_and_bounds_retries(
+    client: TestClient, app: FastAPI, database_url: str
+) -> None:
+    user_id, session_id = _planned_session(client, database_url)
+    service: SessionService = app.state.session_service
+    prepared = await service.prepare_call(
+        user_id=user_id,
+        session_id=session_id,
+        model_alias="realtime-test",
+        voice_alias="test-voice",
+    )
+    for number in range(3):
+        await service.record_provider_failure(attempt_id=prepared.attempt_id, ambiguous=True)
+        assert _rows(database_url, "SELECT state FROM usage_reservations ORDER BY created_at") == [
+            ("released",)
+        ] * (number + 1)
+        if number < 2:
+            status, next_session_id = _retry_session(
+                client, database_url, f"session-ambiguous-retry-{number}"
+            )
+            assert status == 201
+            prepared = await service.prepare_call(
+                user_id=user_id,
+                session_id=UUID(next_session_id),
+                model_alias="realtime-test",
+                voice_alias="test-voice",
+            )
+    assert _rows(database_url, "SELECT state FROM session_call_attempts") == [("ambiguous",)] * 3
+    assert _rows(database_url, "SELECT state FROM sessions") == [("setup_failed",)] * 3
+    status, code = _retry_session(client, database_url, "session-ambiguous-retry-limited")
+    assert (status, code) == (429, "voice_retry_limit_reached")
+
+
+@pytest.mark.asyncio
+async def test_expired_bootstrap_releases_grant_and_unknown_call_ages_out(
+    client: TestClient, app: FastAPI, database_url: str
+) -> None:
+    user_id, session_id = _planned_session(client, database_url)
+    service: SessionService = app.state.session_service
+    prepared = await service.prepare_call(
+        user_id=user_id,
+        session_id=session_id,
+        model_alias="realtime-test",
+        voice_alias="test-voice",
+    )
+    engine = create_engine(database_url)
+    try:
+        with engine.begin() as db:
+            db.execute(
+                text("UPDATE session_call_attempts SET pending_expires_at=:expired"),
+                {"expired": datetime.now(UTC) - timedelta(seconds=1)},
+            )
+    finally:
+        engine.dispose()
+    provider = AsyncMock()
+    supervisor = RealtimeSupervisor(
+        session_maker=app.state.session_maker,
+        service=service,
+        provider=provider,
+        api_key="unused",
+    )
+    await supervisor._scan()
+    assert _rows(database_url, "SELECT state FROM session_call_attempts") == [("ambiguous",)]
+    assert _rows(database_url, "SELECT state FROM sessions") == [("setup_failed",)]
+    assert _rows(database_url, "SELECT state FROM usage_reservations") == [("released",)]
+    engine = create_engine(database_url)
+    try:
+        with engine.begin() as db:
+            db.execute(
+                text("UPDATE session_call_attempts SET pending_expires_at=:expired WHERE id=:id"),
+                {"expired": datetime.now(UTC) - timedelta(hours=3), "id": prepared.attempt_id},
+            )
+    finally:
+        engine.dispose()
+    await supervisor._scan()
+    assert _rows(database_url, "SELECT state FROM session_call_attempts") == [("ended",)]
+    provider.hangup.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_late_definitive_rejection_resolves_ambiguous_attempt(
     client: TestClient, app: FastAPI, database_url: str
 ) -> None:
     user_id, session_id = _planned_session(client, database_url)
@@ -116,9 +216,66 @@ async def test_known_provider_failure_releases_grant_but_ambiguous_failure_block
         voice_alias="test-voice",
     )
     await service.record_provider_failure(attempt_id=prepared.attempt_id, ambiguous=True)
-    assert _rows(database_url, "SELECT state FROM session_call_attempts") == [("ambiguous",)]
-    assert _rows(database_url, "SELECT state FROM usage_reservations") == [("reserved",)]
-    assert _rows(database_url, "SELECT state FROM sessions") == [("connecting",)]
+    await service.record_provider_failure(attempt_id=prepared.attempt_id, ambiguous=False)
+    assert _rows(database_url, "SELECT state FROM session_call_attempts") == [("provider_failed",)]
+    assert _rows(database_url, "SELECT state FROM usage_reservations") == [("released",)]
+
+
+@pytest.mark.asyncio
+async def test_late_provider_call_hangup_retries_after_setup_fails(
+    client: TestClient, app: FastAPI, database_url: str
+) -> None:
+    user_id, session_id = _planned_session(client, database_url)
+    service: SessionService = app.state.session_service
+    prepared = await service.prepare_call(
+        user_id=user_id,
+        session_id=session_id,
+        model_alias="realtime-test",
+        voice_alias="test-voice",
+    )
+    await service.record_provider_failure(attempt_id=prepared.attempt_id, ambiguous=True)
+    assert (
+        await service.record_provider_call(
+            attempt_id=prepared.attempt_id, provider_call_id="rtc_late"
+        )
+        is None
+    )
+    assert _rows(database_url, "SELECT state, provider_call_id FROM session_call_attempts") == [
+        ("cleanup_pending", "rtc_late")
+    ]
+    provider = AsyncMock()
+    provider.hangup.side_effect = [AmbiguousProviderFailure(), None]
+    supervisor = RealtimeSupervisor(
+        session_maker=app.state.session_maker,
+        service=service,
+        provider=provider,
+        api_key="unused",
+    )
+    await supervisor._scan()
+    for _ in range(100):
+        if provider.hangup.await_count == 1:
+            break
+        await asyncio.sleep(0.01)
+    assert _rows(database_url, "SELECT state FROM session_call_attempts") == [("cleanup_pending",)]
+    engine = create_engine(database_url)
+    try:
+        with engine.begin() as db:
+            db.execute(
+                text("UPDATE session_call_attempts SET lease_until=:expired"),
+                {"expired": datetime.now(UTC) - timedelta(seconds=1)},
+            )
+    finally:
+        engine.dispose()
+    await supervisor._scan()
+    for _ in range(100):
+        if _rows(database_url, "SELECT state FROM session_call_attempts") == [("ended",)]:
+            break
+        await asyncio.sleep(0.01)
+    await supervisor.stop()
+    assert provider.hangup.await_count == 2
+    provider.hangup.assert_awaited_with("rtc_late")
+    assert _rows(database_url, "SELECT state FROM session_call_attempts") == [("ended",)]
+    assert _rows(database_url, "SELECT state FROM usage_reservations") == [("released",)]
 
 
 @pytest.mark.asyncio
@@ -189,12 +346,14 @@ async def test_provider_sends_server_configuration_and_reads_call_identity(
         model="realtime-test",
         voice="test-voice",
         safety_identifier="hashed-learner",
+        client_request_id="attempt-123",
     )
     assert result.call_id == "rtc_example"
     assert result.answer_sdp == "v=0\r\nanswer"
     request = captured[0]
     assert request.url.path == "/v1/realtime/calls"
     assert request.headers["OpenAI-Safety-Identifier"] == "hashed-learner"
+    assert request.headers["X-Client-Request-Id"] == "attempt-123"
     body = request.content.decode()
     assert '"instructions":"Tutor instructions"' in body
     assert '"voice":"test-voice"' in body
@@ -204,18 +363,22 @@ async def test_provider_sends_server_configuration_and_reads_call_identity(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("status", "location", "error_type"),
+    ("status", "location", "body", "error_type", "call_id"),
     [
-        (400, "", DefinitiveProviderFailure),
-        (502, "", AmbiguousProviderFailure),
-        (201, "", AmbiguousProviderFailure),
+        (400, "", "v=0", DefinitiveProviderFailure, None),
+        (408, "", "v=0", AmbiguousProviderFailure, None),
+        (502, "", "v=0", AmbiguousProviderFailure, None),
+        (201, "", "v=0", AmbiguousProviderFailure, None),
+        (201, "/v1/realtime/calls/rtc_partial", "", AmbiguousProviderFailure, "rtc_partial"),
     ],
 )
 async def test_provider_failure_classification(
     monkeypatch: pytest.MonkeyPatch,
     status: int,
     location: str,
+    body: str,
     error_type: type[Exception],
+    call_id: str | None,
 ) -> None:
     original_client = httpx2.AsyncClient
     monkeypatch.setattr(
@@ -223,17 +386,20 @@ async def test_provider_failure_classification(
         "AsyncClient",
         lambda **kwargs: original_client(
             transport=httpx2.MockTransport(
-                lambda _request: httpx2.Response(status, headers={"Location": location}, text="v=0")
+                lambda _request: httpx2.Response(status, headers={"Location": location}, text=body)
             ),
             **kwargs,
         ),
     )
     provider = OpenAIRealtimeProvider(api_key="server-secret")
-    with pytest.raises(error_type):
+    with pytest.raises(error_type) as failure:
         await provider.create_call(
             offer_sdp="v=0",
             instructions="Tutor",
             model="model",
             voice="voice",
             safety_identifier="hashed-learner",
+            client_request_id="attempt-123",
         )
+    if isinstance(failure.value, AmbiguousProviderFailure):
+        assert failure.value.call_id == call_id

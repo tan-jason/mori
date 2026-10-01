@@ -18,6 +18,20 @@ after process loss; a gap in the transcript marks analysis as failed. The webapp
 voice only when the supervisor reports healthy. A real provider call and process-loss
 drill remain to be verified before treating this as the complete M2 gate.
 
+If call creation has no definite result, setup fails and the intro reservation is
+released because no SDP answer was returned to the browser. The attempt remains
+`ambiguous` for provider reconciliation. A late call ID moves it to `cleanup_pending`;
+the supervisor retries hangup until it succeeds. Without a call ID, the supervisor
+marks the attempt ended after two hours, beyond OpenAI's documented 60-minute
+Realtime session limit. The create-call request carries the attempt ID as
+`X-Client-Request-Id` for investigation. A learner can create another session, but
+three recent unidentified calls or uncleaned known calls temporarily block further
+voice setup. A late definitive rejection resolves an ambiguous attempt as
+`provider_failed`.
+If `cleanup_pending` persists, inspect the stored `provider_call_id` and provider
+request ID. Resolve the attempt only after provider hangup or expiry is verified;
+the learner's reservation has already been released.
+
 Shared language pairs, curriculum items, prerequisites, evidence rules, and pair/voice
 policies are defined in `src/mori/modules/curriculum/catalog.py`. Add a new published
 version there, retain older versions in the registry for existing sessions, and update

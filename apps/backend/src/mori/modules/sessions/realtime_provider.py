@@ -16,6 +16,10 @@ class DefinitiveProviderFailure(Exception):
 class AmbiguousProviderFailure(Exception):
     """A call may exist, so automatic duplicate creation is unsafe."""
 
+    def __init__(self, *, call_id: str | None = None) -> None:
+        super().__init__("provider call creation outcome is uncertain")
+        self.call_id = call_id
+
 
 @dataclass(frozen=True, slots=True)
 class CreatedCall:
@@ -38,6 +42,7 @@ class OpenAIRealtimeProvider:
         model: str,
         voice: str,
         safety_identifier: str,
+        client_request_id: str,
     ) -> CreatedCall:
         session = {
             "type": "realtime",
@@ -58,6 +63,7 @@ class OpenAIRealtimeProvider:
                     headers={
                         "Authorization": f"Bearer {self._api_key}",
                         "OpenAI-Safety-Identifier": safety_identifier,
+                        "X-Client-Request-Id": client_request_id,
                     },
                     files={
                         "sdp": (None, offer_sdp),
@@ -66,7 +72,7 @@ class OpenAIRealtimeProvider:
                 )
         except httpx2.RequestError as error:
             raise AmbiguousProviderFailure from error
-        if 400 <= response.status_code < 500:
+        if 400 <= response.status_code < 500 and response.status_code != 408:
             raise DefinitiveProviderFailure
         if response.status_code != 201:
             raise AmbiguousProviderFailure
@@ -74,8 +80,10 @@ class OpenAIRealtimeProvider:
         path = urlsplit(location).path
         prefix = "/v1/realtime/calls/"
         call_id = path.removeprefix(prefix) if path.startswith(prefix) else ""
-        if not call_id or "/" in call_id or not response.text.strip():
+        if not call_id or "/" in call_id:
             raise AmbiguousProviderFailure
+        if not response.text.strip():
+            raise AmbiguousProviderFailure(call_id=call_id)
         return CreatedCall(call_id=call_id, answer_sdp=response.text)
 
     async def hangup(self, call_id: str) -> None:

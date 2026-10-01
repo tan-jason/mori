@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from mori.modules.access.application import AccessCommands, IntroGrant
@@ -36,6 +36,7 @@ from mori.modules.sessions.errors import (
     SessionNotConnectable,
     SessionNotFound,
     VoiceEntitlementUnavailable,
+    VoiceRetryLimitReached,
 )
 from mori.modules.sessions.models import (
     SessionCallAttemptModel,
@@ -59,6 +60,8 @@ from mori.modules.user.persistence import SqlAlchemyUserStore
 _KEY_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9:_-]{7,127}\Z")
 _RESERVATION_TTL = timedelta(minutes=10)
 _BOOTSTRAP_PENDING_TTL = timedelta(seconds=30)
+UNCERTAIN_CALL_WINDOW = timedelta(hours=2)
+_MAX_UNCERTAIN_CALLS = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,6 +175,7 @@ class SessionService:
                 return replay, False
             selected = await self._select_plan(db, user_id=user_id, setup=setup)
             now = datetime.now(UTC)
+            await self._check_uncertain_call_limit(db, user_id=user_id, now=now)
             grant = await self._claim_grant(db, user_id=user_id, now=now)
             return await self._save_plan(
                 db, user_id=user_id, setup=setup, selected=selected, grant=grant, now=now
@@ -252,6 +256,29 @@ class SessionService:
             )
             await AccessCommands.release_expired(db, reservation_id=held.id, now=now)
         return grant
+
+    @staticmethod
+    async def _check_uncertain_call_limit(
+        db: AsyncSession, *, user_id: UUID, now: datetime
+    ) -> None:
+        # The provider limits Realtime sessions to 60 minutes. The two-hour
+        # window leaves room for a late create result and provider expiry.
+        count = await db.scalar(
+            select(func.count(SessionCallAttemptModel.id))
+            .join(SessionModel, SessionModel.id == SessionCallAttemptModel.session_id)
+            .where(
+                SessionModel.user_id == user_id,
+                or_(
+                    SessionCallAttemptModel.state == "cleanup_pending",
+                    and_(
+                        SessionCallAttemptModel.state == "ambiguous",
+                        SessionCallAttemptModel.pending_expires_at > now - UNCERTAIN_CALL_WINDOW,
+                    ),
+                ),
+            )
+        )
+        if (count or 0) >= _MAX_UNCERTAIN_CALLS:
+            raise VoiceRetryLimitReached
 
     async def _save_plan(
         self,
@@ -476,6 +503,7 @@ class SessionService:
                 .with_for_update()
             )
             now = datetime.now(UTC)
+            await self._check_uncertain_call_limit(db, user_id=user_id, now=now)
             if (
                 session.state != "planned"
                 or reservation is None
@@ -549,24 +577,43 @@ class SessionService:
 
     async def record_provider_call(
         self, *, attempt_id: UUID, provider_call_id: str, live_cap_seconds: int = 120
-    ) -> datetime:
+    ) -> datetime | None:
         """Persist provider identity before an SDP answer may be returned."""
         if not provider_call_id or len(provider_call_id) > 160:
             raise ValueError("invalid provider call ID")
         if live_cap_seconds <= 0:
             raise ValueError("live call cap must be positive")
         async with self._session_maker() as db, db.begin():
+            session_id = await db.scalar(
+                select(SessionCallAttemptModel.session_id).where(
+                    SessionCallAttemptModel.id == attempt_id
+                )
+            )
+            if session_id is None:
+                raise SessionNotConnectable
+            session = await db.scalar(
+                select(SessionModel).where(SessionModel.id == session_id).with_for_update()
+            )
             attempt = await db.scalar(
                 select(SessionCallAttemptModel)
                 .where(SessionCallAttemptModel.id == attempt_id)
                 .with_for_update()
             )
-            if attempt is None or attempt.state != "bootstrap_pending":
+            if session is None or attempt is None:
                 raise SessionNotConnectable
-            session = await db.get(SessionModel, attempt.session_id)
-            if session is None:
-                raise SessionNotFound
             now = datetime.now(UTC)
+            if attempt.state in {"bootstrap_pending", "ambiguous"} and session.state in {
+                "ending",
+                "setup_failed",
+            }:
+                attempt.provider_call_id = provider_call_id
+                attempt.state = "cleanup_pending"
+                attempt.updated_at = now
+                if session.state == "ending":
+                    await self._release_failed_setup(db, session=session, now=now, ambiguous=True)
+                return None
+            if attempt.state != "bootstrap_pending" or session.state != "connecting":
+                raise SessionNotConnectable
             attempt.provider_call_id = provider_call_id
             attempt.state = "awaiting_client"
             attempt.client_ack_deadline_at = now + timedelta(seconds=30)
@@ -576,9 +623,7 @@ class SessionService:
             attempt.updated_at = now
             return attempt.hard_deadline_at
 
-    async def wait_for_sideband(
-        self, *, user_id: UUID, session_id: UUID, attempt_id: UUID
-    ) -> None:
+    async def wait_for_sideband(self, *, user_id: UUID, session_id: UUID, attempt_id: UUID) -> None:
         until = asyncio.get_running_loop().time() + 5
         while True:
             async with self._session_maker() as db:
@@ -781,41 +826,94 @@ class SessionService:
                 )
             )
 
-    async def record_provider_failure(self, *, attempt_id: UUID, ambiguous: bool) -> None:
-        """Keep uncertain provider creation blocked until a recovery decision."""
+    async def record_provider_failure(
+        self, *, attempt_id: UUID, ambiguous: bool, provider_call_id: str | None = None
+    ) -> None:
+        """Fail unusable setup while retaining any uncertain provider call for cleanup."""
+        await self._fail_bootstrap_attempt(
+            attempt_id=attempt_id, ambiguous=ambiguous, provider_call_id=provider_call_id
+        )
+
+    async def expire_bootstrap_call(self, *, attempt_id: UUID) -> None:
+        await self._fail_bootstrap_attempt(attempt_id=attempt_id, ambiguous=True, expired=True)
+
+    async def _fail_bootstrap_attempt(
+        self,
+        *,
+        attempt_id: UUID,
+        ambiguous: bool,
+        provider_call_id: str | None = None,
+        expired: bool = False,
+    ) -> None:
+        if provider_call_id is not None and (
+            not ambiguous or not provider_call_id or len(provider_call_id) > 160
+        ):
+            raise ValueError("invalid uncertain provider call ID")
         async with self._session_maker() as db, db.begin():
+            session_id = await db.scalar(
+                select(SessionCallAttemptModel.session_id).where(
+                    SessionCallAttemptModel.id == attempt_id
+                )
+            )
+            if session_id is None:
+                raise SessionNotConnectable
+            session = await db.scalar(
+                select(SessionModel).where(SessionModel.id == session_id).with_for_update()
+            )
             attempt = await db.scalar(
                 select(SessionCallAttemptModel)
                 .where(SessionCallAttemptModel.id == attempt_id)
                 .with_for_update()
             )
-            if attempt is None or attempt.state != "bootstrap_pending":
+            if session is None or attempt is None:
+                raise SessionNotConnectable
+            if attempt.state in {"ambiguous", "cleanup_pending", "provider_failed"}:
+                if provider_call_id is not None and attempt.state == "ambiguous":
+                    attempt.provider_call_id = provider_call_id
+                    attempt.state = "cleanup_pending"
+                    attempt.updated_at = datetime.now(UTC)
+                elif not ambiguous and attempt.state == "ambiguous":
+                    attempt.state = "provider_failed"
+                    attempt.updated_at = datetime.now(UTC)
+                    session.end_reason = "connection_failed"
+                return
+            if expired and attempt.state != "bootstrap_pending":
+                return
+            if attempt.state != "bootstrap_pending":
                 raise SessionNotConnectable
             now = datetime.now(UTC)
-            attempt.state = "ambiguous" if ambiguous else "provider_failed"
+            if expired and attempt.pending_expires_at >= now:
+                return
+            attempt.provider_call_id = provider_call_id
+            if provider_call_id is not None:
+                attempt.state = "cleanup_pending"
+            else:
+                attempt.state = "ambiguous" if ambiguous else "provider_failed"
             attempt.updated_at = now
-            if not ambiguous:
-                session = await db.get(SessionModel, attempt.session_id)
-                if session is None:
-                    raise SessionNotFound
-                await self._transition(
-                    db,
-                    session.id,
-                    expected=session.state,
-                    version=session.row_version,
-                    target="setup_failed",
-                    now=now,
-                )
-                reservation = await db.scalar(
-                    select(UsageReservationModel).where(
-                        UsageReservationModel.session_id == attempt.session_id
-                    )
-                )
-                if reservation is None:
-                    raise RuntimeError("call attempt has no reservation")
-                await AccessCommands.release_setup_failure(
-                    db, reservation_id=reservation.id, now=now
-                )
+            await self._release_failed_setup(db, session=session, now=now, ambiguous=ambiguous)
+
+    async def _release_failed_setup(
+        self, db: AsyncSession, *, session: SessionModel, now: datetime, ambiguous: bool
+    ) -> None:
+        if session.state not in {"connecting", "ending"}:
+            raise SessionNotConnectable
+        await self._transition(
+            db,
+            session.id,
+            expected=session.state,
+            version=session.row_version,
+            target="setup_failed",
+            now=now,
+        )
+        session.end_reason = session.end_reason or (
+            "provider_outcome_unknown" if ambiguous else "connection_failed"
+        )
+        reservation = await db.scalar(
+            select(UsageReservationModel).where(UsageReservationModel.session_id == session.id)
+        )
+        if reservation is None:
+            raise RuntimeError("call attempt has no reservation")
+        await AccessCommands.release_setup_failure(db, reservation_id=reservation.id, now=now)
 
     async def _view(self, db: AsyncSession, session: SessionModel) -> SessionView:
         plan = await db.get(SessionPlanModel, session.id)

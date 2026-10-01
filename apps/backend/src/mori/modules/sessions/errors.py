@@ -35,3 +35,7 @@ class VoiceNotConfigured(Exception):
 
 class VoiceProviderUnavailable(Exception):
     pass
+
+
+class VoiceRetryLimitReached(Exception):
+    pass

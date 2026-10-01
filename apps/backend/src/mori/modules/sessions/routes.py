@@ -131,12 +131,15 @@ async def exchange_webrtc(request: Request, session_id: UUID) -> PlainTextRespon
             model=prepared.model_alias,
             voice=prepared.voice_alias,
             safety_identifier=safety_id,
+            client_request_id=str(prepared.attempt_id),
         )
     except DefinitiveProviderFailure as error:
         await service.record_provider_failure(attempt_id=prepared.attempt_id, ambiguous=False)
         raise VoiceProviderUnavailable from error
     except AmbiguousProviderFailure as error:
-        await service.record_provider_failure(attempt_id=prepared.attempt_id, ambiguous=True)
+        await service.record_provider_failure(
+            attempt_id=prepared.attempt_id, ambiguous=True, provider_call_id=error.call_id
+        )
         raise VoiceProviderUnavailable from error
     except Exception as error:
         await service.record_provider_failure(attempt_id=prepared.attempt_id, ambiguous=True)
@@ -151,6 +154,8 @@ async def exchange_webrtc(request: Request, session_id: UUID) -> PlainTextRespon
         with suppress(AmbiguousProviderFailure):
             await provider.hangup(created.call_id)
         raise
+    if deadline is None:
+        raise VoiceProviderUnavailable
     return PlainTextResponse(
         created.answer_sdp,
         headers={

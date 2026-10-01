@@ -4,7 +4,8 @@ import { createBrowserRealtimeSessionFactory } from "./browser-realtime-session"
 function browserHarness() {
   const stop = vi.fn();
   const close = vi.fn();
-  const track = { stop } as unknown as MediaStreamTrack;
+  const enabledWhenAdded: boolean[] = [];
+  const track = { enabled: true, stop } as unknown as MediaStreamTrack;
   const stream = {
     getAudioTracks: () => [track],
     getTracks: () => [track],
@@ -13,7 +14,7 @@ function browserHarness() {
     iceGatheringState: "complete",
     connectionState: "connected",
     localDescription: { type: "offer", sdp: "v=0\r\noffer" },
-    addTrack: vi.fn(),
+    addTrack: vi.fn((addedTrack: MediaStreamTrack) => { enabledWhenAdded.push(addedTrack.enabled); }),
     createDataChannel: () => ({ readyState: "open" }),
     createOffer: () => Promise.resolve({ type: "offer", sdp: "v=0\r\noffer" }),
     setLocalDescription: vi.fn(async () => {}),
@@ -23,6 +24,8 @@ function browserHarness() {
   return {
     stop,
     close,
+    enabledWhenAdded,
+    track,
     connection,
     dependencies: {
       peerConnection: () => connection,
@@ -33,6 +36,34 @@ function browserHarness() {
 }
 
 describe("browser realtime session", () => {
+  it("enables the microphone only after acknowledgement activates the call", async () => {
+    const browser = browserHarness();
+    let resolveAck!: () => void;
+    const acknowledgement = new Promise<void>((resolve) => { resolveAck = resolve; });
+    const acknowledge = vi.fn(() => acknowledgement);
+    const session = createBrowserRealtimeSessionFactory({
+      exchangeSdp: () => {
+        expect(browser.track.enabled).toBe(false);
+        return Promise.resolve({
+          answerSdp: "v=0\r\nanswer", attemptId: "attempt-1",
+          deadlineAt: new Date(Date.now() + 60_000).toISOString(),
+        });
+      },
+      acknowledge,
+      requestEnd: () => Promise.resolve(),
+    }, browser.dependencies).create("session-1", "csrf");
+
+    const connecting = session.connect();
+    await vi.waitFor(() => expect(acknowledge).toHaveBeenCalledOnce());
+    expect(browser.enabledWhenAdded).toEqual([false]);
+    expect(session.state).toBe("connecting");
+    expect(browser.track.enabled).toBe(false);
+    resolveAck();
+    await connecting;
+    expect(browser.track.enabled).toBe(true);
+    await session.end("learner_ended");
+  });
+
   it("exchanges SDP, acknowledges, and releases media when ended", async () => {
     const browser = browserHarness();
     const events: string[] = [];
@@ -70,6 +101,7 @@ describe("browser realtime session", () => {
     await expect(session.connect()).rejects.toThrow("ack failed");
     expect(session.state).toBe("failed");
     expect(requestEnd).toHaveBeenCalledOnce();
+    expect(browser.track.enabled).toBe(false);
     expect(browser.stop).toHaveBeenCalledOnce();
     expect(browser.close).toHaveBeenCalledOnce();
   });

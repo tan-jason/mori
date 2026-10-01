@@ -18,7 +18,7 @@ from websockets.asyncio.client import ClientConnection, connect
 
 from mori.modules.access.application import AccessCommands
 from mori.modules.access.usage_models import UsageReservationModel
-from mori.modules.sessions.application import SessionService
+from mori.modules.sessions.application import UNCERTAIN_CALL_WINDOW, SessionService
 from mori.modules.sessions.models import SessionCallAttemptModel, SessionModel, SessionTurnModel
 from mori.modules.sessions.realtime_provider import AmbiguousProviderFailure, OpenAIRealtimeProvider
 
@@ -89,24 +89,58 @@ class RealtimeSupervisor:
 
     async def _scan(self) -> None:
         now = datetime.now(UTC)
-        async with self._session_maker() as db, db.begin():
-            abandoned = (
+        async with self._session_maker() as db:
+            abandoned_ids = (
                 await db.scalars(
-                    select(SessionCallAttemptModel)
+                    select(SessionCallAttemptModel.id)
                     .where(
                         SessionCallAttemptModel.state == "bootstrap_pending",
                         SessionCallAttemptModel.pending_expires_at < now,
                     )
                     .limit(25)
+                )
+            ).all()
+        for attempt_id in abandoned_ids:
+            await self._service.expire_bootstrap_call(attempt_id=attempt_id)
+        async with self._session_maker() as db, db.begin():
+            expired_unknown = (
+                await db.scalars(
+                    select(SessionCallAttemptModel)
+                    .where(
+                        SessionCallAttemptModel.state == "ambiguous",
+                        SessionCallAttemptModel.provider_call_id.is_(None),
+                        SessionCallAttemptModel.pending_expires_at < now - UNCERTAIN_CALL_WINDOW,
+                    )
+                    .limit(25)
                     .with_for_update(skip_locked=True)
                 )
             ).all()
-            for attempt in abandoned:
-                attempt.state = "ambiguous"
+            for attempt in expired_unknown:
+                attempt.state = "ended"
                 attempt.updated_at = now
-                await logger.awarning(
-                    "realtime_bootstrap_outcome_unknown", attempt_id=str(attempt.id)
+                await logger.ainfo("realtime_unknown_call_expired", attempt_id=str(attempt.id))
+            cleanup = (
+                await db.scalars(
+                    select(SessionCallAttemptModel)
+                    .where(
+                        SessionCallAttemptModel.state == "cleanup_pending",
+                        SessionCallAttemptModel.provider_call_id.is_not(None),
+                        or_(
+                            SessionCallAttemptModel.lease_until.is_(None),
+                            SessionCallAttemptModel.lease_until < now,
+                        ),
+                    )
+                    .limit(25)
+                    .with_for_update(skip_locked=True)
                 )
+            ).all()
+            cleanup_calls: list[tuple[UUID, str]] = []
+            for attempt in cleanup:
+                if attempt.provider_call_id is None:
+                    continue
+                attempt.lease_owner = self._owner
+                attempt.lease_until = now + timedelta(seconds=20)
+                cleanup_calls.append((attempt.id, attempt.provider_call_id))
             attempts = (
                 await db.scalars(
                     select(SessionCallAttemptModel)
@@ -136,6 +170,37 @@ class RealtimeSupervisor:
                 task = asyncio.create_task(self._watch(attempt_id), name=f"mori-call-{attempt_id}")
                 self._watchers[attempt_id] = task
                 task.add_done_callback(partial(self._drop_watcher, attempt_id))
+        for attempt_id, call_id in cleanup_calls:
+            if attempt_id not in self._watchers or self._watchers[attempt_id].done():
+                task = asyncio.create_task(
+                    self._cleanup_call(attempt_id, call_id), name=f"mori-cleanup-{attempt_id}"
+                )
+                self._watchers[attempt_id] = task
+                task.add_done_callback(partial(self._drop_watcher, attempt_id))
+
+    async def _cleanup_call(self, attempt_id: UUID, call_id: str) -> None:
+        try:
+            await self._provider.hangup(call_id)
+        except AmbiguousProviderFailure:
+            await logger.awarning("realtime_cleanup_retry", attempt_id=str(attempt_id))
+            return
+        async with self._session_maker() as db, db.begin():
+            attempt = await db.scalar(
+                select(SessionCallAttemptModel)
+                .where(SessionCallAttemptModel.id == attempt_id)
+                .with_for_update()
+            )
+            if (
+                attempt is None
+                or attempt.state != "cleanup_pending"
+                or attempt.lease_owner != self._owner
+                or attempt.provider_call_id != call_id
+            ):
+                return
+            attempt.state = "ended"
+            attempt.lease_owner = None
+            attempt.lease_until = None
+            attempt.updated_at = datetime.now(UTC)
 
     def _drop_watcher(self, attempt_id: UUID, task: asyncio.Task[None]) -> None:
         if self._watchers.get(attempt_id) is task:

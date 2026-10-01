@@ -129,6 +129,7 @@ class BrowserRealtimeSession implements RealtimeSession {
         audio.srcObject = event.streams[0] ?? new MediaStream([event.track]);
       };
       for (const track of this.microphoneStream.getAudioTracks()) {
+        track.enabled = false;
         connection.addTrack(track, this.microphoneStream);
       }
       const channel = connection.createDataChannel("oai-events");
@@ -146,6 +147,7 @@ class BrowserRealtimeSession implements RealtimeSession {
       this.ensureOpen();
       await this.transport.acknowledge(this.sessionId, answer.attemptId, this.csrfToken);
       this.ensureOpen();
+      for (const track of this.microphoneStream.getAudioTracks()) track.enabled = true;
       this.setState("connected");
       this.deadlineTimer = window.setTimeout(() => {
         void this.end("time_limit").catch(() => {});

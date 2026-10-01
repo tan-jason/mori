@@ -40,6 +40,7 @@ from mori.modules.sessions.errors import (
     VoiceEntitlementUnavailable,
     VoiceNotConfigured,
     VoiceProviderUnavailable,
+    VoiceRetryLimitReached,
 )
 from mori.modules.user.errors import AccountUnavailable
 
@@ -122,6 +123,9 @@ _EXPECTED_ERRORS: dict[type[Exception], ErrorDefinition] = {
     VoiceNotConfigured: ErrorDefinition(503, "voice_unavailable", "Voice practice is unavailable."),
     VoiceProviderUnavailable: ErrorDefinition(
         502, "voice_provider_unavailable", "The voice connection could not start."
+    ),
+    VoiceRetryLimitReached: ErrorDefinition(
+        429, "voice_retry_limit_reached", "Please try voice practice again later."
     ),
 }
 
