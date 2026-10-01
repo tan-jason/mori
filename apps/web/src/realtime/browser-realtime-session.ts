@@ -2,6 +2,7 @@ import type {
   RealtimeSession,
   RealtimeSessionFactory,
   RealtimeSessionState,
+  TranscriptTurn,
 } from "./realtime-session";
 
 export interface SdpExchange {
@@ -70,7 +71,11 @@ function waitForChannel(channel: RTCDataChannel): Promise<void> {
 
 class BrowserRealtimeSession implements RealtimeSession {
   state: RealtimeSessionState = "idle";
+  deadlineAt: string | null = null;
   private readonly listeners = new Set<(state: RealtimeSessionState) => void>();
+  private readonly transcriptListeners = new Set<(turns: readonly TranscriptTurn[]) => void>();
+  private readonly itemOrder: string[] = [];
+  private readonly turns = new Map<string, TranscriptTurn>();
   private connection: RTCPeerConnection | null = null;
   private microphoneStream: MediaStream | null = null;
   private audioElement: HTMLAudioElement | null = null;
@@ -90,6 +95,45 @@ class BrowserRealtimeSession implements RealtimeSession {
     this.listeners.add(listener);
     listener(this.state);
     return () => { this.listeners.delete(listener); };
+  }
+
+  subscribeTranscript(listener: (turns: readonly TranscriptTurn[]) => void): () => void {
+    this.transcriptListeners.add(listener);
+    listener(this.orderedTurns());
+    return () => { this.transcriptListeners.delete(listener); };
+  }
+
+  private orderedTurns(): TranscriptTurn[] {
+    return this.itemOrder.flatMap((itemId) => {
+      const turn = this.turns.get(itemId);
+      return turn ? [turn] : [];
+    });
+  }
+
+  private handleProviderEvent(raw: string): void {
+    let event: Record<string, unknown>;
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return;
+      event = parsed as Record<string, unknown>;
+    } catch {
+      return;
+    }
+    if (event.type === "conversation.item.added" || event.type === "response.output_item.added") {
+      const item = event.item;
+      if (item && typeof item === "object" && "id" in item && typeof item.id === "string" && !this.itemOrder.includes(item.id)) {
+        this.itemOrder.push(item.id);
+      }
+      return;
+    }
+    const role = event.type === "conversation.item.input_audio_transcription.completed"
+      ? "learner" : event.type === "response.output_audio_transcript.done" ? "tutor" : null;
+    if (!role || typeof event.item_id !== "string" || typeof event.transcript !== "string" || !event.transcript.trim()) return;
+    if (this.turns.has(event.item_id)) return;
+    if (!this.itemOrder.includes(event.item_id)) this.itemOrder.push(event.item_id);
+    this.turns.set(event.item_id, { itemId: event.item_id, role, text: event.transcript.trim() });
+    const turns = this.orderedTurns();
+    for (const listener of this.transcriptListeners) listener(turns);
   }
 
   private setState(state: RealtimeSessionState): void {
@@ -133,6 +177,9 @@ class BrowserRealtimeSession implements RealtimeSession {
         connection.addTrack(track, this.microphoneStream);
       }
       const channel = connection.createDataChannel("oai-events");
+      channel.addEventListener("message", (event: MessageEvent) => {
+        if (!this.cancelled && typeof event.data === "string") this.handleProviderEvent(event.data);
+      });
       const offer = await connection.createOffer();
       await connection.setLocalDescription(offer);
       await waitForIce(connection);
@@ -141,6 +188,7 @@ class BrowserRealtimeSession implements RealtimeSession {
       if (!offerSdp) throw new Error("Your microphone could not start. Please try again.");
       const answer = await this.transport.exchangeSdp(this.sessionId, this.csrfToken, offerSdp);
       this.attemptId = answer.attemptId;
+      this.deadlineAt = answer.deadlineAt;
       this.ensureOpen();
       await connection.setRemoteDescription({ type: "answer", sdp: answer.answerSdp });
       await waitForChannel(channel);

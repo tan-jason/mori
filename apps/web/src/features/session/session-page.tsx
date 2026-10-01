@@ -9,6 +9,7 @@ import {
   unconfiguredRealtimeSessionFactory,
   type RealtimeSession,
   type RealtimeSessionState,
+  type TranscriptTurn,
 } from "../../realtime/realtime-session";
 
 function requestedWordsFromInput(value: string): string[] {
@@ -28,6 +29,10 @@ function reservationExpired(session: PlannedSession): boolean {
   return Date.parse(session.reservationExpiresAt) <= Date.now();
 }
 
+function formatTime(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
 export function SessionPage() {
   const { gateway, realtime = unconfiguredRealtimeSessionFactory } = useAppDependencies();
   const { targetLanguage } = useLanguageProfile();
@@ -40,8 +45,14 @@ export function SessionPage() {
   const [isStarting, setIsStarting] = useState(false);
   const [voiceAvailability, setVoiceAvailability] = useState<{ available: boolean; maxCallSeconds: number } | null>(null);
   const [retryBlocked, setRetryBlocked] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const [transcript, setTranscript] = useState<readonly TranscriptTurn[]>([]);
   const idempotencyKey = useRef<string | null>(null);
   const activeSession = useRef<RealtimeSession | null>(null);
+  const unsubscribeCall = useRef<(() => void) | null>(null);
+  const unsubscribeTranscript = useRef<(() => void) | null>(null);
+  const transcriptList = useRef<HTMLOListElement | null>(null);
+  const followTranscript = useRef(true);
 
   useEffect(() => {
     if (!realtime.available) return;
@@ -53,7 +64,7 @@ export function SessionPage() {
         })
         .catch(() => {
           if (!controller.signal.aborted) {
-            setVoiceAvailability({ available: false, maxCallSeconds: 120 });
+            setVoiceAvailability({ available: false, maxCallSeconds: 0 });
           }
         });
     };
@@ -67,6 +78,21 @@ export function SessionPage() {
 
   const voiceEnabled = realtime.available && voiceAvailability?.available === true;
   const plannedId = planned?.id;
+
+  useEffect(() => {
+    if (connectionState !== "connected" && connectionState !== "reconnecting") return;
+    const deadlineAt = activeSession.current?.deadlineAt;
+    if (!deadlineAt) return;
+    const update = () => setRemainingSeconds(Math.max(0, Math.ceil((Date.parse(deadlineAt) - Date.now()) / 1000)));
+    update();
+    const interval = window.setInterval(update, 250);
+    return () => window.clearInterval(interval);
+  }, [connectionState]);
+
+  useEffect(() => {
+    const list = transcriptList.current;
+    if (list && followTranscript.current) list.scrollTop = list.scrollHeight;
+  }, [transcript]);
 
   useEffect(() => {
     if (!plannedId || !["ending", "ended", "failed"].includes(connectionState)) return;
@@ -92,6 +118,8 @@ export function SessionPage() {
   }, [gateway, plannedId, connectionState]);
 
   useEffect(() => () => {
+    unsubscribeCall.current?.();
+    unsubscribeTranscript.current?.();
     if (activeSession.current && ["connecting", "connected", "reconnecting"].includes(activeSession.current.state)) {
       void activeSession.current.end("learner_ended");
     }
@@ -122,8 +150,14 @@ export function SessionPage() {
       setPlanned(session);
       sessionId = session.id;
       const call = realtime.create(session.id, learner.csrfToken);
+      unsubscribeCall.current?.();
+      unsubscribeTranscript.current?.();
       activeSession.current = call;
-      call.subscribe(setConnectionState);
+      setRemainingSeconds(null);
+      setTranscript([]);
+      followTranscript.current = true;
+      unsubscribeCall.current = call.subscribe(setConnectionState);
+      unsubscribeTranscript.current = call.subscribeTranscript(setTranscript);
       await call.connect();
     } catch (reason) {
       setError(reason instanceof Error && reason.name === "NotAllowedError"
@@ -176,6 +210,7 @@ export function SessionPage() {
     ended: "Session ended",
     failed: "Connection needs attention",
   } as const)[connectionState];
+  const callActive = connectionState === "connected" || connectionState === "reconnecting" || connectionState === "ending";
 
   return (
     <div className="session-page">
@@ -190,7 +225,7 @@ export function SessionPage() {
 
       <section className="session-stage" aria-labelledby="session-title">
         <div className="session-stage-copy">
-          <p className="eyebrow">Before your conversation</p>
+          <p className="eyebrow">{callActive ? "Your conversation" : "Before your conversation"}</p>
           <h1 id="session-title">Make a little room to speak.</h1>
           <p>
             Find a quiet spot and give yourself permission to be imperfect. Mori will
@@ -227,8 +262,16 @@ export function SessionPage() {
             </div>
           )}
           {error && <p className="session-error" role="alert">{error}</p>}
+          {callActive && (
+            <div className="session-limit session-limit-active">
+              <span className="session-limit-time" role="timer" aria-label="Time remaining">
+                {remainingSeconds !== null ? formatTime(remainingSeconds) : "--:--"}
+              </span>
+              <span>Time remaining</span>
+            </div>
+          )}
 
-          {connectionState === "connected" || connectionState === "ending" ? (
+          {callActive ? (
             <button className="button button-light button-wide" type="button" onClick={() => void end()} disabled={connectionState === "ending"}>
               {connectionState === "ending" ? "Ending conversation…" : "End conversation"}
             </button>
@@ -238,6 +281,34 @@ export function SessionPage() {
             </button>
           )}
         </div>
+
+        {(callActive || transcript.length > 0) && (
+          <section className="session-transcript" aria-labelledby="session-transcript-title">
+            <div className="session-transcript-heading">
+              <p className="eyebrow">Conversation notes</p>
+              <h2 id="session-transcript-title">Transcript</h2>
+            </div>
+            {transcript.length === 0 ? (
+              <p className="session-transcript-empty">Your conversation will appear here as you speak.</p>
+            ) : (
+              <ol
+                className="session-transcript-list"
+                ref={transcriptList}
+                onScroll={(event) => {
+                  const list = event.currentTarget;
+                  followTranscript.current = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+                }}
+              >
+                {transcript.map((turn) => (
+                  <li key={turn.itemId} className={`session-transcript-turn session-transcript-turn-${turn.role}`}>
+                    <span>{turn.role === "learner" ? "You" : "Mori"}</span>
+                    <p>{turn.text}</p>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        )}
 
         <aside className="session-preferences" aria-labelledby="preferences-title">
           <p className="eyebrow">Session setup</p>
@@ -277,10 +348,12 @@ export function SessionPage() {
             <input value={requestedWords} onChange={(event) => { setRequestedWords(event.target.value); idempotencyKey.current = null; }} disabled={planned !== null} placeholder="For example, market, recipe" />
           </label>
 
-          <div className="session-limit">
-            <span className="session-limit-time">{voiceAvailability ? `${Math.floor(voiceAvailability.maxCallSeconds / 60)}:${String(voiceAvailability.maxCallSeconds % 60).padStart(2, "0")}` : "--:--"}</span>
-            <span>Maximum call time</span>
-          </div>
+          {!callActive && (
+            <div className="session-limit">
+              <span className="session-limit-time">{voiceAvailability?.maxCallSeconds ? formatTime(voiceAvailability.maxCallSeconds) : "--:--"}</span>
+              <span>Maximum call time</span>
+            </div>
+          )}
         </aside>
       </section>
     </div>

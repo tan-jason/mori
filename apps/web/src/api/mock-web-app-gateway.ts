@@ -497,7 +497,7 @@ export function createMockWebAppGateway(
 
     async getVoiceAvailability(signal) {
       await pause(signal);
-      return { available: false, maxCallSeconds: 120 };
+      return { available: false, maxCallSeconds: 600 };
     },
 
     async getDashboard(languageProfileId, signal) {

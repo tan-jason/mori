@@ -13,8 +13,8 @@ from fastapi.responses import PlainTextResponse
 
 from mori.api.auth import session_token, verify_csrf
 from mori.api.contracts import mutation_headers
-from mori.config import Environment, Settings
-from mori.modules.sessions.application import SessionService
+from mori.config import Settings
+from mori.modules.sessions.application import LIVE_CALL_LIMIT_SECONDS, SessionService
 from mori.modules.sessions.errors import (
     InvalidIdempotencyKey,
     InvalidSessionSetup,
@@ -67,11 +67,10 @@ async def create_session(
 async def voice_availability(request: Request) -> VoiceAvailabilityResponse:
     token = session_token(request)
     await cast(UserService, request.app.state.user_service).current_learner(session_token=token)
-    settings = cast(Settings, request.app.state.settings)
     supervisor = cast(RealtimeSupervisor | None, request.app.state.realtime_supervisor)
     return VoiceAvailabilityResponse(
         available=supervisor is not None and supervisor.healthy,
-        maxCallSeconds=1200 if settings.environment == Environment.PRODUCTION else 120,
+        maxCallSeconds=LIVE_CALL_LIMIT_SECONDS,
     )
 
 
@@ -148,7 +147,7 @@ async def exchange_webrtc(request: Request, session_id: UUID) -> PlainTextRespon
         deadline = await service.record_provider_call(
             attempt_id=prepared.attempt_id,
             provider_call_id=created.call_id,
-            live_cap_seconds=1200 if settings.environment == Environment.PRODUCTION else 120,
+            live_cap_seconds=LIVE_CALL_LIMIT_SECONDS,
         )
     except Exception:
         with suppress(AmbiguousProviderFailure):

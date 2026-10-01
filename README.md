@@ -17,7 +17,7 @@ The tutor will remember useful learning context, adapt to the learner's demonstr
 - The webapp scaffold lists several target languages; voice practice requires a published course for the selected pair.
 - Learners receive a provisional Beginner level when they are unsure of their starting ability.
 - The learning system has four levels: Beginner, Intermediate, Advanced, and Fluent practice mode.
-- Sessions are voice-first, may end at any time, and have a 20-minute maximum.
+- Sessions are voice-first, may end at any time, and have a 10-minute maximum.
 - Each session focuses on one to three personalized learning objectives.
 - The selected target remains the default conversation language.
 - Brief, compassionate help in the selected base language is available when a learner is stuck.

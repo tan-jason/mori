@@ -6,7 +6,7 @@ import { createMockWebAppGateway } from "../../api/mock-web-app-gateway";
 import { AppProviders } from "../../app/app-providers";
 import { LanguageProfileProvider } from "../../app/language-profile-provider";
 import { SessionPage } from "./session-page";
-import type { RealtimeSessionFactory, RealtimeSessionState } from "../../realtime/realtime-session";
+import type { RealtimeSessionFactory, RealtimeSessionState, TranscriptTurn } from "../../realtime/realtime-session";
 
 describe("SessionPage", () => {
   it("shows the profile language without making it directly configurable", async () => {
@@ -36,25 +36,29 @@ describe("SessionPage", () => {
 
   it("uses the saved plan before opening the voice transport", async () => {
     const gateway = createMockWebAppGateway();
-    vi.spyOn(gateway, "getVoiceAvailability").mockResolvedValue({ available: true, maxCallSeconds: 120 });
+    vi.spyOn(gateway, "getVoiceAvailability").mockResolvedValue({ available: true, maxCallSeconds: 600 });
     const createSession = vi.spyOn(gateway, "createSession");
     const events: string[] = [];
     const realtime: RealtimeSessionFactory = {
       available: true,
       create() {
         let state: RealtimeSessionState = "idle";
+        let transcriptListener: ((turns: readonly TranscriptTurn[]) => void) | null = null;
         const listeners = new Set<(next: RealtimeSessionState) => void>();
         return {
           get state() { return state; },
+          deadlineAt: new Date(Date.now() + 600_000).toISOString(),
           subscribe(listener) {
             listeners.add(listener);
             listener(state);
             return () => { listeners.delete(listener); };
           },
+          subscribeTranscript(listener) { transcriptListener = listener; listener([]); return () => { transcriptListener = null; }; },
           connect() {
             events.push("connect");
             state = "connected";
             for (const listener of listeners) listener(state);
+            transcriptListener?.([{ itemId: "tutor-1", role: "tutor", text: "Welcome to practice." }]);
             return Promise.resolve();
           },
           end() {
@@ -74,13 +78,16 @@ describe("SessionPage", () => {
       </AppProviders>,
     );
     const user = userEvent.setup();
-    expect(await screen.findByText("2:00")).toBeVisible();
+    expect(await screen.findByText("10:00")).toBeVisible();
     await user.type(await screen.findByLabelText(/something you want to talk about/i), "my weekend");
     await user.type(screen.getByLabelText(/words to practice/i), "market, recipe");
     await user.click(screen.getByRole("button", { name: "Begin session" }));
 
     expect(await screen.findByText("Your conversation focus")).toBeVisible();
     expect(await screen.findByRole("button", { name: "End conversation" })).toBeVisible();
+    expect(screen.getByRole("timer", { name: "Time remaining" })).toHaveTextContent("10:00");
+    expect(screen.getByRole("heading", { name: "Transcript" })).toBeVisible();
+    expect(screen.getByText("Welcome to practice.")).toBeVisible();
     expect(createSession).toHaveBeenCalledWith(expect.objectContaining({
       topic: "my weekend", requestedWords: ["market", "recipe"],
     }));
@@ -89,7 +96,7 @@ describe("SessionPage", () => {
 
   it("retries microphone access with the same planned session", async () => {
     const gateway = createMockWebAppGateway();
-    vi.spyOn(gateway, "getVoiceAvailability").mockResolvedValue({ available: true, maxCallSeconds: 120 });
+    vi.spyOn(gateway, "getVoiceAvailability").mockResolvedValue({ available: true, maxCallSeconds: 600 });
     const createSession = vi.spyOn(gateway, "createSession");
     const createCall = vi.fn((sessionId: string) => {
       let state: RealtimeSessionState = "idle";
@@ -101,11 +108,13 @@ describe("SessionPage", () => {
       return {
         sessionId,
         get state() { return state; },
+        deadlineAt: new Date(Date.now() + 600_000).toISOString(),
         subscribe(listener: (next: RealtimeSessionState) => void) {
           listeners.add(listener);
           listener(state);
           return () => { listeners.delete(listener); };
         },
+        subscribeTranscript(listener: (turns: []) => void) { listener([]); return () => {}; },
         connect() {
           update("connecting");
           if (createCall.mock.calls.length === 1) {
@@ -129,7 +138,7 @@ describe("SessionPage", () => {
     );
 
     const user = userEvent.setup();
-    await screen.findByText("2:00");
+    await screen.findByText("10:00");
     await user.click(screen.getByRole("button", { name: "Begin session" }));
     expect(await screen.findByText("Microphone access was blocked. Allow it in your browser, then try again.")).toBeVisible();
     const retry = await screen.findByRole("button", { name: "Try again" });

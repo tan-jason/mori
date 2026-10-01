@@ -72,7 +72,7 @@ through the application backend and never ships a standard provider API key to t
 - The browser-to-backend and browser-to-realtime-provider boundaries match the
   high-level diagram.
 - The backend must remain authoritative for entitlements, connected time, the
-  20-minute cap, session status, and transcript persistence. Client displays are not
+  10-minute cap, session status, and transcript persistence. Client displays are not
   enforcement mechanisms.
 - Transcript persistence and post-session job dispatch need an atomic handoff, such
   as a transactional outbox. Independent persist and enqueue writes can strand a

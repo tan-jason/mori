@@ -7,12 +7,20 @@ export type RealtimeSessionState =
   | "ended"
   | "failed";
 
+export interface TranscriptTurn {
+  itemId: string;
+  role: "learner" | "tutor";
+  text: string;
+}
+
 export interface RealtimeSession {
   readonly state: RealtimeSessionState;
+  readonly deadlineAt: string | null;
   connect(): Promise<void>;
   end(reason: "learner_ended" | "time_limit" | "connection_failed"): Promise<void>;
   setPlaybackRate(rate: number): Promise<void>;
   subscribe(listener: (state: RealtimeSessionState) => void): () => void;
+  subscribeTranscript(listener: (turns: readonly TranscriptTurn[]) => void): () => void;
 }
 
 export interface RealtimeSessionFactory {

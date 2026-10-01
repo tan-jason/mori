@@ -5,6 +5,7 @@ function browserHarness() {
   const stop = vi.fn();
   const close = vi.fn();
   const send = vi.fn();
+  let onMessage: ((event: MessageEvent) => void) | null = null;
   const enabledWhenAdded: boolean[] = [];
   const track = { enabled: true, stop } as unknown as MediaStreamTrack;
   const stream = {
@@ -16,7 +17,12 @@ function browserHarness() {
     connectionState: "connected",
     localDescription: { type: "offer", sdp: "v=0\r\noffer" },
     addTrack: vi.fn((addedTrack: MediaStreamTrack) => { enabledWhenAdded.push(addedTrack.enabled); }),
-    createDataChannel: () => ({ readyState: "open", send }),
+    createDataChannel: () => ({
+      readyState: "open", send,
+      addEventListener: (type: string, listener: (event: MessageEvent) => void) => {
+        if (type === "message") onMessage = listener;
+      },
+    }),
     createOffer: () => Promise.resolve({ type: "offer", sdp: "v=0\r\noffer" }),
     setLocalDescription: vi.fn(async () => {}),
     setRemoteDescription: vi.fn(async () => {}),
@@ -26,6 +32,7 @@ function browserHarness() {
     stop,
     close,
     send,
+    emit(raw: string) { onMessage?.({ data: raw } as MessageEvent); },
     enabledWhenAdded,
     track,
     connection,
@@ -109,5 +116,30 @@ describe("browser realtime session", () => {
     expect(browser.track.enabled).toBe(false);
     expect(browser.stop).toHaveBeenCalledOnce();
     expect(browser.close).toHaveBeenCalledOnce();
+  });
+
+  it("shows finalized transcript turns in item order without duplicates", async () => {
+    const browser = browserHarness();
+    const session = createBrowserRealtimeSessionFactory({
+      exchangeSdp: () => Promise.resolve({
+        answerSdp: "v=0\r\nanswer", attemptId: "attempt-3",
+        deadlineAt: new Date(Date.now() + 600_000).toISOString(),
+      }),
+      acknowledge: () => Promise.resolve(),
+      requestEnd: () => Promise.resolve(),
+    }, browser.dependencies).create("session-3", "csrf");
+    const transcript = vi.fn();
+    session.subscribeTranscript(transcript);
+    await session.connect();
+    browser.emit(JSON.stringify({ type: "conversation.item.added", item: { id: "learner-1", role: "user" } }));
+    browser.emit(JSON.stringify({ type: "response.output_item.added", item: { id: "tutor-1", role: "assistant" } }));
+    browser.emit(JSON.stringify({ type: "response.output_audio_transcript.done", item_id: "tutor-1", transcript: "こんにちは" }));
+    browser.emit(JSON.stringify({ type: "conversation.item.input_audio_transcription.completed", item_id: "learner-1", transcript: "Hello" }));
+    browser.emit(JSON.stringify({ type: "conversation.item.input_audio_transcription.completed", item_id: "learner-1", transcript: "duplicate" }));
+    expect(transcript).toHaveBeenLastCalledWith([
+      { itemId: "learner-1", role: "learner", text: "Hello" },
+      { itemId: "tutor-1", role: "tutor", text: "こんにちは" },
+    ]);
+    await session.end("learner_ended");
   });
 });

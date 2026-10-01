@@ -62,6 +62,7 @@ _KEY_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9:_-]{7,127}\Z")
 _RESERVATION_TTL = timedelta(minutes=10)
 _BOOTSTRAP_PENDING_TTL = timedelta(seconds=30)
 UNCERTAIN_CALL_WINDOW = timedelta(hours=2)
+LIVE_CALL_LIMIT_SECONDS = 600
 _MAX_UNCERTAIN_CALLS = 3
 
 
@@ -594,7 +595,11 @@ class SessionService:
             )
 
     async def record_provider_call(
-        self, *, attempt_id: UUID, provider_call_id: str, live_cap_seconds: int = 120
+        self,
+        *,
+        attempt_id: UUID,
+        provider_call_id: str,
+        live_cap_seconds: int = LIVE_CALL_LIMIT_SECONDS,
     ) -> datetime | None:
         """Persist provider identity before an SDP answer may be returned."""
         if not provider_call_id or len(provider_call_id) > 160:

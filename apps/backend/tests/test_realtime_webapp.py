@@ -81,7 +81,7 @@ async def test_webapp_call_consumes_once_and_supervisor_finishes(
     app.state.settings.openai_safety_id_secret = SecretStr("test-safety-id-secret")
     headers = {"Origin": "http://web.test", "X-CSRF-Token": csrf}
     availability = client.get("/api/v1/sessions/availability")
-    assert availability.json() == {"available": True, "maxCallSeconds": 120}
+    assert availability.json() == {"available": True, "maxCallSeconds": 600}
     denied = client.post(
         f"/api/v1/sessions/{session_id}/webrtc",
         content="v=0\r\noffer",
@@ -103,6 +103,7 @@ async def test_webapp_call_consumes_once_and_supervisor_finishes(
     )[0]
     assert stored[0:2] == ("awaiting_client", "rtc_test_call")
     assert isinstance(stored[2], datetime) and stored[2] > datetime.now(UTC)
+    assert 580 < (stored[2] - datetime.now(UTC)).total_seconds() <= 600
     assert isinstance(stored[3], datetime) and stored[3] < stored[2]
     assert (
         client.post(

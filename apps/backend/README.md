@@ -109,8 +109,8 @@ The model and safety variables are Mori configuration, not values issued by Open
 
 Never expose these variables to Vite or prefix them with `VITE_`. All provider calls and secret handling belong to the backend.
 Both `OPENAI_API_KEY` and `OPENAI_SAFETY_ID_SECRET` must be set before the voice
-availability endpoint enables calls. Non-production calls have a 120-second absolute
-server cap. Production uses the entitlement cap, currently 20 minutes.
+availability endpoint enables calls. All environments use a 10-minute absolute
+server cap.
 
 ## Dependency workflow
 

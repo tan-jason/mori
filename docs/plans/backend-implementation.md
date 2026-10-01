@@ -105,7 +105,7 @@ The initial published English-to-Mandarin curriculum and deterministic `learning
 
 Bootstrap intent, prompt-build metadata, the server-side SDP adapter, web browser transport, public call routes, durable deadline, renewable PostgreSQL lease, and transcript turn storage are implemented. The remaining M2 gate needs a real provider call, deadline and process-loss drills, and final connection-segment and event-watermark verification.
 
-Use a temporary two-minute cap in non-production environments to accelerate testing. The domain policy remains configurable and the production target remains 20 minutes.
+The temporary two-minute non-production cap was superseded by the 10-minute limit on October 1, 2026.
 
 Deliverables:
 
@@ -123,7 +123,7 @@ Deliverables:
 
 Verification:
 
-- One learner completes a real two-minute browser voice session and durable ordered turns remain after refresh.
+- One learner completes a real browser voice session under the 10-minute cap and durable ordered turns remain after refresh.
 - Two concurrent start requests cannot consume the same last grant.
 - Duplicate browser, provider, and hangup events are harmless.
 - Killing the owning supervisor causes lease takeover and the replacement still enforces the deadline.

@@ -122,7 +122,7 @@ These rules apply across every module and runtime:
 5. Jobs contain identifiers and version pins, not transcripts, audio, or mutable learner state.
 6. Model output is a candidate. Schema, provenance, confidence, policy, and curriculum rules are validated before commit.
 7. Evidence and historical decisions are append-only. Corrections create new decisions and snapshots.
-8. The server owns connected-time accounting and the 20-minute deadline.
+8. The server owns connected-time accounting and the 10-minute deadline.
 9. No consent, expired consent, incomplete audio, or failed capture means insufficient pronunciation evidence, not session failure.
 10. Deletion revokes access first, completes durable deletion work, then rebuilds affected derived learner state.
 

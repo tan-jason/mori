@@ -80,7 +80,7 @@ This file is the compact decision record for the Mori backend. Update an entry i
 
 **Decision:** Exchange the browser SDP offer through the API, then send live media directly between the browser and OpenAI Realtime. A dedicated supervisor attaches through the provider sideband connection.
 
-**Why:** Direct media keeps latency low. Server-side call identity, event observation, leases, and hangup preserve the trusted 20-minute cap and durable transcript path.
+**Why:** Direct media keeps latency low. Server-side call identity, event observation, leases, and hangup preserve the trusted 10-minute cap and durable transcript path.
 
 **Consequences:**
 
