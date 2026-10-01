@@ -24,6 +24,10 @@ function requestedWordsFromInput(value: string): string[] {
 
 const terminalStates = new Set(["setup_failed", "analysis_pending", "analysis_failed", "ready"]);
 
+function reservationExpired(session: PlannedSession): boolean {
+  return Date.parse(session.reservationExpiresAt) <= Date.now();
+}
+
 export function SessionPage() {
   const { gateway, realtime = unconfiguredRealtimeSessionFactory } = useAppDependencies();
   const { targetLanguage } = useLanguageProfile();
@@ -70,7 +74,12 @@ export function SessionPage() {
     const poll = () => {
       void gateway.getSession(plannedId, controller.signal).then((current) => {
         if (controller.signal.aborted) return;
-        setPlanned(current);
+        if (current.state === "setup_failed" || (current.state === "planned" && reservationExpired(current))) {
+          setPlanned(null);
+          idempotencyKey.current = null;
+        } else {
+          setPlanned(current);
+        }
         if (terminalStates.has(current.state)) window.clearInterval(interval);
       }).catch(() => {});
     };
@@ -97,8 +106,13 @@ export function SessionPage() {
       const words = requestedWordsFromInput(requestedWords);
       const normalizedTopic = topic.trim().replace(/\s+/g, " ");
       if (normalizedTopic.length > 160) throw new Error("Keep your topic under 160 characters.");
+      const reusablePlan = planned?.state === "planned" && !reservationExpired(planned) ? planned : null;
+      if (planned && !reusablePlan) {
+        setPlanned(null);
+        idempotencyKey.current = null;
+      }
       idempotencyKey.current ??= crypto.randomUUID();
-      const session = planned ?? await gateway.createSession({
+      const session = reusablePlan ?? await gateway.createSession({
         languageProfileId: learner.activeLanguageProfile.id,
         topic: normalizedTopic || null,
         requestedWords: words,
@@ -112,15 +126,19 @@ export function SessionPage() {
       call.subscribe(setConnectionState);
       await call.connect();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "We could not start your conversation.");
+      setError(reason instanceof Error && reason.name === "NotAllowedError"
+        ? "Microphone access was blocked. Allow it in your browser, then try again."
+        : reason instanceof Error ? reason.message : "We could not start your conversation.");
       if (sessionId) {
         try {
           const current = await gateway.getSession(sessionId);
-          if (current.state === "setup_failed") {
+          if (current.state === "setup_failed" || (current.state === "planned" && reservationExpired(current))) {
             setPlanned(null);
             idempotencyKey.current = null;
           } else if (current.state !== "planned") {
             setRetryBlocked(true);
+          } else {
+            setPlanned(current);
           }
         } catch {
           setRetryBlocked(true);
@@ -215,8 +233,8 @@ export function SessionPage() {
               {connectionState === "ending" ? "Ending conversation…" : "End conversation"}
             </button>
           ) : (
-            <button className="button button-primary button-wide" type="button" onClick={() => void begin()} disabled={!voiceEnabled || retryBlocked || isStarting || connectionState === "ended" || (connectionState === "failed" && planned !== null)}>
-              {isStarting ? "Starting conversation…" : "Begin session"}
+            <button className="button button-primary button-wide" type="button" onClick={() => void begin()} disabled={!voiceEnabled || retryBlocked || isStarting || connectionState === "ended" || (planned !== null && planned.state !== "planned")}>
+              {isStarting ? "Starting conversation…" : connectionState === "failed" ? "Try again" : "Begin session"}
             </button>
           )}
         </div>

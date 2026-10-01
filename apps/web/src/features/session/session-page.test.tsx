@@ -86,4 +86,59 @@ describe("SessionPage", () => {
     }));
     expect(events).toEqual(["connect"]);
   });
+
+  it("retries microphone access with the same planned session", async () => {
+    const gateway = createMockWebAppGateway();
+    vi.spyOn(gateway, "getVoiceAvailability").mockResolvedValue({ available: true, maxCallSeconds: 120 });
+    const createSession = vi.spyOn(gateway, "createSession");
+    const createCall = vi.fn((sessionId: string) => {
+      let state: RealtimeSessionState = "idle";
+      const listeners = new Set<(next: RealtimeSessionState) => void>();
+      const update = (next: RealtimeSessionState) => {
+        state = next;
+        for (const listener of listeners) listener(next);
+      };
+      return {
+        sessionId,
+        get state() { return state; },
+        subscribe(listener: (next: RealtimeSessionState) => void) {
+          listeners.add(listener);
+          listener(state);
+          return () => { listeners.delete(listener); };
+        },
+        connect() {
+          update("connecting");
+          if (createCall.mock.calls.length === 1) {
+            update("failed");
+            return Promise.reject(Object.assign(new Error("Permission denied"), { name: "NotAllowedError" }));
+          }
+          update("connected");
+          return Promise.resolve();
+        },
+        end() { update("ended"); return Promise.resolve(); },
+        setPlaybackRate() { return Promise.resolve(); },
+      };
+    });
+    const realtime: RealtimeSessionFactory = { available: true, create: createCall };
+    render(
+      <AppProviders dependencies={{ gateway, realtime }}>
+        <MemoryRouter>
+          <LanguageProfileProvider><SessionPage /></LanguageProfileProvider>
+        </MemoryRouter>
+      </AppProviders>,
+    );
+
+    const user = userEvent.setup();
+    await screen.findByText("2:00");
+    await user.click(screen.getByRole("button", { name: "Begin session" }));
+    expect(await screen.findByText("Microphone access was blocked. Allow it in your browser, then try again.")).toBeVisible();
+    const retry = await screen.findByRole("button", { name: "Try again" });
+    expect(retry).toBeEnabled();
+
+    await user.click(retry);
+    expect(await screen.findByRole("button", { name: "End conversation" })).toBeVisible();
+    expect(createSession).toHaveBeenCalledTimes(1);
+    expect(createCall).toHaveBeenCalledTimes(2);
+    expect(new Set(createCall.mock.calls.map(([sessionId]) => sessionId)).size).toBe(1);
+  });
 });
