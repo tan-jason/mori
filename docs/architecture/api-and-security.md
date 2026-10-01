@@ -88,7 +88,7 @@ The integration must:
 - Attach a server-side sideband connection through the dedicated supervisor.
 - Keep model name, voice, prompts, and provider behavior runtime-configured and version-labeled.
 - Persist event IDs and ordering metadata needed for idempotent normalization.
-- Enforce the 20-minute limit through server state and provider hangup, independent of the browser.
+- Enforce the 10-minute limit through server state and provider hangup, independent of the browser.
 - Treat provider events as untrusted input and validate their shape before domain handling.
 - Use a privacy-preserving stable safety identifier derived with a separately managed secret.
 

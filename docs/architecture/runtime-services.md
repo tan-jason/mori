@@ -197,7 +197,7 @@ Replay with the same inputs and versions must produce the same domain decision. 
 - Concurrency tests prove that one remaining grant cannot be reserved twice.
 - Replay tests prove that repeated provider events do not duplicate turns.
 - Lease tests prove supervisor takeover after process loss.
-- Deadline tests prove the 20-minute cap without a connected browser.
+- Deadline tests prove the 10-minute cap without a connected browser.
 - Transaction tests prove session finalization and job insertion are atomic.
 - Analysis replay tests prove a retry cannot append duplicate evidence or snapshots.
 - Shutdown tests prove leases and jobs are drained or recoverable.

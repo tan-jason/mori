@@ -14,7 +14,7 @@ The product is a personalized, voice-first Mandarin learning app. A learner has 
 
 The MVP is not an open-ended AI companion with language-learning flavor. It is a structured learning system delivered through natural conversation. The curriculum engine decides what the learner needs to demonstrate. The conversation model decides how to weave those objectives into an engaging discussion.
 
-Sessions may end at any time and are capped at 20 minutes. Every new user account receives one free introductory session of up to 20 minutes. After that session is consumed, continued voice access requires a plan. At launch, the Basic plan includes two sessions of up to 20 minutes per weekly entitlement window. The entitlement system must support additional plans, feature access, and usage limits without hard-coding product behavior to the Basic plan.
+Sessions may end at any time and are capped at 10 minutes. Every new user account receives one free introductory session of up to 10 minutes. After that session is consumed, continued voice access requires a plan. At launch, the Basic plan includes two sessions of up to 10 minutes per weekly entitlement window. The entitlement system must support additional plans, feature access, and usage limits without hard-coding product behavior to the Basic plan.
 
 During a session, Mandarin is the persistent default. When a learner asks for help, switches to English because they are stuck, or communicates unclear intent, the tutor may use brief English clarification and compassionate word-by-word or phrase-by-phrase scaffolding before returning to Mandarin. After each session, a separate analysis process extracts evidence, updates learning progress, assesses level, and prepares safe follow-up topics for the next conversation.
 
@@ -54,9 +54,9 @@ Learners need:
 - Assign one of six product levels: Beginner, Learning Beginner, Intermediate, Conversational, Advanced, or Fluent.
 - Promote or demote a learner using transcript-grounded evidence and stable rules.
 - Produce a useful session recap and seed appropriate topics for the next session.
-- Enforce a 20-minute hard cap while allowing early ending.
-- Give every new user one free introductory session of up to 20 minutes.
-- Enforce the Basic plan's allowance of two 20-minute sessions per weekly entitlement window and its cost-aware post-session analysis policy on the server.
+- Enforce a 10-minute hard cap while allowing early ending.
+- Give every new user one free introductory session of up to 10 minutes.
+- Enforce the Basic plan's allowance of two 10-minute sessions per weekly entitlement window and its cost-aware post-session analysis policy on the server.
 - Represent plan capabilities as configurable entitlements so additional plans, features, and usage limits can be added without changing core session logic.
 
 ### 4.2 Non-goals for MVP
@@ -72,7 +72,7 @@ Learners need:
 
 ## 5. Target user
 
-The initial user is an adult English speaker who wants regular Mandarin speaking practice and is comfortable talking to an AI tutor for 5 to 20 minutes at a time.
+The initial user is an adult English speaker who wants regular Mandarin speaking practice and is comfortable talking to an AI tutor for 5 to 10 minutes at a time.
 
 MVP assumptions:
 
@@ -91,7 +91,7 @@ MVP assumptions:
 - **Conversation hook:** A short-lived, non-sensitive topic from a prior session that may be revisited naturally.
 - **Language profile:** All progress, memories, and settings associated with one base-target language pair.
 - **Full session:** A session with at least five minutes of connected conversation or enough evidence to complete the planned diagnostic.
-- **Introductory entitlement:** A one-time, account-level grant for one voice session of up to 20 minutes. It does not reset.
+- **Introductory entitlement:** A one-time, account-level grant for one voice session of up to 10 minutes. It does not reset.
 - **Plan entitlement:** A versioned rule that grants access to a feature, optionally with a usage limit, duration limit, and reset window.
 
 ## 7. Core user experience
@@ -137,7 +137,7 @@ Before connecting audio, the session orchestrator creates a plan using:
 - Recent conversation hooks and their expiry dates.
 - Time since the last completed session.
 - Learner correction and speed preferences.
-- The 20-minute time budget.
+- The 10-minute time budget.
 
 Each plan contains no more than three objectives:
 
@@ -153,11 +153,11 @@ The tutor uses this flexible structure:
 
 | Approximate time | Purpose |
 | --- | --- |
-| 0:00-2:00 | Greeting, audio calibration, and life check-in |
-| 2:00-6:00 | Warm-up and review of a prior item |
-| 6:00-14:00 | Main conversation with current objectives |
-| 14:00-18:30 | Follow-up, repair, or a second attempt |
-| 18:30-20:00 | Natural wrap-up and one brief learner reflection |
+| 0:00-1:00 | Greeting, audio calibration, and life check-in |
+| 1:00-3:00 | Warm-up and review of a prior item |
+| 3:00-7:00 | Main conversation with current objectives |
+| 7:00-9:00 | Follow-up, repair, or a second attempt |
+| 9:00-10:00 | Natural wrap-up and one brief learner reflection |
 
 This is guidance, not a script. The learner may change the subject, ask for help, or end at any time. The tutor should not announce hidden objectives or force completion when the conversation naturally goes elsewhere.
 
@@ -185,14 +185,14 @@ All questions are spoken in Mandarin. The tutor may use one relevant conversatio
 
 The learner may end through a visible End button or a clear spoken request in English or Mandarin.
 
-- At 18:30, the tutor begins steering toward closure.
-- At 19:00, the interface shows a one-minute warning.
-- At 19:45, the tutor may finish only the current short thought.
-- At 20:00, the client stops new model output, closes the call, and marks the reason as `time_limit`.
-- The hard cap is 20 minutes of connected session time measured by the server, not by model judgment.
+- At 8:30, the tutor begins steering toward closure.
+- At 9:00, the interface shows a one-minute warning.
+- At 9:45, the tutor may finish only the current short thought.
+- At 10:00, the client stops new model output, closes the call, and marks the reason as `time_limit`.
+- The hard cap is 10 minutes of connected session time measured by the server, not by model judgment.
 - Early, dropped, and time-limited sessions all enter post-session processing if they contain at least one usable turn.
 
-If the connection drops, the app offers a short reconnect window. Connected time already used still counts toward the 20-minute cap. One Mori session may contain multiple sequential provider calls, but only one provider call may be active at a time. Reconnect first uses transport recovery when the active call supports it; otherwise the server may create a replacement provider call under the same Mori session. The replacement call reuses the pinned session plan, curriculum version, learner context, entitlement reservation or consumption, and absolute server deadline. Transcript turns from every provider call remain ordered within the Mori session, and post-session processing uses one final session watermark across those calls. A provider spike must determine whether recovery uses ICE restart or a replacement call without changing these session-level invariants.
+If the connection drops, the app offers a short reconnect window. Connected time already used still counts toward the 10-minute cap. One Mori session may contain multiple sequential provider calls, but only one provider call may be active at a time. Reconnect first uses transport recovery when the active call supports it; otherwise the server may create a replacement provider call under the same Mori session. The replacement call reuses the pinned session plan, curriculum version, learner context, entitlement reservation or consumption, and absolute server deadline. Transcript turns from every provider call remain ordered within the Mori session, and post-session processing uses one final session watermark across those calls. A provider spike must determine whether recovery uses ICE restart or a replacement call without changing these session-level invariants.
 
 ### 7.7 Post-session recap
 
@@ -209,9 +209,9 @@ The recap interface may use English for clarity. The Mandarin-first spoken-langu
 
 ### 7.8 Plans, entitlements, and usage
 
-Every new user account receives one free introductory voice session. The session may use up to the existing 20-minute cap and the entitlement does not reset. After that session is consumed, the learner needs an active plan with available voice-session entitlement to start another session.
+Every new user account receives one free introductory voice session. The session may use up to the existing 10-minute cap and the entitlement does not reset. After that session is consumed, the learner needs an active plan with available voice-session entitlement to start another session.
 
-At launch, the Basic plan includes two voice sessions per weekly entitlement window. Each Basic session may use up to 20 minutes.
+At launch, the Basic plan includes two voice sessions per weekly entitlement window. Each Basic session may use up to 10 minutes.
 
 - Before creating a Realtime call, the server resolves the user's effective entitlements and atomically reserves one available voice session.
 - A session consumes the reservation after it produces at least one usable learner turn. A failure during setup that produces no usable turn releases the reservation.
@@ -482,7 +482,7 @@ The initial beta includes an internal manual snapshot-review workflow. Whether t
 | FR-4 | P0 | Conduct low-latency, interruptible, speech-to-speech Mandarin conversation |
 | FR-5 | P0 | Enforce Mandarin as the session default while permitting brief, compassionate English clarification and word-by-word or phrase-by-phrase scaffolding when the learner is stuck |
 | FR-6 | P0 | Adapt pacing, complexity, turn length, and scaffolding by level |
-| FR-7 | P0 | Allow immediate early ending and enforce the server-authoritative 20-minute cap |
+| FR-7 | P0 | Allow immediate early ending and enforce the server-authoritative 10-minute cap |
 | FR-8 | P0 | Persist ordered user and tutor transcript turns with timing and confidence metadata |
 | FR-9 | P0 | Analyze any usable completed or interrupted session asynchronously |
 | FR-10 | P0 | Track vocabulary and concepts through introduced, practiced, demonstrated, and retained states |
@@ -494,7 +494,7 @@ The initial beta includes an internal manual snapshot-review workflow. Whether t
 | FR-16 | P1 | Show due reviews and a post-session recap |
 | FR-17 | P1 | Reconnect after a brief network interruption without resetting the time cap |
 | FR-18 | P1 | Support account-level transcript export and deletion |
-| FR-19 | P0 | Grant each new user account exactly one non-resetting introductory voice session of up to 20 minutes |
+| FR-19 | P0 | Grant each new user account exactly one non-resetting introductory voice session of up to 10 minutes |
 | FR-20 | P0 | After the introductory session is consumed, require an active entitlement and enforce the Basic allowance of two sessions per weekly entitlement window through a server-authoritative usage ledger |
 | FR-21 | P0 | Route Basic sessions through a cost-optimized core extraction policy without weakening schema, provenance, progression, or evaluation requirements |
 | FR-22 | P0 | Persist an immutable, versioned learner planning snapshot after every successfully committed session analysis |
@@ -531,7 +531,7 @@ The session service provides:
 - Transcript event ingestion.
 - Forced hang-up at the product cap.
 
-The OpenAI platform currently allows Realtime sessions longer than the product's 20-minute cap, so the application must enforce its own limit. Session properties can be updated during a call, which allows a learner's explicit speed request to take effect without reconnecting.
+The OpenAI platform currently allows Realtime sessions longer than the product's 10-minute cap, so the application must enforce its own limit. Session properties can be updated during a call, which allows a learner's explicit speed request to take effect without reconnecting.
 
 ### 14.2 Model separation
 
@@ -575,7 +575,7 @@ Every derived record should include provenance and a schema or rule version.
 
 - P95 session initialization under 5 seconds on a supported broadband connection.
 - P95 end-of-user-turn to first tutor audio under 2 seconds, measured separately from client network delay where possible.
-- 99.9% of sessions stop accepting new tutor output by 20:00 plus a small transport shutdown tolerance.
+- 99.9% of sessions stop accepting new tutor output by 10:00 plus a small transport shutdown tolerance.
 - 99% of usable sessions receive a recap within 60 seconds.
 - Analysis retries are idempotent and do not duplicate evidence or memories.
 - Entitlement grants, usage reservations, releases, and consumption are idempotent and cannot exceed either the one-time introductory grant or a recurring plan allowance under concurrent requests.
@@ -639,7 +639,7 @@ Every derived record should include provenance and a schema or rule version.
 - Tutor language-policy violation rate per audio turn.
 - Third-language output rate.
 - English assistance outside an allowed help trigger or longer than needed to restore Mandarin practice.
-- 20-minute cap violation rate.
+- 10-minute cap violation rate.
 - Incorrect entitlement grant, denial, or over-consumption rate.
 - Inappropriate-memory resurfacing reports.
 - Level change reversal rate within the next three sessions.
@@ -657,7 +657,7 @@ Before beta, create a repeatable evaluation set covering:
 - Explicit English-help requests, English code-switching caused by confusion, and ambiguous requests that require a short English clarification.
 - Background speech, silence, interruptions, and dropped connections.
 - Learners who perform above or below their stored level.
-- Sessions ending at 30 seconds, five minutes, 19:59, and 20:00.
+- Sessions ending at 30 seconds, five minutes, 9:59, and 10:00.
 - Sensitive topics and attempts to make the tutor retain them.
 - Transcription errors involving tones, homophones, names, and code-switching.
 
@@ -680,7 +680,7 @@ The MVP is ready for a controlled adult beta when:
 2. Every session begins with a persisted plan containing one to three valid curriculum objectives.
 3. The tutor speaks Mandarin by default, responds compassionately when a learner is stuck, uses only the brief English clarification or word-by-word or phrase-by-phrase scaffolding needed to unblock them, and then returns to Mandarin.
 4. A learner can interrupt the tutor, request slower speech, and end immediately.
-5. The server ends all sessions at the 20-minute cap even if the client timer is manipulated.
+5. The server ends all sessions at the 10-minute cap even if the client timer is manipulated.
 6. A partial session still produces a valid recap when enough transcript exists.
 7. Post-session output contains turn-level evidence and cannot directly mutate state.
 8. Vocabulary cannot become "learned" from exposure or one same-session repetition.
@@ -688,7 +688,7 @@ The MVP is ready for a controlled adult beta when:
 10. Users can inspect and delete their sessions and remembered information.
 11. Raw audio is not retained by default, and no standard provider API key reaches the client.
 12. The regression suite meets release thresholds for language-policy adherence, English-scaffolding quality, extraction accuracy, timing, and level calibration.
-13. A new account can start one free session of up to 20 minutes without a paid plan, cannot receive a second introductory session, and is shown an upgrade path after the session is consumed.
+13. A new account can start one free session of up to 10 minutes without a paid plan, cannot receive a second introductory session, and is shown an upgrade path after the session is consumed.
 14. A Basic learner can start no more than two countable sessions in one weekly entitlement window, and the interface shows remaining sessions and the next reset time.
 15. Adding a test plan with a different feature or usage entitlement requires configuration data rather than plan-name-specific authorization logic.
 16. Every committed session analysis creates one immutable planning snapshot, and the next plan uses the latest committed snapshot.
@@ -704,8 +704,8 @@ The MVP is ready for a controlled adult beta when:
 - Limit each session to three objectives to preserve conversational quality.
 - Require cross-session evidence before labeling an item learned or changing an established level.
 - Launch adult-only until minor-specific safety and consent requirements are designed.
-- Give every new user one non-resetting introductory session of up to 20 minutes.
-- Give the Basic plan two sessions per weekly entitlement window, with each session capped at 20 minutes.
+- Give every new user one non-resetting introductory session of up to 10 minutes.
+- Give the Basic plan two sessions per weekly entitlement window, with each session capped at 10 minutes.
 - Define plan features and limits through versioned entitlements so future plans can add capabilities without hard-coded plan branching.
 - Use a cost-optimized core extraction policy for Basic sessions while preserving all P0 evidence, validation, and progression requirements.
 
@@ -731,7 +731,7 @@ These decisions do not block the PRD but should be resolved before implementatio
 
 - OpenAI's [voice-agent guide](https://developers.openai.com/api/docs/guides/voice-agents) distinguishes direct speech-to-speech sessions for natural, low-latency conversation from chained voice pipelines for more predictable workflows.
 - OpenAI recommends [WebRTC for browser and mobile Realtime clients](https://developers.openai.com/api/docs/guides/realtime-webrtc), with standard API credentials kept on the trusted server.
-- The [Realtime conversation guide](https://developers.openai.com/api/docs/guides/realtime-conversations) documents stateful sessions, runtime session updates, interruptions, transcripts, and a provider session maximum that is longer than this product's 20-minute limit.
+- The [Realtime conversation guide](https://developers.openai.com/api/docs/guides/realtime-conversations) documents stateful sessions, runtime session updates, interruptions, transcripts, and a provider session maximum that is longer than this product's 10-minute limit.
 - The [Realtime prompting guide](https://developers.openai.com/api/docs/guides/realtime-models-prompting) recommends explicit language constraints and notes that playback speed and model pacing instructions affect different parts of the listening experience.
 
 These platform details are implementation guidance, not permanent product assumptions. Confirm model availability, pricing, rate limits, event schemas, and supported speed configuration against current official documentation during implementation.

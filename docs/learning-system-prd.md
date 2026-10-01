@@ -29,7 +29,7 @@ The tutor carries the conversation: it asks relevant questions about everyday li
 
 ### Outside this PRD
 
-- Payment, entitlement quantities, authentication, and the 20-minute session cap.
+- Payment, entitlement quantities, authentication, and the 10-minute session cap.
 - A specific provider model, voice, cloud region, or price.
 - Full curriculum content and numerical assessment thresholds, which must be published and evaluated before release.
 - Support for every language shown in the web scaffold. Only language pairs with a published course and voice policy can be selected for a live session.

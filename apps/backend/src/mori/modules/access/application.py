@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mori.modules.access.models import EntitlementRuleModel, GrantModel
@@ -24,6 +24,9 @@ class HeldReservation:
 class IntroGrant:
     id: UUID
     connected_limit_ms: int
+    allowance: int
+    consumed_count: int
+    reset_period: str | None
     held: HeldReservation | None
 
 
@@ -53,14 +56,12 @@ class AccessCommands:
         )
         if rule is None or rule.allowance != 1 or rule.reset_period is not None:
             return None
-        consumed = await db.scalar(
-            select(UsageReservationModel.id).where(
+        consumed_count = await db.scalar(
+            select(func.count(UsageReservationModel.id)).where(
                 UsageReservationModel.grant_id == grant.id,
                 UsageReservationModel.state == "consumed",
             )
         )
-        if consumed is not None:
-            return None
         reserved = await db.scalar(
             select(UsageReservationModel).where(
                 UsageReservationModel.grant_id == grant.id,
@@ -70,17 +71,20 @@ class AccessCommands:
         return IntroGrant(
             id=grant.id,
             connected_limit_ms=rule.max_duration_seconds * 1000,
+            allowance=rule.allowance,
+            consumed_count=consumed_count or 0,
+            reset_period=rule.reset_period,
             held=HeldReservation(
                 id=reserved.id,
                 session_id=reserved.session_id,
                 expires_at=reserved.expires_at,
-            ) if reserved is not None else None,
+            )
+            if reserved is not None
+            else None,
         )
 
     @staticmethod
-    async def release_expired(
-        db: AsyncSession, *, reservation_id: UUID, now: datetime
-    ) -> None:
+    async def release_expired(db: AsyncSession, *, reservation_id: UUID, now: datetime) -> None:
         reservation = await db.get(UsageReservationModel, reservation_id)
         if reservation is None or reservation.state != "reserved" or reservation.expires_at > now:
             raise RuntimeError("reservation is not releasable")
@@ -97,8 +101,48 @@ class AccessCommands:
         await db.flush()
 
     @staticmethod
+    async def release_setup_failure(
+        db: AsyncSession, *, reservation_id: UUID, now: datetime
+    ) -> None:
+        reservation = await db.get(UsageReservationModel, reservation_id)
+        if reservation is None or reservation.state != "reserved":
+            raise RuntimeError("reservation is not releasable")
+        reservation.state = "released"
+        reservation.updated_at = now
+        db.add(
+            UsageEventModel(
+                reservation_id=reservation_id,
+                kind="released",
+                idempotency_key=f"reservation:{reservation_id}:setup-failed",
+                created_at=now,
+            )
+        )
+        await db.flush()
+
+    @staticmethod
+    async def consume_intro(db: AsyncSession, *, reservation_id: UUID, now: datetime) -> None:
+        reservation = await db.get(UsageReservationModel, reservation_id)
+        if reservation is None or reservation.state != "reserved":
+            raise RuntimeError("reservation is not consumable")
+        reservation.state = "consumed"
+        reservation.updated_at = now
+        db.add(
+            UsageEventModel(
+                reservation_id=reservation_id,
+                kind="consumed",
+                idempotency_key=f"reservation:{reservation_id}:first-turn",
+                created_at=now,
+            )
+        )
+        await db.flush()
+
+    @staticmethod
     async def reserve_intro(
-        db: AsyncSession, *, grant_id: UUID, session_id: UUID, now: datetime,
+        db: AsyncSession,
+        *,
+        grant_id: UUID,
+        session_id: UUID,
+        now: datetime,
         ttl: timedelta,
     ) -> datetime:
         reservation = UsageReservationModel(

@@ -9,6 +9,7 @@ import type {
   LanguagePair,
   UpdatePreferencesCommand,
 } from "../domain/identity";
+import type { CreateSessionCommand, PlannedSession } from "../domain/session";
 
 /**
  * Backend adapter boundary for the webapp.
@@ -28,6 +29,9 @@ export interface WebAppGateway {
     signal?: AbortSignal,
   ): Promise<CurrentLearner>;
   logout(csrfToken: string, signal?: AbortSignal): Promise<void>;
+  createSession(command: CreateSessionCommand, signal?: AbortSignal): Promise<PlannedSession>;
+  getSession(sessionId: string, signal?: AbortSignal): Promise<PlannedSession>;
+  getVoiceAvailability(signal?: AbortSignal): Promise<{ available: boolean; maxCallSeconds: number }>;
   getDashboard(
     languageProfileId: string,
     signal?: AbortSignal,

@@ -1,4 +1,4 @@
-import { zApiErrorResponse, zLanguagePairsResponse, zMeResponse } from "@mori/api-client/zod";
+import { zApiErrorResponse, zLanguagePairsResponse, zMeResponse, zSessionResponse, zVoiceAvailabilityResponse } from "@mori/api-client/zod";
 import type { CurrentLearner } from "../domain/identity";
 import { isTargetLanguageId, type TargetLanguageId } from "../domain/languages";
 import { getApiOrigin } from "./api-config";
@@ -184,6 +184,49 @@ export function createBackendWebAppGateway(
           "X-CSRF-Token": csrfToken,
         },
       });
+    },
+
+    async createSession(command, signal) {
+      const response = await request("/api/v1/sessions", {
+        method: "POST",
+        signal,
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": command.idempotencyKey,
+          "X-CSRF-Token": command.csrfToken,
+        },
+        body: JSON.stringify({
+          languageProfileId: command.languageProfileId,
+          topic: command.topic,
+          requestedWords: command.requestedWords,
+        }),
+      });
+      const payload: unknown = await response.json();
+      const parsed = zSessionResponse.safeParse(payload);
+      if (!parsed.success) {
+        throw new ApiError(response.status, "invalid_response", "Mori returned an invalid session.");
+      }
+      return parsed.data;
+    },
+
+    async getSession(sessionId, signal) {
+      const response = await request(`/api/v1/sessions/${encodeURIComponent(sessionId)}`, { signal });
+      const payload: unknown = await response.json();
+      const parsed = zSessionResponse.safeParse(payload);
+      if (!parsed.success) {
+        throw new ApiError(response.status, "invalid_response", "Mori returned an invalid session.");
+      }
+      return parsed.data;
+    },
+
+    async getVoiceAvailability(signal) {
+      const response = await request("/api/v1/sessions/availability", { signal });
+      const payload: unknown = await response.json();
+      const parsed = zVoiceAvailabilityResponse.safeParse(payload);
+      if (!parsed.success) {
+        throw new ApiError(response.status, "invalid_response", "Mori returned invalid voice availability.");
+      }
+      return parsed.data;
     },
 
     // Identity is live first. Learning read models remain deterministic previews

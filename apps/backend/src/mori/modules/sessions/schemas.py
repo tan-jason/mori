@@ -36,6 +36,11 @@ class PlanPreviewResponse(BaseModel):
     objectives: list[str]
 
 
+class VoiceAvailabilityResponse(BaseModel):
+    available: bool
+    max_call_seconds: int = Field(alias="maxCallSeconds")
+
+
 class SessionResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 

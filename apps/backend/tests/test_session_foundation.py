@@ -90,7 +90,7 @@ def test_create_replay_and_competing_key(client: TestClient, database_url: str) 
     assert created.headers["location"] == f"/api/v1/sessions/{created.json()['id']}"
     assert created.json()["state"] == "planned"
     assert created.json()["rowVersion"] == 3
-    assert created.json()["connectedLimitMs"] == 1_200_000
+    assert created.json()["connectedLimitMs"] == 600_000
     assert competing.status_code == 409
     assert competing.json()["error"]["code"] == "voice_entitlement_unavailable"
     assert conflicting_replay.status_code == 409

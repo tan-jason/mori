@@ -11,8 +11,10 @@ Changing languages belongs in a separate account workflow rather than an inline 
 
 Google sign-in, application session restoration, learner account details, preference
 updates, and sign-out use the backend API. Dashboard, recap, and memory content still
-use the deterministic preview adapter until their read endpoints land. Microphone
-access and the realtime voice agent remain outside this slice.
+use the deterministic preview adapter until their read endpoints land. The session
+page uses browser WebRTC for microphone audio and the backend for SDP exchange,
+call acknowledgement, and ending. It checks backend voice availability before
+enabling Begin.
 
 ## Run locally
 
@@ -49,7 +51,7 @@ src/
   components/   Shared application shell and states
   domain/       Webapp view models
   features/     Route-owned UI and query hooks
-  realtime/     Typed future WebRTC session port
+  realtime/     Browser WebRTC session and backend transport
   styles/       Responsive design system and global styles
 ```
 
@@ -62,16 +64,15 @@ The identity gateway is transitional for this bounded M1 slice and currently mai
 runtime schemas by hand. Before the M1 exit gate, the generated OpenAPI client and Zod validators
 become the production implementation, and CI must reject contract drift.
 
-The realtime implementation belongs behind `RealtimeSessionFactory`. It should use a
-short-lived credential or SDP exchange from the application backend and must never
-ship a standard provider API key to the browser.
+The realtime implementation sits behind `RealtimeSessionFactory`. It exchanges SDP
+through the application backend and never ships a standard provider API key to the browser.
 
 ## System design handoff notes
 
 - The browser-to-backend and browser-to-realtime-provider boundaries match the
   high-level diagram.
 - The backend must remain authoritative for entitlements, connected time, the
-  20-minute cap, session status, and transcript persistence. Client displays are not
+  10-minute cap, session status, and transcript persistence. Client displays are not
   enforcement mechanisms.
 - Transcript persistence and post-session job dispatch need an atomic handoff, such
   as a transactional outbox. Independent persist and enqueue writes can strand a

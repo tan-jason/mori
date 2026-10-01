@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     api_origin: str = Field(default="http://localhost:8000", alias="API_ORIGIN")
     web_origin: str = Field(default="http://localhost:5173", alias="WEB_ORIGIN")
     database_url: str = Field(alias="DATABASE_URL")
+    openai_api_key: SecretStr | None = Field(default=None, alias="OPENAI_API_KEY")
+    openai_realtime_model: str = Field(default="gpt-realtime-2.1", alias="OPENAI_REALTIME_MODEL")
+    openai_realtime_voice: str = Field(default="marin", alias="OPENAI_REALTIME_VOICE")
+    openai_safety_id_secret: SecretStr | None = Field(default=None, alias="OPENAI_SAFETY_ID_SECRET")
 
     google_client_id: str = Field(alias="GOOGLE_CLIENT_ID", min_length=1)
     google_client_secret: SecretStr = Field(alias="GOOGLE_CLIENT_SECRET", min_length=1)
@@ -54,6 +58,28 @@ class Settings(BaseSettings):
         le=30 * 60,
     )
     auth_return_paths: tuple[str, ...] = Field(default=("/",), alias="AUTH_RETURN_PATHS")
+
+    @field_validator("openai_api_key", "openai_safety_id_secret", mode="before")
+    @classmethod
+    def empty_openai_secret_is_absent(cls, value: object) -> object:
+        return None if value == "" else value
+
+    @field_validator("openai_realtime_model", mode="before")
+    @classmethod
+    def empty_realtime_model_uses_default(cls, value: object) -> object:
+        return "gpt-realtime-2.1" if value == "" else value
+
+    @field_validator("openai_realtime_voice", mode="before")
+    @classmethod
+    def empty_realtime_voice_uses_default(cls, value: object) -> object:
+        return "marin" if value == "" else value
+
+    @field_validator("openai_safety_id_secret")
+    @classmethod
+    def validate_safety_secret(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and len(value.get_secret_value()) < 32:
+            raise ValueError("OPENAI_SAFETY_ID_SECRET must contain at least 32 characters")
+        return value
 
     @field_validator("api_origin", "web_origin", "google_redirect_uri")
     @classmethod

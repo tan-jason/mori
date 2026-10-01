@@ -304,10 +304,10 @@ The adapter exposes this as `provider_managed` or `client_managed` interruption 
 
 Mori uses two clocks:
 
-- `connected_limit_ms`: 1,200,000 milliseconds of persisted connected segments.
+- `connected_limit_ms`: 600,000 milliseconds of persisted connected segments.
 - `session_expires_at`: a fixed wall-clock safety boundary established at first activation.
 
-The accepted beta reconnect policy is one shared 30-second wall-clock budget. `session_expires_at` is therefore first activation plus 20 minutes and 30 seconds. Reconnect downtime does not add to connected usage, but it consumes the wall-clock budget. The session ends when either connected time reaches 20 minutes or the fixed wall-clock expiry is reached. Replacement calls inherit the same `session_expires_at` and remaining connected-time allowance.
+The accepted beta reconnect policy is one shared 30-second wall-clock budget. `session_expires_at` is therefore first activation plus 10 minutes and 30 seconds. Reconnect downtime does not add to connected usage, but it consumes the wall-clock budget. The session ends when either connected time reaches 10 minutes or the fixed wall-clock expiry is reached. Replacement calls inherit the same `session_expires_at` and remaining connected-time allowance.
 
 On connection loss:
 
@@ -489,7 +489,7 @@ No milestone exits on a happy path alone. Its concurrency, restart, privacy, and
 | ID | Decision | Review status | Why |
 | --- | --- | --- | --- |
 | SD-01 | Use OpenAI Realtime GA over WebRTC with the server SDP proxy and sideband design for the MVP | Accepted September 23, 2026 | Matches the product interaction and existing ADR; GPT-Live requires a new ADR only if a separate delegated backend conversation becomes necessary |
-| SD-02 | Use a shared 30-second reconnect budget and fixed wall-clock expiry of 20 minutes plus that budget | Accepted September 23, 2026 | Preserves up to 20 connected minutes while bounding stranded resources and repeated reconnects |
+| SD-02 | Use a shared 30-second reconnect budget and fixed wall-clock expiry of 10 minutes plus that budget | Revised October 1, 2026 | Preserves up to 10 connected minutes while bounding stranded resources and repeated reconnects |
 | SD-03 | Consume entitlement on the first completed user audio item with a final non-empty normalized transcript | Accepted September 23, 2026 | Avoids charging for setup failures, silence, or transcription failure and gives analysis a durable usable turn |
 | SD-04 | Set the intended transcript-retention policy to 90 days; defer automated expiry until after MVP | Accepted September 23, 2026 | Keeps the policy bounded without adding automatic expiry to MVP; disclosure and user deletion remain required |
 | SD-05 | Use 15-second supervisor leases renewed every 5 seconds with fenced writes | Accepted September 23, 2026 | Bounds takeover time and prevents a stale owner from writing after lease loss |
@@ -520,7 +520,7 @@ The first vertical slice is intentionally narrow:
 2. Deterministic placeholder plan with pinned versions.
 3. One browser WebRTC call through the server SDP exchange.
 4. One supervised usable learner turn persisted durably.
-5. Server-controlled end under a two-minute non-production cap.
+5. Server-controlled end under a 10-minute cap.
 6. Transactional analysis handoff and a minimal validated recap.
 
 Later milestones replace placeholder content without changing the runtime boundaries or correctness model defined here.

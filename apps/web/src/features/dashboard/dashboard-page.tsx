@@ -78,7 +78,7 @@ export function DashboardPage() {
           <h2 id="session-focus-title">{data.suggestedFocus.title}</h2>
           <p>{data.suggestedFocus.description}</p>
           <div className="session-meta" aria-label="Session details">
-            <span>Up to 20 minutes</span>
+            <span>Up to 10 minutes</span>
             <span>Voice conversation</span>
           </div>
           <Link className="button button-light" to="/session">
