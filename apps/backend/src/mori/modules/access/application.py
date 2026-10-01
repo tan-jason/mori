@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mori.modules.access.models import EntitlementRuleModel, GrantModel
@@ -24,13 +24,16 @@ class HeldReservation:
 class IntroGrant:
     id: UUID
     connected_limit_ms: int
+    allowance: int
+    consumed_count: int
+    reset_period: str | None
     held: HeldReservation | None
 
 
 class AccessCommands:
     @staticmethod
     async def claim_intro_grant(
-        db: AsyncSession, *, user_id: UUID, now: datetime, allow_consumed: bool = False
+        db: AsyncSession, *, user_id: UUID, now: datetime
     ) -> IntroGrant | None:
         grant = await db.scalar(
             select(GrantModel)
@@ -53,15 +56,12 @@ class AccessCommands:
         )
         if rule is None or rule.allowance != 1 or rule.reset_period is not None:
             return None
-        if not allow_consumed:
-            consumed = await db.scalar(
-                select(UsageReservationModel.id).where(
-                    UsageReservationModel.grant_id == grant.id,
-                    UsageReservationModel.state == "consumed",
-                )
+        consumed_count = await db.scalar(
+            select(func.count(UsageReservationModel.id)).where(
+                UsageReservationModel.grant_id == grant.id,
+                UsageReservationModel.state == "consumed",
             )
-            if consumed is not None:
-                return None
+        )
         reserved = await db.scalar(
             select(UsageReservationModel).where(
                 UsageReservationModel.grant_id == grant.id,
@@ -71,6 +71,9 @@ class AccessCommands:
         return IntroGrant(
             id=grant.id,
             connected_limit_ms=rule.max_duration_seconds * 1000,
+            allowance=rule.allowance,
+            consumed_count=consumed_count or 0,
+            reset_period=rule.reset_period,
             held=HeldReservation(
                 id=reserved.id,
                 session_id=reserved.session_id,

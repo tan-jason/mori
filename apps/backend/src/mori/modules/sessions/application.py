@@ -37,6 +37,7 @@ from mori.modules.sessions.errors import (
     SessionNotFound,
     VoiceEntitlementUnavailable,
     VoiceRetryLimitReached,
+    VoiceSessionLimitReached,
 )
 from mori.modules.sessions.models import (
     SessionCallAttemptModel,
@@ -244,10 +245,11 @@ class SessionService:
             db,
             user_id=user_id,
             now=now,
-            allow_consumed=self._allow_repeated_intro_sessions,
         )
         if grant is None:
             raise VoiceEntitlementUnavailable
+        if not self._allow_repeated_intro_sessions and grant.consumed_count >= grant.allowance:
+            raise VoiceSessionLimitReached(grant.allowance, grant.reset_period)
         if self._allow_repeated_intro_sessions:
             in_progress = await db.scalar(
                 select(SessionModel.id).where(

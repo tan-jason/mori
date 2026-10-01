@@ -191,7 +191,10 @@ async def test_webapp_call_consumes_once_and_supervisor_finishes(
             headers=next_session_headers,
         )
         assert restricted.status_code == 409
-        assert restricted.json()["error"]["code"] == "voice_entitlement_unavailable"
+        assert restricted.json()["error"]["code"] == "voice_session_limit_reached"
+        assert restricted.json()["error"]["message"] == (
+            "You've reached your plan's one-time limit of 1 session."
+        )
     finally:
         app.state.session_service = service
     repeated = client.post(

@@ -41,6 +41,7 @@ from mori.modules.sessions.errors import (
     VoiceNotConfigured,
     VoiceProviderUnavailable,
     VoiceRetryLimitReached,
+    VoiceSessionLimitReached,
 )
 from mori.modules.user.errors import AccountUnavailable
 
@@ -150,6 +151,22 @@ def install_exception_handlers(app: FastAPI) -> None:
         app.add_exception_handler(
             exception_type,
             _expected_error_handler(definition),
+        )
+
+    @app.exception_handler(VoiceSessionLimitReached)
+    async def voice_session_limit_reached_handler(
+        request: Request, error: VoiceSessionLimitReached
+    ) -> JSONResponse:
+        count = error.max_sessions
+        noun = "session" if count == 1 else "sessions"
+        window = "one-time" if error.reset_period is None else error.reset_period
+        return error_response(
+            request,
+            ErrorDefinition(
+                409,
+                "voice_session_limit_reached",
+                f"You've reached your plan's {window} limit of {count} {noun}.",
+            ),
         )
 
     @app.exception_handler(RequestValidationError)
