@@ -87,7 +87,7 @@ describe("SessionPage", () => {
 
     expect(await screen.findByText("Your conversation focus")).toBeVisible();
     expect(await screen.findByRole("button", { name: "End conversation" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Mute microphone" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Mute microphone" }).querySelector("svg")).not.toBeNull();
     await user.click(screen.getByRole("button", { name: "Mute microphone" }));
     expect(setMicrophoneMuted).toHaveBeenLastCalledWith(true);
     expect(screen.getByText("Microphone off. Mori can still speak.")).toBeVisible();

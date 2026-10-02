@@ -283,12 +283,24 @@ export function SessionPage() {
 
           {callActive ? (
             <div className="session-call-controls">
-              <button className="button button-primary button-wide" type="button" onClick={toggleMicrophone} disabled={connectionState === "ending"}>
-                {microphoneMuted ? "Unmute microphone" : "Mute microphone"}
-              </button>
-              <p className="session-microphone-status" role="status">
-                {microphoneMuted ? "Microphone off. Mori can still speak." : "Microphone on"}
-              </p>
+              <div className="session-microphone-control">
+                <button
+                  className={`session-microphone-button${microphoneMuted ? " session-microphone-button-muted" : ""}`}
+                  type="button"
+                  aria-label={microphoneMuted ? "Unmute microphone" : "Mute microphone"}
+                  onClick={toggleMicrophone}
+                  disabled={connectionState === "ending"}
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="2" width="6" height="12" rx="3" />
+                    <path d="M5 10a7 7 0 0 0 14 0M12 17v4m-4 0h8" />
+                    {microphoneMuted && <path d="M3 3l18 18" />}
+                  </svg>
+                </button>
+                <p className="session-microphone-status" role="status">
+                  {microphoneMuted ? "Microphone off. Mori can still speak." : "Microphone on"}
+                </p>
+              </div>
               <button className="button button-light button-wide" type="button" onClick={() => void end()} disabled={connectionState === "ending"}>
                 {connectionState === "ending" ? "Ending conversation…" : "End conversation"}
               </button>

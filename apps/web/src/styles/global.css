@@ -2126,11 +2126,52 @@ a.text-link:hover {
   gap: 0.75rem;
 }
 
+.session-microphone-control {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.session-microphone-button {
+  display: inline-grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #bdcbbf;
+  border-radius: 50%;
+  color: var(--forest-dark);
+  background: var(--forest-light);
+}
+
+.session-microphone-button:hover:not(:disabled) {
+  background: #e3eee6;
+}
+
+.session-microphone-button-muted {
+  border-color: #dfbcae;
+  color: var(--persimmon-ink);
+  background: var(--persimmon-soft);
+}
+
+.session-microphone-button-muted:hover:not(:disabled) {
+  background: #edcfc0;
+}
+
+.session-microphone-button:disabled {
+  opacity: 0.46;
+}
+
+.session-microphone-button svg {
+  width: 22px;
+  height: 22px;
+}
+
 .session-microphone-status {
-  margin: -0.25rem 0 0.25rem;
+  margin: 0;
   color: var(--muted);
   font-size: 0.75rem;
-  text-align: center;
 }
 
 .session-transcript {
