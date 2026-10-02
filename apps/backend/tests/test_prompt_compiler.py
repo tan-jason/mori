@@ -47,20 +47,23 @@ def test_learning_prompt_uses_pinned_pair_level_and_objective() -> None:
     compiled = compile_realtime_config(
         plan=_plan(), profile=_profile(), course=MANDARIN_FOUNDATIONS_V1
     )
-    assert compiled.instructions.startswith("# Role and Objective\nYou are Mori")
+    assert compiled.instructions.startswith("# Role and Objective\n\nYou are Mori")
     assert "introducing yourself as Mori before any lesson content" in compiled.instructions
-    assert "first introduction, directions, previews, meanings" in compiled.instructions
-    assert "# Language\nBase language: english. Target language: mandarin." in compiled.instructions
+    assert "first introduction, meanings, and explanations" in compiled.instructions
+    assert (
+        "# Language\n\nBase language: english. Target language: mandarin."
+        in compiled.instructions
+    )
     assert "# Conversation Flow\n" in compiled.instructions
     assert "# Speaking Style\n" in compiled.instructions
     assert "# Unclear Audio\n" in compiled.instructions
     assert "# Session Context\n" in compiled.instructions
     assert "briefly preview the topic" in compiled.instructions
     assert "Aim for about 0.5x natural pace in the target language" in compiled.instructions
-    assert "Use at most one short target-language phrase per tutor turn" in compiled.instructions
+    assert "Use at most one short target-language sentence per tutor turn" in compiled.instructions
     assert "have not yet explained in this session" in compiled.instructions
     assert "give the full phrase's meaning and define the new part" in compiled.instructions
-    assert "reuse it without repeating its meaning unless the learner asks" in compiled.instructions
+    assert "meaning unless the learner asks or shows confusion" in compiled.instructions
     assert "Model it in a short" in compiled.instructions
     assert "make their own short sentence with it" in compiled.instructions
     assert "explain the exact previous phrase" in compiled.instructions
@@ -96,7 +99,7 @@ def test_gentle_pace_targets_slow_target_language_without_changing_the_language_
     )
     assert "Aim for about 0.7x natural pace in the target language" in compiled.instructions
     assert (
-        "When introducing a new target-language word or phrase, speak very slowly"
+        "When introducing a new target-language word or phrase, speak slowly and clearly"
         in compiled.instructions
     )
     assert compiled.output_speed == 1.0
