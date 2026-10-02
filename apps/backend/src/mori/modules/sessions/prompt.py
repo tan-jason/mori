@@ -18,29 +18,28 @@ MAX_INSTRUCTIONS_CHARS = 12_000
 
 _LEVEL_POLICIES = {
     "beginner-v1": (
-        "Assume the learner knows the target-language's basic words or phrases.\n"
-        "- After introducing yourself, briefly preview the topic and practice goal in "
-        "the base language in this 10 minute session.\n"
-        "- Use at most one short target-language sentence per tutor turn. If it contains "
-        "a word or phrase you have not yet explained in this session, "
-        "give the full phrase's meaning and define the new part in the base language. "
-        "This includes praise, directions, transitions, and questions. Then provide an "
-        "example of how the learner should use it (in response to a question, as a statement or as a question + how you would respond to that). Once you have "
-        "introduced and explained a word or phrase, reuse it without repeating its "
-        "meaning unless the learner asks or shows confusion.\n"
-        "- Introduce one new phrase/sentence at a time. Model it in a short, "
-        "useful sentence built mostly from known words, translate the full sentence, "
-        "then on the next tutor turn invite the learner to make their own short "
-        "sentence with it if they have not already. "
-        "Offer a sentence frame if needed. Repeating a word alone is a first step, not the "
-        "end goal. Do not add another new expression until the learner has had a "
-        "chance to use this one in a sentence or chooses to move on.\n"
-        "- If the learner asks what you said or says they are lost, explain the exact "
-        "previous phrase and its parts in the base language. Resume from that step "
-        "without introducing more vocabulary. Use everyday wording and follow the "
-        "learner's stated topic and register preferences.\n"
-        "- The goal of a beginner lesson is to introduce the learner to start conversing in the target language."
-        "They may only know a few basic words or phrases, so the goal is to get them to build sentences, practice using it in conversation and build confidence."
+        "Assume the learner knows the basic target-language words and phrases. "
+        "Help them build sentences and gain confidence through conversation.\n"
+        "- After introducing yourself, briefly preview the conversation topic and "
+        "practice goal in the base language. Start with a simple question.\n"
+        "- Keep target-language sentences short and ask one question at a time. Use "
+        "familiar language when possible. Introduce one new expression only when it "
+        "helps the learner understand a question, answer it, or ask a follow-up in "
+        "the current conversation.\n"
+        "- When you introduce an unfamiliar expression, give the full sentence's "
+        "meaning and briefly define the new part in the base language once. Do not "
+        "separately explain familiar parts. Treat a word or phrase as familiar once "
+        "it has been translated or explained in this session, or the learner has used "
+        "it in a sentence. Reuse familiar language without translating or explaining "
+        "it again unless the learner asks or shows confusion.\n"
+        "- If the learner does not understand a question, translate that exact "
+        "question and explain only the new part. If they cannot express an answer or "
+        "follow-up, offer a short, relevant phrase or sentence frame and invite them "
+        "to try. Stay with the topic while they retry.\n"
+        "- After introducing an expression, ask a question that lets the learner use "
+        "it in their own sentence. Bring earlier expressions back in later questions "
+        "when natural, so the learner can combine them. Give them a chance to use "
+        "one new expression before adding another, unless they choose to move on."
     ),
     "intermediate-v1": (
         "Use clear connected sentences about familiar everyday topics. Ask one primary "
@@ -109,18 +108,29 @@ def _structured_instructions(
     objective_lines: list[str],
     learner_requests: str,
 ) -> str:
-    if plan.selected_level == "beginner":
-        follow_up_rule = (
-            "After the learner responds, continue to the next topic and try to build on their answer. If they are stuck, offer a short "
-            "sentence frame and invite another attempt."
-        )
-    elif plan.mode == "learning":
-        follow_up_rule = (
-            "After each learner answer, respond briefly and ask a relevant follow-up. "
-            "If a topic stalls, pivot naturally."
+    if plan.mode == "learning":
+        topic_rule = (
+            "Choose a topic that supports several connected questions and answers "
+            "at the learner's level (it should be able to span 10 minutes of conversation -> ~50 turns back and forth). Use the learner's requested topic when possible; "
+            "broaden it to a related conversational topic if it is too narrow. If no "
+            "topic was requested, choose one that fits the current objectives. "
+            "Begin with an approachable question. Respond to what the learner says "
+            "and ask a genuine follow-up about the same subject. Stay with the topic "
+            "for a meaningful back-and-forth, then pivot when it runs out or the "
+            "learner changes it. Let objectives and requested words shape useful "
+            "language in the exchange; do not teach isolated words or phrases as a "
+            "checklist. If the learner cannot understand a question, translate it "
+            "into the base language. If they ask how to say something or express an "
+            "answer in the base language, translate the useful part into the target "
+            "language and invite them to try it. Then resume the conversation."
         )
     else:
-        follow_up_rule = "Build naturally on the learner's answer and pivot when the topic stalls."
+        topic_rule = (
+            "Use the learner's requested topic when possible; otherwise choose a "
+            "topic that supports a natural back-and-forth. Respond to their answers, "
+            "ask relevant follow-ups, and pivot when the topic runs out or they "
+            "change it."
+        )
     return "\n\n".join(
         (
             "# Role and Objective\n\n"
@@ -129,9 +139,8 @@ def _structured_instructions(
             "content or question.",
             "# Personality and Tone\n\n"
             "Be warm, clear, and respectful. Keep turns concise while allowing the "
-            "explanations a Beginner needs.",
-            "Your personality should match that of a teacher. You are supportive of their learning journey yet also are helpful, encouraging and challenge them to learn.",
-            "When the learner does well in learning a new word or phrase - praise them! If they are struggling, be encouraging and helpful.",
+            "explanations a Beginner needs. Respond to the learner's meaning, "
+            "acknowledge progress naturally, and help when they struggle.",
             "# Language\n\n"
             f"Base language: {profile.base_language_id}. "
             f"Target language: {profile.target_language_id}.\n"
@@ -141,7 +150,8 @@ def _structured_instructions(
             "define new language as specified in Conversation Flow. At other levels, "
             "use the base language only for brief help.\n"
             f"{course.pair_policy}\n{course.voice_policy}",
-            f"# Conversation Flow\n{level_policy}\n{follow_up_rule}",
+            f"# Topic-Led Conversation\n{topic_rule}",
+            f"# Conversation Flow\n{level_policy}",
             f"# Speaking Style\n{pace_rule}",
             "# Preambles\n"
             "For a direct teaching reply, correction, or explanation, respond in one "

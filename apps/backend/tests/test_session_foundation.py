@@ -182,7 +182,8 @@ async def test_saved_plan_compiles_and_stale_preferences_block_connection(
 
     compiled = await service.load_realtime_config(user_id=user_id, session_id=session_id)
     assert compiled.pair_policy_version == "en-zh-pair-v1"
-    assert "briefly preview the topic" in compiled.instructions
+    assert "# Topic-Led Conversation\n" in compiled.instructions
+    assert "supports several connected questions and answers" in compiled.instructions
     assert "Share a simple introduction and answer a follow-up." in compiled.instructions
 
     updated = client.patch(

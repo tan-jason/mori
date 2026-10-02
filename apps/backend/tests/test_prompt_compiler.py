@@ -55,18 +55,23 @@ def test_learning_prompt_uses_pinned_pair_level_and_objective() -> None:
         in compiled.instructions
     )
     assert "# Conversation Flow\n" in compiled.instructions
+    assert "# Topic-Led Conversation\n" in compiled.instructions
     assert "# Speaking Style\n" in compiled.instructions
     assert "# Unclear Audio\n" in compiled.instructions
     assert "# Session Context\n" in compiled.instructions
-    assert "briefly preview the topic" in compiled.instructions
+    assert "briefly preview the conversation topic" in compiled.instructions
     assert "Aim for about 0.5x natural pace in the target language" in compiled.instructions
-    assert "Use at most one short target-language sentence per tutor turn" in compiled.instructions
-    assert "have not yet explained in this session" in compiled.instructions
-    assert "give the full phrase's meaning and define the new part" in compiled.instructions
-    assert "meaning unless the learner asks or shows confusion" in compiled.instructions
-    assert "Model it in a short" in compiled.instructions
-    assert "make their own short sentence with it" in compiled.instructions
-    assert "explain the exact previous phrase" in compiled.instructions
+    assert "supports several connected questions and answers" in compiled.instructions
+    assert "ask a genuine follow-up about the same subject" in compiled.instructions
+    assert "do not teach isolated words or phrases as a checklist" in compiled.instructions
+    assert "Keep target-language sentences short and ask one question at a time" in compiled.instructions
+    assert "give the full sentence's meaning and briefly define the new part" in compiled.instructions
+    assert "or the learner has used it in a sentence" in compiled.instructions
+    assert "without translating or explaining it again unless the learner" in compiled.instructions
+    assert "translate that exact question" in compiled.instructions
+    assert "offer a short, relevant phrase or sentence frame" in compiled.instructions
+    assert "ask a question that lets the learner use it in their own sentence" in compiled.instructions
+    assert "Bring earlier expressions back in later questions" in compiled.instructions
     assert "without a separate acknowledgment or filler preamble" in compiled.instructions
     assert compiled.output_speed == 1.0
     assert "Share a simple introduction and answer a follow-up." in compiled.instructions
