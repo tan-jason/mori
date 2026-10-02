@@ -283,7 +283,10 @@ export function SessionPage() {
 
           {callActive ? (
             <div className="session-call-controls">
-              <div className="session-microphone-control">
+              <div className="session-call-actions">
+                <button className="button button-light" type="button" onClick={() => void end()} disabled={connectionState === "ending"}>
+                  {connectionState === "ending" ? "Ending conversation…" : "End conversation"}
+                </button>
                 <button
                   className={`session-microphone-button${microphoneMuted ? " session-microphone-button-muted" : ""}`}
                   type="button"
@@ -297,13 +300,10 @@ export function SessionPage() {
                     {microphoneMuted && <path d="M3 3l18 18" />}
                   </svg>
                 </button>
-                <p className="session-microphone-status" role="status">
-                  {microphoneMuted ? "Microphone off. Mori can still speak." : "Microphone on"}
-                </p>
               </div>
-              <button className="button button-light button-wide" type="button" onClick={() => void end()} disabled={connectionState === "ending"}>
-                {connectionState === "ending" ? "Ending conversation…" : "End conversation"}
-              </button>
+              <p className="session-microphone-status" role="status">
+                {microphoneMuted ? "Microphone off" : "Microphone on"}
+              </p>
             </div>
           ) : (
             <button className="button button-primary button-wide" type="button" onClick={() => void begin()} disabled={!voiceEnabled || retryBlocked || isStarting || connectionState === "ended" || (planned !== null && planned.state !== "planned")}>

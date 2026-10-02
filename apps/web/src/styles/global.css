@@ -2123,13 +2123,19 @@ a.text-link:hover {
 
 .session-call-controls {
   display: grid;
+  gap: 0.5rem;
+  padding-top: 1.5rem;
+}
+
+.session-call-actions {
+  display: flex;
+  align-items: stretch;
   gap: 0.75rem;
 }
 
-.session-microphone-control {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+.session-call-actions > .button {
+  flex: 1;
+  min-width: 0;
 }
 
 .session-microphone-button {
@@ -2172,6 +2178,7 @@ a.text-link:hover {
   margin: 0;
   color: var(--muted);
   font-size: 0.75rem;
+  text-align: right;
 }
 
 .session-transcript {
