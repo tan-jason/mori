@@ -2121,6 +2121,18 @@ a.text-link:hover {
   font-variant-numeric: tabular-nums;
 }
 
+.session-call-controls {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.session-microphone-status {
+  margin: -0.25rem 0 0.25rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
 .session-transcript {
   grid-column: 1;
   grid-row: 2;

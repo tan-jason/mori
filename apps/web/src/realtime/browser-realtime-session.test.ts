@@ -98,6 +98,28 @@ describe("browser realtime session", () => {
     expect(browser.close).toHaveBeenCalledOnce();
   });
 
+  it("mutes and unmutes the microphone without ending the conversation", async () => {
+    const browser = browserHarness();
+    const requestEnd = vi.fn(async () => {});
+    const session = createBrowserRealtimeSessionFactory({
+      exchangeSdp: () => Promise.resolve({
+        answerSdp: "v=0\r\nanswer", attemptId: "attempt-mute",
+        deadlineAt: new Date(Date.now() + 60_000).toISOString(),
+      }),
+      acknowledge: () => Promise.resolve(),
+      requestEnd,
+    }, browser.dependencies).create("session-mute", "csrf");
+
+    await session.connect();
+    session.setMicrophoneMuted(true);
+    expect(browser.track.enabled).toBe(false);
+    expect(session.state).toBe("connected");
+    expect(requestEnd).not.toHaveBeenCalled();
+    session.setMicrophoneMuted(false);
+    expect(browser.track.enabled).toBe(true);
+    await session.end("learner_ended");
+  });
+
   it("requests server cleanup when acknowledgement fails", async () => {
     const browser = browserHarness();
     const requestEnd = vi.fn(async () => {});

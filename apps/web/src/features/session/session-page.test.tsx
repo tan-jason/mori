@@ -39,6 +39,7 @@ describe("SessionPage", () => {
     vi.spyOn(gateway, "getVoiceAvailability").mockResolvedValue({ available: true, maxCallSeconds: 600 });
     const createSession = vi.spyOn(gateway, "createSession");
     const events: string[] = [];
+    const setMicrophoneMuted = vi.fn();
     const realtime: RealtimeSessionFactory = {
       available: true,
       create() {
@@ -67,6 +68,7 @@ describe("SessionPage", () => {
             return Promise.resolve();
           },
           setPlaybackRate() { return Promise.resolve(); },
+          setMicrophoneMuted,
         };
       },
     };
@@ -85,6 +87,13 @@ describe("SessionPage", () => {
 
     expect(await screen.findByText("Your conversation focus")).toBeVisible();
     expect(await screen.findByRole("button", { name: "End conversation" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Mute microphone" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Mute microphone" }));
+    expect(setMicrophoneMuted).toHaveBeenLastCalledWith(true);
+    expect(screen.getByText("Microphone off. Mori can still speak.")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Unmute microphone" }));
+    expect(setMicrophoneMuted).toHaveBeenLastCalledWith(false);
+    expect(screen.getByText("Microphone on")).toBeVisible();
     expect(screen.getByRole("timer", { name: "Time remaining" })).toHaveTextContent("10:00");
     expect(screen.getByRole("heading", { name: "Transcript" })).toBeVisible();
     expect(screen.getByText("Welcome to practice.")).toBeVisible();
@@ -126,6 +135,7 @@ describe("SessionPage", () => {
         },
         end() { update("ended"); return Promise.resolve(); },
         setPlaybackRate() { return Promise.resolve(); },
+        setMicrophoneMuted() {},
       };
     });
     const realtime: RealtimeSessionFactory = { available: true, create: createCall };

@@ -47,6 +47,7 @@ export function SessionPage() {
   const [retryBlocked, setRetryBlocked] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [transcript, setTranscript] = useState<readonly TranscriptTurn[]>([]);
+  const [microphoneMuted, setMicrophoneMuted] = useState(false);
   const idempotencyKey = useRef<string | null>(null);
   const activeSession = useRef<RealtimeSession | null>(null);
   const unsubscribeCall = useRef<(() => void) | null>(null);
@@ -153,6 +154,7 @@ export function SessionPage() {
       unsubscribeCall.current?.();
       unsubscribeTranscript.current?.();
       activeSession.current = call;
+      setMicrophoneMuted(false);
       setRemainingSeconds(null);
       setTranscript([]);
       followTranscript.current = true;
@@ -191,6 +193,14 @@ export function SessionPage() {
       setRetryBlocked(true);
       setError("We could not confirm the end of your conversation. Please check its status.");
     }
+  };
+
+  const toggleMicrophone = () => {
+    const call = activeSession.current;
+    if (!call || (call.state !== "connected" && call.state !== "reconnecting")) return;
+    const nextMuted = !microphoneMuted;
+    call.setMicrophoneMuted(nextMuted);
+    setMicrophoneMuted(nextMuted);
   };
 
   const statusLabel = planned?.state === "analysis_pending" || planned?.state === "ready"
@@ -272,9 +282,17 @@ export function SessionPage() {
           )}
 
           {callActive ? (
-            <button className="button button-light button-wide" type="button" onClick={() => void end()} disabled={connectionState === "ending"}>
-              {connectionState === "ending" ? "Ending conversation…" : "End conversation"}
-            </button>
+            <div className="session-call-controls">
+              <button className="button button-primary button-wide" type="button" onClick={toggleMicrophone} disabled={connectionState === "ending"}>
+                {microphoneMuted ? "Unmute microphone" : "Mute microphone"}
+              </button>
+              <p className="session-microphone-status" role="status">
+                {microphoneMuted ? "Microphone off. Mori can still speak." : "Microphone on"}
+              </p>
+              <button className="button button-light button-wide" type="button" onClick={() => void end()} disabled={connectionState === "ending"}>
+                {connectionState === "ending" ? "Ending conversation…" : "End conversation"}
+              </button>
+            </div>
           ) : (
             <button className="button button-primary button-wide" type="button" onClick={() => void begin()} disabled={!voiceEnabled || retryBlocked || isStarting || connectionState === "ended" || (planned !== null && planned.state !== "planned")}>
               {isStarting ? "Starting conversation…" : connectionState === "failed" ? "Try again" : "Begin session"}

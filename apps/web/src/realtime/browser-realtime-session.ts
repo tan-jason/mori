@@ -78,6 +78,7 @@ class BrowserRealtimeSession implements RealtimeSession {
   private readonly turns = new Map<string, TranscriptTurn>();
   private connection: RTCPeerConnection | null = null;
   private microphoneStream: MediaStream | null = null;
+  private microphoneMuted = false;
   private audioElement: HTMLAudioElement | null = null;
   private attemptId: string | null = null;
   private cancelled = false;
@@ -195,7 +196,7 @@ class BrowserRealtimeSession implements RealtimeSession {
       this.ensureOpen();
       await this.transport.acknowledge(this.sessionId, answer.attemptId, this.csrfToken);
       this.ensureOpen();
-      for (const track of this.microphoneStream.getAudioTracks()) track.enabled = true;
+      for (const track of this.microphoneStream.getAudioTracks()) track.enabled = !this.microphoneMuted;
       channel.send(JSON.stringify({ type: "response.create" }));
       this.setState("connected");
       this.deadlineTimer = window.setTimeout(() => {
@@ -236,6 +237,13 @@ class BrowserRealtimeSession implements RealtimeSession {
     }
     if (this.audioElement) this.audioElement.playbackRate = rate;
     return Promise.resolve();
+  }
+
+  setMicrophoneMuted(muted: boolean): void {
+    this.microphoneMuted = muted;
+    for (const track of this.microphoneStream?.getAudioTracks() ?? []) {
+      track.enabled = !muted && (this.state === "connected" || this.state === "reconnecting");
+    }
   }
 
   private cleanup(): void {
