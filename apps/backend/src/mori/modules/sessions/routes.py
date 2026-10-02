@@ -127,6 +127,7 @@ async def exchange_webrtc(request: Request, session_id: UUID) -> PlainTextRespon
         created = await provider.create_call(
             offer_sdp=offer,
             instructions=prepared.instructions,
+            speed=prepared.output_speed,
             model=prepared.model_alias,
             voice=prepared.voice_alias,
             safety_identifier=safety_id,

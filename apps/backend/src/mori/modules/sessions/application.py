@@ -137,6 +137,7 @@ class PreparedCall:
     attempt_id: UUID
     session_id: UUID
     instructions: str
+    output_speed: float
     model_alias: str
     voice_alias: str
 
@@ -590,6 +591,7 @@ class SessionService:
                 attempt_id=attempt.id,
                 session_id=session_id,
                 instructions=compiled.instructions,
+                output_speed=compiled.output_speed,
                 model_alias=model_alias,
                 voice_alias=voice_alias,
             )

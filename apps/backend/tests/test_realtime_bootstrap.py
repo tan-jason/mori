@@ -100,6 +100,7 @@ async def test_prepare_call_commits_manifest_before_provider_and_blocks_duplicat
         voice_alias="test-voice",
     )
     assert "You are Mori" in prepared.instructions
+    assert prepared.output_speed == 1.0
     assert _rows(database_url, "SELECT state FROM sessions") == [("connecting",)]
     assert _rows(database_url, "SELECT state, provider_call_id FROM session_call_attempts") == [
         ("bootstrap_pending", None)
@@ -343,6 +344,7 @@ async def test_provider_sends_server_configuration_and_reads_call_identity(
     result = await provider.create_call(
         offer_sdp="v=0\r\noffer",
         instructions="Tutor instructions",
+        speed=0.5,
         model="realtime-test",
         voice="test-voice",
         safety_identifier="hashed-learner",
@@ -357,6 +359,7 @@ async def test_provider_sends_server_configuration_and_reads_call_identity(
     body = request.content.decode()
     assert '"instructions":"Tutor instructions"' in body
     assert '"voice":"test-voice"' in body
+    assert '"speed":0.5' in body
     assert "v=0\r\noffer" in body
     assert "server-secret" not in body
 
@@ -396,6 +399,7 @@ async def test_provider_failure_classification(
         await provider.create_call(
             offer_sdp="v=0",
             instructions="Tutor",
+            speed=1.0,
             model="model",
             voice="voice",
             safety_identifier="hashed-learner",
