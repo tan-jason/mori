@@ -24,6 +24,7 @@ describe("SessionPage", () => {
 
     expect(await screen.findByText("Voice practice is unavailable")).toBeVisible();
     expect(screen.getByRole("button", { name: "Begin session" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Mute microphone" })).toBeDisabled();
     expect(screen.getByText("English")).toBeVisible();
     expect(screen.getByText("Japanese")).toBeVisible();
     expect(screen.queryByLabelText("Language to learn")).not.toBeInTheDocument();
@@ -39,6 +40,7 @@ describe("SessionPage", () => {
     vi.spyOn(gateway, "getVoiceAvailability").mockResolvedValue({ available: true, maxCallSeconds: 600 });
     const createSession = vi.spyOn(gateway, "createSession");
     const events: string[] = [];
+    const setMicrophoneMuted = vi.fn();
     const realtime: RealtimeSessionFactory = {
       available: true,
       create() {
@@ -67,6 +69,7 @@ describe("SessionPage", () => {
             return Promise.resolve();
           },
           setPlaybackRate() { return Promise.resolve(); },
+          setMicrophoneMuted,
         };
       },
     };
@@ -81,10 +84,24 @@ describe("SessionPage", () => {
     expect(await screen.findByText("10:00")).toBeVisible();
     await user.type(await screen.findByLabelText(/something you want to talk about/i), "my weekend");
     await user.type(screen.getByLabelText(/words to practice/i), "market, recipe");
-    await user.click(screen.getByRole("button", { name: "Begin session" }));
+    const beginButton = screen.getByRole("button", { name: "Begin session" });
+    const muteButton = screen.getByRole("button", { name: "Mute microphone" });
+    expect(muteButton.parentElement).toBe(beginButton.parentElement);
+    expect(muteButton.querySelector("svg")).not.toBeNull();
+    await user.click(muteButton);
+    expect(screen.getByText("Will start muted")).toBeVisible();
+    await user.click(beginButton);
 
     expect(await screen.findByText("Your conversation focus")).toBeVisible();
-    expect(await screen.findByRole("button", { name: "End conversation" })).toBeVisible();
+    expect(setMicrophoneMuted).toHaveBeenLastCalledWith(true);
+    const endButton = await screen.findByRole("button", { name: "End conversation" });
+    const unmuteButton = screen.getByRole("button", { name: "Unmute microphone" });
+    expect(endButton).toBeVisible();
+    expect(unmuteButton.parentElement).toBe(endButton.parentElement);
+    expect(screen.getByText("Microphone off")).toBeVisible();
+    await user.click(unmuteButton);
+    expect(setMicrophoneMuted).toHaveBeenLastCalledWith(false);
+    expect(screen.getByText("Microphone on")).toBeVisible();
     expect(screen.getByRole("timer", { name: "Time remaining" })).toHaveTextContent("10:00");
     expect(screen.getByRole("heading", { name: "Transcript" })).toBeVisible();
     expect(screen.getByText("Welcome to practice.")).toBeVisible();
@@ -126,6 +143,7 @@ describe("SessionPage", () => {
         },
         end() { update("ended"); return Promise.resolve(); },
         setPlaybackRate() { return Promise.resolve(); },
+        setMicrophoneMuted() {},
       };
     });
     const realtime: RealtimeSessionFactory = { available: true, create: createCall };
