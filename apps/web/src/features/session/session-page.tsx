@@ -47,6 +47,7 @@ export function SessionPage() {
   const [retryBlocked, setRetryBlocked] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [transcript, setTranscript] = useState<readonly TranscriptTurn[]>([]);
+  const [microphoneMuted, setMicrophoneMuted] = useState(false);
   const idempotencyKey = useRef<string | null>(null);
   const activeSession = useRef<RealtimeSession | null>(null);
   const unsubscribeCall = useRef<(() => void) | null>(null);
@@ -153,6 +154,7 @@ export function SessionPage() {
       unsubscribeCall.current?.();
       unsubscribeTranscript.current?.();
       activeSession.current = call;
+      call.setMicrophoneMuted(microphoneMuted);
       setRemainingSeconds(null);
       setTranscript([]);
       followTranscript.current = true;
@@ -193,6 +195,16 @@ export function SessionPage() {
     }
   };
 
+  const toggleMicrophone = () => {
+    if (isStarting || connectionState === "ending" || connectionState === "ended") return;
+    const call = activeSession.current;
+    const nextMuted = !microphoneMuted;
+    if (call && (call.state === "connected" || call.state === "reconnecting")) {
+      call.setMicrophoneMuted(nextMuted);
+    }
+    setMicrophoneMuted(nextMuted);
+  };
+
   const statusLabel = planned?.state === "analysis_pending" || planned?.state === "ready"
     ? "Conversation saved"
     : planned?.state === "analysis_failed"
@@ -211,6 +223,12 @@ export function SessionPage() {
     failed: "Connection needs attention",
   } as const)[connectionState];
   const callActive = connectionState === "connected" || connectionState === "reconnecting" || connectionState === "ending";
+  const beginDisabled = !voiceEnabled || retryBlocked || isStarting || connectionState === "ended" || (planned !== null && planned.state !== "planned");
+  const microphoneStatus = !voiceEnabled && connectionState === "idle"
+    ? "Microphone unavailable"
+    : callActive
+      ? microphoneMuted ? "Microphone off" : "Microphone on"
+      : microphoneMuted ? "Will start muted" : "Will start unmuted";
 
   return (
     <div className="session-page">
@@ -271,15 +289,35 @@ export function SessionPage() {
             </div>
           )}
 
-          {callActive ? (
-            <button className="button button-light button-wide" type="button" onClick={() => void end()} disabled={connectionState === "ending"}>
-              {connectionState === "ending" ? "Ending conversation…" : "End conversation"}
-            </button>
-          ) : (
-            <button className="button button-primary button-wide" type="button" onClick={() => void begin()} disabled={!voiceEnabled || retryBlocked || isStarting || connectionState === "ended" || (planned !== null && planned.state !== "planned")}>
-              {isStarting ? "Starting conversation…" : connectionState === "failed" ? "Try again" : "Begin session"}
-            </button>
-          )}
+          <div className="session-call-controls">
+            <div className="session-call-actions">
+              {callActive ? (
+                <button className="button button-light" type="button" onClick={() => void end()} disabled={connectionState === "ending"}>
+                  {connectionState === "ending" ? "Ending conversation…" : "End conversation"}
+                </button>
+              ) : (
+                <button className="button button-primary" type="button" onClick={() => void begin()} disabled={beginDisabled}>
+                  {isStarting ? "Starting conversation…" : connectionState === "failed" ? "Try again" : "Begin session"}
+                </button>
+              )}
+              <button
+                className={`session-microphone-button${microphoneMuted ? " session-microphone-button-muted" : ""}`}
+                type="button"
+                aria-label={microphoneMuted ? "Unmute microphone" : "Mute microphone"}
+                onClick={toggleMicrophone}
+                disabled={callActive ? connectionState === "ending" : beginDisabled}
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="2" width="6" height="12" rx="3" />
+                  <path d="M5 10a7 7 0 0 0 14 0M12 17v4m-4 0h8" />
+                  {microphoneMuted && <path d="M3 3l18 18" />}
+                </svg>
+              </button>
+            </div>
+            <p className="session-microphone-status" role="status">
+              {microphoneStatus}
+            </p>
+          </div>
         </div>
 
         {(callActive || transcript.length > 0) && (

@@ -18,6 +18,7 @@ export interface RealtimeSession {
   readonly deadlineAt: string | null;
   connect(): Promise<void>;
   end(reason: "learner_ended" | "time_limit" | "connection_failed"): Promise<void>;
+  setMicrophoneMuted(muted: boolean): void;
   setPlaybackRate(rate: number): Promise<void>;
   subscribe(listener: (state: RealtimeSessionState) => void): () => void;
   subscribeTranscript(listener: (turns: readonly TranscriptTurn[]) => void): () => void;

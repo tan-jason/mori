@@ -2121,6 +2121,66 @@ a.text-link:hover {
   font-variant-numeric: tabular-nums;
 }
 
+.session-call-controls {
+  display: grid;
+  gap: 0.5rem;
+  padding-top: 1.5rem;
+}
+
+.session-call-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.session-call-actions > .button {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-microphone-button {
+  display: inline-grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #bdcbbf;
+  border-radius: 50%;
+  color: var(--forest-dark);
+  background: var(--forest-light);
+}
+
+.session-microphone-button:hover:not(:disabled) {
+  background: #e3eee6;
+}
+
+.session-microphone-button-muted {
+  border-color: #dfbcae;
+  color: var(--persimmon-ink);
+  background: var(--persimmon-soft);
+}
+
+.session-microphone-button-muted:hover:not(:disabled) {
+  background: #edcfc0;
+}
+
+.session-microphone-button:disabled {
+  opacity: 0.46;
+}
+
+.session-microphone-button svg {
+  width: 22px;
+  height: 22px;
+}
+
+.session-microphone-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: right;
+}
+
 .session-transcript {
   grid-column: 1;
   grid-row: 2;
