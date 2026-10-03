@@ -244,11 +244,11 @@ export function ProfilePage() {
                 }}
               >
                 <option value="level">Adapt to my level - recommended</option>
-                <option value="gentle">Gentle - 0.75x</option>
-                <option value="steady">Steady - 0.82x</option>
-                <option value="natural">Natural - 0.90x</option>
+                <option value="gentle">Gentle - slower practice speech</option>
+                <option value="steady">Steady - clear and unhurried</option>
+                <option value="natural">Natural - conversational pace</option>
               </select>
-              <small>You can still ask Mori to slow down during a session.</small>
+              <small>Gentle asks Mori to slow the language you are learning. You can ask for shorter phrases or longer pauses.</small>
             </label>
 
             <label className="form-field profile-field-wide">

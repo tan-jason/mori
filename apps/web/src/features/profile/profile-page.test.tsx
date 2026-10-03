@@ -29,6 +29,7 @@ describe("ProfilePage", () => {
       "Vietnamese · Tiếng Việt",
     );
     expect(screen.getByText("Learning Beginner")).toBeVisible();
+    expect(screen.getByRole("option", { name: "Gentle - slower practice speech" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
   });
 
