@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from math import isfinite
 from urllib.parse import quote, urlsplit
 
 import httpx2
@@ -39,11 +40,14 @@ class OpenAIRealtimeProvider:
         *,
         offer_sdp: str,
         instructions: str,
+        speed: float,
         model: str,
         voice: str,
         safety_identifier: str,
         client_request_id: str,
     ) -> CreatedCall:
+        if not isfinite(speed) or not 0.25 <= speed <= 1.5:
+            raise ValueError("Realtime output speed must be between 0.25 and 1.5")
         session = {
             "type": "realtime",
             "model": model,
@@ -51,9 +55,8 @@ class OpenAIRealtimeProvider:
             "audio": {
                 "input": {
                     "transcription": {"model": "gpt-4o-mini-transcribe"},
-                    "turn_detection": {"type": "semantic_vad"},
                 },
-                "output": {"voice": voice},
+                "output": {"voice": voice, "speed": speed},
             },
         }
         try:
