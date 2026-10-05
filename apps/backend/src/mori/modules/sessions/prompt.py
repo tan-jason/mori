@@ -265,13 +265,13 @@ def compile_realtime_config(
     level_policy = _LEVEL_POLICIES[plan.level_policy_version]
     output_speed = 1.0
     if profile.tutor_pace == "gentle":
-        pace_rule = "Aim for about 0.7x natural pace in the target language, with clear pauses."
+        pace_rule = "Speak at a slower pace when talking in the target language, with clear pauses."
     elif profile.tutor_pace == "steady":
         pace_rule = "Speak clearly at an unhurried pace, about 0.8x in the target language."
     elif profile.tutor_pace == "natural":
         pace_rule = "Speak at a natural conversational pace."
     elif plan.selected_level == "beginner":
-        pace_rule = "Aim for about 0.5x natural pace in the target language."
+        pace_rule = "Speak at 0.5x speed when talking in the target language, with clear pauses."
     else:
         output_speed = 0.85 if plan.selected_level == "intermediate" else 1.0
         pace_rule = "Use a speaking pace suited to the learner's level."

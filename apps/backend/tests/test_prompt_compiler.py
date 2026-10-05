@@ -40,7 +40,7 @@ def _plan(*, mode: str = "learning") -> PromptPlan:
 
 
 def _profile() -> PromptProfile:
-    return PromptProfile("english", "mandarin", "balanced", "level")
+    return PromptProfile("english", "mandarin", "balanced", "gentle")
 
 
 def test_learning_prompt_uses_pinned_pair_level_and_objective() -> None:
@@ -60,7 +60,7 @@ def test_learning_prompt_uses_pinned_pair_level_and_objective() -> None:
     assert "# Unclear Audio\n" in compiled.instructions
     assert "# Session Context\n" in compiled.instructions
     assert "briefly preview the conversation topic" in compiled.instructions
-    assert "Aim for about 0.5x natural pace in the target language" in compiled.instructions
+    assert "Speak at a slower pace when talking in the target language, with clear pauses." in compiled.instructions
     assert "supports several connected questions and answers" in compiled.instructions
     assert "ask a genuine follow-up about the same subject" in compiled.instructions
     assert "do not teach isolated words or phrases as a checklist" in compiled.instructions
@@ -102,7 +102,7 @@ def test_gentle_pace_targets_slow_target_language_without_changing_the_language_
         profile=replace(_profile(), tutor_pace="gentle"),
         course=MANDARIN_FOUNDATIONS_V1,
     )
-    assert "Aim for about 0.7x natural pace in the target language" in compiled.instructions
+    assert "Speak at a slower pace when talking in the target language, with clear pauses." in compiled.instructions
     assert (
         "When introducing a new target-language word or phrase, speak slowly and clearly"
         in compiled.instructions
