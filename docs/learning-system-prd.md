@@ -46,7 +46,7 @@ An account may exist without a language profile while onboarding is incomplete. 
 
 The language profile owns language-specific preferences, learning state, memories, and session history. Changing the target language starts or activates a separate profile; it does not reinterpret evidence or memories from another language.
 
-The tutor uses a reusable base conversation policy plus a published policy for the selected language pair. The first course may tailor English base-language support and Mandarin target-language examples, voice, and pronunciation help. The pair is still chosen explicitly by the learner; no language is an application default.
+The tutor uses Mori's shared course and conversation policy plus a published policy for the selected language pair. Pair policy may tailor examples, voice, and pronunciation help. The pair is still chosen explicitly by the learner; no language is an application default.
 
 ## 4. Four-level framework
 
@@ -121,7 +121,7 @@ A Fluent plan contains a lightweight conversation focus rather than graded curri
 
 ### Language and pacing
 
-The selected target language is the session's practice language. In early Beginner lessons, the tutor may use mostly the selected base language to explain new words, phrases, and the immediate task, then create short target-language speaking opportunities. For the first English-to-Mandarin course, that means substantial English explanation at the start. As the learner demonstrates comprehension, the tutor increases target-language conversation and reduces repeated explanation. Intermediate and Advanced use the base language mainly for concise help; Fluent uses it only when requested. There is no application-wide default conversation language. Accent and voice delivery are configured for the selected target language separately from the language-switching rule.
+The selected target language is the session's practice language. In early Beginner lessons, the tutor may use mostly the selected base language to explain new words, phrases, and the immediate task, then create short target-language speaking opportunities. As the learner demonstrates comprehension, the tutor increases target-language conversation and reduces repeated explanation. Intermediate and Advanced use the base language mainly for concise help; Fluent uses it only when requested. There is no application-wide default conversation language. Accent and voice delivery are configured for the selected target language separately from the language-switching rule.
 
 Level controls sentence complexity, turn length, and model speaking cadence. The learner's pace preference and supported playback-rate setting adjust delivery without changing the assessed level. A request to slow down or speed up takes effect during the session.
 

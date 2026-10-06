@@ -1,6 +1,6 @@
 # Mori
 
-Mori is a planned voice-first language learning app built around natural conversation, personalized practice, and evidence-based progression. Mandarin is the initial MVP course.
+Mori is a planned voice-first language learning app built around natural conversation, personalized practice, and evidence-based progression. Its conversation course is shared across target languages; language-pair support is published separately.
 
 > Status: Webapp foundation and backend identity foundation are in progress. Realtime and
 > learning integrations are not implemented.

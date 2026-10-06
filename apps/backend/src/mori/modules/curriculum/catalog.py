@@ -38,6 +38,8 @@ TRANSCRIPT_RULE = EvidenceRule(
 )
 
 
+# The lessons are Mori's shared course. This publication adds the currently
+# supported language pair's speaking and voice rules.
 MANDARIN_COURSE = PublishedCourse(
     base_language_id="english",
     target_language_id="mandarin",
