@@ -1,4 +1,4 @@
-"""Language-pair configuration composed with Mori's shared lesson framework."""
+"""Supported languages using Mori's shared lesson framework."""
 
 from __future__ import annotations
 
@@ -38,31 +38,11 @@ TRANSCRIPT_RULE = EvidenceRule(
 )
 
 
-# The lessons are Mori's shared course. This publication adds the currently
-# supported language pair's speaking and voice rules.
-MANDARIN_COURSE = PublishedCourse(
-    base_language_id="english",
-    target_language_id="mandarin",
-    curriculum_version=FRAMEWORK_ID,
-    pair_policy_version="en-zh",
-    voice_policy_version="mandarin-voice",
-    pair_policy=(
-        "Use Standard Mandarin for spoken examples. Give Mandarin-specific "
-        "pronunciation guidance only when the audio clearly supports it."
-    ),
-    voice_policy=(
-        "Target spoken language: Standard Mandarin. Base language for explanations: "
-        "English. Playback pace follows learner preference independently of accent."
-    ),
-    items=FRAMEWORK_ITEMS,
-    framework_version=FRAMEWORK_ID,
-)
-
 EVIDENCE_RULES: dict[str, EvidenceRule] = {
     item.key: TRANSCRIPT_RULE for item in FRAMEWORK_ITEMS
 }
 
-_PAIR_NAMES = (
+_TARGET_LANGUAGES = (
     ("mandarin", "Mandarin", "中文"),
     ("spanish", "Spanish", "Español"),
     ("french", "French", "Français"),
@@ -72,38 +52,59 @@ _PAIR_NAMES = (
     ("vietnamese", "Vietnamese", "Tiếng Việt"),
 )
 
-_COURSES = {(MANDARIN_COURSE.base_language_id, MANDARIN_COURSE.target_language_id): MANDARIN_COURSE}
+_BASE_LANGUAGE_ID = "english"
+_TARGET_LANGUAGE_IDS = frozenset(target for target, _, _ in _TARGET_LANGUAGES)
+MORI_COURSE = PublishedCourse(
+    curriculum_version=FRAMEWORK_ID,
+    language_policy_version="mori-language-v1",
+    voice_policy_version="mori-voice-v1",
+    items=FRAMEWORK_ITEMS,
+    framework_version=FRAMEWORK_ID,
+)
+
+
+def supported_languages(*, base_language_id: str, target_language_id: str) -> bool:
+    return base_language_id == _BASE_LANGUAGE_ID and target_language_id in _TARGET_LANGUAGE_IDS
 
 
 class CodeCourseCatalog:
     async def language_pairs(self) -> tuple[CoursePairView, ...]:
         return tuple(
             CoursePairView(
-                base_language_id="english",
+                base_language_id=_BASE_LANGUAGE_ID,
                 target_language_id=target,
                 base_language_name="English",
                 target_language_name=name,
                 target_native_name=native_name,
-                available=("english", target) in _COURSES,
+                available=True,
             )
-            for target, name, native_name in _PAIR_NAMES
+            for target, name, native_name in _TARGET_LANGUAGES
         )
 
     async def is_available(self, *, base_language_id: str, target_language_id: str) -> bool:
-        return (base_language_id, target_language_id) in _COURSES
+        return supported_languages(
+            base_language_id=base_language_id, target_language_id=target_language_id
+        )
 
     async def published_course(
         self, *, base_language_id: str, target_language_id: str
     ) -> PublishedCourse | None:
-        return _COURSES.get((base_language_id, target_language_id))
+        if supported_languages(
+            base_language_id=base_language_id, target_language_id=target_language_id
+        ):
+            return MORI_COURSE
+        return None
 
     def course_version(
         self, *, base_language_id: str, target_language_id: str, version: str
     ) -> PublishedCourse | None:
-        course = _COURSES.get((base_language_id, target_language_id))
-        return course if course is not None and course.curriculum_version == version else None
+        if supported_languages(
+            base_language_id=base_language_id, target_language_id=target_language_id
+        ):
+            return MORI_COURSE if version == MORI_COURSE.curriculum_version else None
+        return None
 
 
-validate_published_course(MANDARIN_COURSE)
+validate_published_course(MORI_COURSE)
 if set(EVIDENCE_RULES) != {item.key for item in FRAMEWORK_ITEMS}:
     raise ValueError("course evidence rules do not match framework lessons")

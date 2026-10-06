@@ -186,7 +186,7 @@ async def test_saved_plan_compiles_and_stale_preferences_block_connection(
     service: SessionService = app.state.session_service
 
     compiled = await service.load_realtime_config(user_id=user_id, session_id=session_id)
-    assert compiled.pair_policy_version == "en-zh"
+    assert compiled.pair_policy_version == "mori-language-v1"
     assert compiled.base_policy_version == "mori-framework-v2"
     assert compiled.level_policy_version == "beginner"
     assert "# Lesson\n" in compiled.instructions
@@ -240,7 +240,7 @@ def test_planning_failure_rolls_back_reservation(
     assert _rows(database_url, "SELECT id FROM usage_reservations") == []
 
 
-def test_unsupported_pair_blocks_onboarding(client: TestClient, database_url: str) -> None:
+def test_unsupported_language_blocks_onboarding(client: TestClient, database_url: str) -> None:
     start = client.get("/auth/google/start")
     state = parse_qs(urlsplit(start.headers["location"]).query)["state"][0]
     assert (
@@ -251,13 +251,12 @@ def test_unsupported_pair_blocks_onboarding(client: TestClient, database_url: st
     )
     me = client.get("/api/v1/me").json()
     pairs = client.get("/api/v1/language-pairs").json()["pairs"]
-    spanish = next(pair for pair in pairs if pair["targetLanguageId"] == "spanish")
-    assert spanish["available"] is False
+    assert all(pair["available"] for pair in pairs)
     response = client.post(
         "/api/v1/language-profiles",
         json={
             "baseLanguageId": "english",
-            "targetLanguageId": "spanish",
+            "targetLanguageId": "italian",
             "startingChoice": "beginner",
             "learningGoal": "Talk with family",
             "speakingContext": "Casual conversations with relatives",

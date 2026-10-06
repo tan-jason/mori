@@ -32,21 +32,21 @@ The tutor carries the conversation: it asks relevant questions about everyday li
 - Payment, entitlement quantities, authentication, and the 10-minute session cap.
 - A specific provider model, voice, cloud region, or price.
 - Full curriculum content and numerical assessment thresholds, which must be published and evaluated before release.
-- Support for every language shown in the web scaffold. Only language pairs with a published course and voice policy can be selected for a live session.
+- Support for every target language shown in the web app through Mori's shared course. The base language for help is currently English.
 
 ## 3. Learner profile and onboarding
 
-1. The learner explicitly selects a base language for help and a target language for practice. Neither field has a preselected value. The app shows which language pairs are currently supported.
+1. The learner explicitly selects a base language for help and a target language for practice. Neither field has a preselected value. The app shows the supported languages.
 2. The learner selects an approximate starting level: Beginner, Intermediate, Advanced, or Fluent. They may choose "I'm not sure"; this creates a provisional Beginner placement for learning mode, not an assessed level.
 3. The learner selects correction frequency and tutor pace. Existing defaults for these preferences may be offered, but no language can be inferred from them.
 4. The learner may enter conversation interests. Interests are optional, editable, and are not treated as evidence of skill or as permission to save sensitive facts.
 5. The learner can review the chosen languages, level or mode, and preferences before starting voice practice.
 
-An account may exist without a language profile while onboarding is incomplete. The app must not create a plan or start a conversation until both languages are explicitly selected and the pair is supported. It directs the learner back to the missing onboarding step. A provisional level is not a verified assessment.
+An account may exist without a language profile while onboarding is incomplete. The app must not create a plan or start a conversation until both languages are explicitly selected and supported. It directs the learner back to the missing onboarding step. A provisional level is not a verified assessment.
 
 The language profile owns language-specific preferences, learning state, memories, and session history. Changing the target language starts or activates a separate profile; it does not reinterpret evidence or memories from another language.
 
-The tutor uses Mori's shared course and conversation policy plus a published policy for the selected language pair. Pair policy may tailor examples, voice, and pronunciation help. The pair is still chosen explicitly by the learner; no language is an application default.
+The tutor uses Mori's shared course and conversation policy with the learner's selected base and target languages. Language selection is explicit; no target language is an application default.
 
 ## 4. Four-level framework
 
@@ -67,7 +67,7 @@ Fluent selection is a **practice-mode choice**, not a claim that Mori has verifi
 
 ### Lesson progression
 
-Learning mode uses one ordered, versioned lesson profile shared across supported target languages. The intended starting shape is ten Beginner lessons and seven Intermediate lessons; Advanced has fewer, broader lessons as its profile is authored. Fluent has no lesson sequence. These counts describe the lesson profile, not a fixed number of sessions. Each language pair supplies its own target-language examples, pronunciation policy, and any language-specific teaching support. A learner may need several sessions to demonstrate one lesson, return to an earlier lesson for review, or move ahead after supported placement evidence. Progress remains separate for each language profile even though the lesson sequence is shared. A diagnostic can be woven into a lesson; it must not become a separate lesson that repeats indefinitely while assessment is pending.
+Learning mode uses one ordered, versioned ten-lesson conversation course shared across supported target languages and learning levels. Fluent practice mode has no lesson sequence. The lesson count does not fix the number of sessions. The tutor gives examples and speaking help in the learner's selected languages. A learner may need several sessions to demonstrate one lesson, return to an earlier lesson for review, or move ahead after supported placement evidence. Progress remains separate for each language profile even though the lesson sequence is shared. A diagnostic can be woven into a lesson; it must not become a separate lesson that repeats indefinitely while assessment is pending.
 
 The Beginner sequence develops these conversational abilities:
 
@@ -104,7 +104,7 @@ For learning mode, Mori creates a plan before connecting audio from:
 
 The first session has no learning snapshot. It uses provisional placement and the first lesson for that level, with placement evidence gathered during conversation. If the previous session's analysis is pending or failed, the next plan uses the last committed snapshot rather than assuming the lesson was passed. Personal memories are separate from learning evidence and are never treated as proof of ability.
 
-A learning-mode plan pins exactly one lesson from the shared lesson profile, its profile version, the selected pair's course version, and one to three eligible objectives, normally the lesson's primary capability plus an appropriate review or repair goal. A deterministic selector uses the learner's language profile, learning level, and last committed lesson state to choose the lesson. It marks the encounter as first, continuation, or review using prior usable sessions with that lesson. Continuation does not imply failure: the prior analysis may still be pending or may have found insufficient evidence. The selector enforces prerequisites and eligibility. A model may help choose a natural topic or ordering within those bounds, but cannot choose the lesson, grant a pass, waive prerequisites, or set the learner's level. User-requested topics and scenarios can change the conversation setting without changing the lesson's capability or assessment target.
+A learning-mode plan pins exactly one lesson from Mori's shared course and its version, and one to three eligible objectives, normally the lesson's primary capability plus an appropriate review or repair goal. A deterministic selector uses the learner's language profile, learning level, and last committed lesson state to choose the lesson. It marks the encounter as first, continuation, or review using prior usable sessions with that lesson. Continuation does not imply failure: the prior analysis may still be pending or may have found insufficient evidence. The selector enforces prerequisites and eligibility. A model may help choose a natural topic or ordering within those bounds, but cannot choose the lesson, grant a pass, waive prerequisites, or set the learner's level. User-requested topics and scenarios can change the conversation setting without changing the lesson's capability or assessment target.
 
 A Fluent plan contains a lightweight conversation focus rather than graded curriculum objectives. Both plan types pin their relevant versions and remain stable through retry or reconnect. A deleted or expired memory is excluded before call creation even if it was eligible when the plan was first drafted.
 
@@ -180,7 +180,7 @@ Evaluation fixtures must cover every level, new and returning learners, conflict
 
 ## 11. Release dependencies
 
-- Publish the shared lesson profile and at least one supported language pair with matching objectives, target-language content, voice policy, and level thresholds. The web may list planned languages, but unsupported pairs cannot start voice practice.
+- Publish Mori's shared course with supported language choices, lesson objectives, and level thresholds. Unsupported languages cannot start voice practice.
 - Decide numerical assessment thresholds and evaluator pass criteria for each level.
 - Approve the memory sensitivity and retention policy. Approve an audio evidence policy before using pronunciation to change progress or level.
 - Reconcile the original MVP PRD and architecture documents with the four-level and explicit-language decisions before their affected implementation slices are marked complete.

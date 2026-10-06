@@ -38,7 +38,7 @@ describe("explicit onboarding", () => {
 
     await user.selectOptions(screen.getByLabelText("Language for help"), "english");
     const target = screen.getByLabelText("Language to practice");
-    expect(within(target).getByRole("option", { name: /Spanish.*not available yet/ })).toBeDisabled();
+    expect(within(target).getByRole("option", { name: /Spanish/ })).toBeEnabled();
     await user.selectOptions(target, "mandarin");
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.getByRole("heading", { name: "Where would you like to begin?" })).toBeVisible();

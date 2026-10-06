@@ -352,7 +352,7 @@ class SessionService:
                 requested_words=list(setup.requested_words),
                 setup_digest=setup.request_digest,
                 base_policy_version=BASE_POLICY_VERSION,
-                pair_policy_version=course.pair_policy_version,
+                pair_policy_version=course.language_policy_version,
                 level_policy_version=level_policy_version,
                 objective_count=len(objectives),
                 created_at=now,

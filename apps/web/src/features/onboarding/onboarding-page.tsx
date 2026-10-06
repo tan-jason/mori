@@ -113,7 +113,7 @@ export function OnboardingPage({ learner, onComplete }: OnboardingPageProps) {
       if (reason instanceof ApiError && reason.code === "unsupported_language_pair") {
         void catalog.refetch();
         setStep(0);
-        setError("That course is no longer available. Choose an available language pair.");
+        setError("That language choice is no longer available. Choose another language.");
       } else if (reason instanceof ApiError && reason.code === "idempotency_conflict") {
         idempotencyKey.current = null;
         setError("Your setup changed during confirmation. Check your choices and try again.");
@@ -130,7 +130,7 @@ export function OnboardingPage({ learner, onComplete }: OnboardingPageProps) {
 
   const validateStep = (index: number): boolean => {
     if (index === 0 && (!base || !chosenPair?.available)) {
-      setError("Choose both languages from an available course before continuing.");
+      setError("Choose both languages before continuing.");
       return false;
     }
     if (index === 1 && !startingChoice) {
@@ -215,17 +215,16 @@ export function OnboardingPage({ learner, onComplete }: OnboardingPageProps) {
                 <p className="eyebrow">Step 1 of 5</p>
                 <h2 id="onboarding-heading">Choose your languages</h2>
                 <p className="onboarding-description">Which language should Mori use to help you, and which would you like to practice?</p>
-                {catalog.isPending ? <p role="status">Loading available courses...</p> : null}
+                {catalog.isPending ? <p role="status">Loading languages...</p> : null}
                 {catalog.isError ? (
-                  <div role="alert" className="onboarding-message">We could not load the course list. <button type="button" className="button" onClick={() => void catalog.refetch()}>Try again</button></div>
+                  <div role="alert" className="onboarding-message">We could not load the language list. <button type="button" className="button" onClick={() => void catalog.refetch()}>Try again</button></div>
                 ) : null}
                 {catalog.isSuccess ? (
                   <>
                     <div className="onboarding-fields">
                       <label className="form-field"><span>Language for help</span><select aria-label="Language for help" value={base} onChange={(event) => { setBase(event.target.value); setTarget(""); changed(); }}><option value="">Choose a language</option>{baseLanguages.map(([id, name]) => <option value={id} key={id}>{name}</option>)}</select><small>Used for brief explanations when you get stuck.</small></label>
-                      <label className="form-field"><span>Language to practice</span><select aria-label="Language to practice" value={target} disabled={!base} onChange={(event) => { setTarget(event.target.value); changed(); }}><option value="">Choose a language</option>{targets.map((pair) => <option value={pair.targetLanguageId} disabled={!pair.available} key={pair.targetLanguageId}>{pair.targetLanguageName} · {pair.targetNativeName}{pair.available ? "" : " - not available yet"}</option>)}</select><small>Only available courses can be selected.</small></label>
+                      <label className="form-field"><span>Language to practice</span><select aria-label="Language to practice" value={target} disabled={!base} onChange={(event) => { setTarget(event.target.value); changed(); }}><option value="">Choose a language</option>{targets.map((pair) => <option value={pair.targetLanguageId} disabled={!pair.available} key={pair.targetLanguageId}>{pair.targetLanguageName} · {pair.targetNativeName}{pair.available ? "" : " - not available yet"}</option>)}</select><small>Mori uses the same conversation lessons for every language.</small></label>
                     </div>
-                    <div className="onboarding-availability"><strong>Course availability</strong><span>Courses shown as unavailable are still being prepared. Mori will only save a ready pair.</span></div>
                   </>
                 ) : null}
               </section>

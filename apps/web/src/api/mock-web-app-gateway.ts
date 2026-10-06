@@ -369,7 +369,7 @@ export function createMockWebAppGateway(
     baseLanguageName: BASE_LANGUAGE.name,
     targetLanguageName: target.name,
     targetNativeName: target.nativeName,
-    available: target.id === "mandarin",
+    available: true,
   }));
 
   const getContent = (languageProfileId: string): LanguageMockContent => {
@@ -398,7 +398,7 @@ export function createMockWebAppGateway(
       const previous = completedKeys.get(command.idempotencyKey);
       if (previous && previous !== payload) throw new Error("This key was already used.");
       if (previous) return currentLearner;
-      if (command.baseLanguageId !== "english" || command.targetLanguageId !== "mandarin") {
+      if (command.baseLanguageId !== BASE_LANGUAGE.id || !TARGET_LANGUAGES.some((target) => target.id === command.targetLanguageId)) {
         throw new Error("This language course is not available.");
       }
       completedKeys.set(command.idempotencyKey, payload);

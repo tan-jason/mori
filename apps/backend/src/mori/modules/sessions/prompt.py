@@ -6,6 +6,7 @@ import json
 from dataclasses import dataclass
 from hashlib import sha256
 
+from mori.modules.curriculum.catalog import supported_languages
 from mori.modules.curriculum.curriculum import FRAMEWORK_ID, LESSONS
 from mori.modules.curriculum.domain import PublishedCourse
 from mori.modules.learner_profiles.intent import normalize_intent
@@ -84,7 +85,6 @@ def _instructions(
     *,
     plan: PromptPlan,
     profile: PromptProfile,
-    course: PublishedCourse,
     lesson_guidance: str | None,
     lesson_label: str | None,
     lesson_number: int | None,
@@ -167,9 +167,7 @@ def _instructions(
             "up to 10 minutes.",
             "# Language and speaking\n"
             f"Base language: {profile.base_language_id}. Target language: "
-            f"{profile.target_language_id}. {language_rule}\n"
-            f"{course.pair_policy}\n{course.voice_policy}\n"
-            f"{pace_rule} {pace_detail}",
+            f"{profile.target_language_id}. {language_rule}\n{pace_rule} {pace_detail}",
             lesson_section,
             f"# Conversation navigation\n{navigation}",
             "# Feedback and audio\n"
@@ -199,7 +197,7 @@ def compile_realtime_config(
         plan.curriculum_version != FRAMEWORK_ID
         or course.curriculum_version != FRAMEWORK_ID
         or course.framework_version != FRAMEWORK_ID
-        or plan.pair_policy_version != course.pair_policy_version
+        or plan.pair_policy_version != course.language_policy_version
     ):
         raise ValueError("plan and published course versions differ")
     if tuple(item.key for item in course.items) != tuple(lesson.key for lesson in LESSONS):
@@ -209,13 +207,11 @@ def compile_realtime_config(
         for item, lesson in zip(course.items, LESSONS, strict=True)
     ):
         raise ValueError("course lesson guidance differs from the shared framework")
-    if (profile.base_language_id, profile.target_language_id) != (
-        course.base_language_id,
-        course.target_language_id,
+    if not supported_languages(
+        base_language_id=profile.base_language_id,
+        target_language_id=profile.target_language_id,
     ):
-        raise ValueError("plan and profile language pairs differ")
-    if not course.pair_policy or not course.voice_policy or not course.voice_policy_version:
-        raise ValueError("published voice policy is incomplete")
+        raise ValueError("unsupported profile languages")
     if profile.correction_preference not in {"light", "balanced", "frequent"}:
         raise ValueError("invalid correction preference")
     if profile.tutor_pace not in {"level", "gentle", "steady", "natural"}:
@@ -302,7 +298,6 @@ def compile_realtime_config(
     instructions = _instructions(
         plan=plan,
         profile=profile,
-        course=course,
         lesson_guidance=lesson_guidance,
         lesson_label=lesson_label,
         lesson_number=lesson_number,

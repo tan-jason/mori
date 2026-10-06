@@ -4,7 +4,7 @@ Responsive React foundation for Mori's learner experience. It includes the home,
 pre-session, recap, and remembered-information surfaces described in the PRD.
 
 New learners choose their base and target languages, starting point, tutor style, and optional
-interests in a four-step onboarding flow. The catalog shows unpublished courses as unavailable.
+interests during onboarding. All listed target languages use Mori's shared course.
 The active language comes from the learner's server-owned language profile. Its profile ID is
 included in query keys and gateway calls so course data stays isolated by target language.
 Changing languages belongs in a separate account workflow rather than an inline page control.

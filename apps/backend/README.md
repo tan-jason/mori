@@ -4,7 +4,7 @@ This directory contains the Python 3.13 backend package. Identity, user, learner
 profiles, the code-backed curriculum catalog, access, and sessions are modules in one
 FastAPI application.
 Sign-in links Google identity, updates the application account, and issues the intro grant in
-one transaction. Profile onboarding confirms a published pair and preferences separately.
+one transaction. Profile onboarding confirms the selected languages and preferences separately.
 The session foundation adds idempotent intro-grant reservation and an immutable,
 versioned learning plan. A pure prompt compiler loads that pinned plan, validates
 its course and policy versions, and builds server-only tutor instructions.
@@ -33,9 +33,9 @@ request ID. Resolve the attempt only after provider hangup or expiry is verified
 the learner's reservation has already been released.
 
 Mori's language-independent ten-lesson sequence and conversation guidance live in
-`src/mori/modules/curriculum/curriculum.py`. The catalog composes that framework
-with language-pair speech policies. The compiler uses one shared tutor prompt for
-all lessons and language pairs. The first Beginner lesson starts mostly in the
+`src/mori/modules/curriculum/curriculum.py`. The catalog exposes one course for
+all supported target languages. The compiler uses one shared tutor prompt for
+all lessons and languages. The first Beginner lesson starts mostly in the
 learner's base language and guides a personal introduction without a fixed question
 script. Create a new session to try it. Plans pinned to the retired prompt engine
 cannot start a new call. Migration 0005 still converts historical course references
@@ -156,7 +156,7 @@ npm --prefix packages/api-client run generate
 `packages/api-client` contains the generated TypeScript SDK, response types, and Zod validators.
 The web gateway uses its generated `GET /me` response validator. CI checks both the OpenAPI
 export and generated files for drift, then builds and tests the web consumer. New sign-ins return
-an incomplete learner with no profile. `POST /api/v1/language-profiles` confirms a published pair,
+an incomplete learner with no profile. `POST /api/v1/language-profiles` confirms supported languages,
 starting mode, and preferences in one idempotent transaction before session creation is allowed.
 
 The initial identity endpoints are:

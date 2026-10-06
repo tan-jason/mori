@@ -187,12 +187,7 @@ def test_explicit_onboarding_is_atomic_and_retry_safe(
     _complete_login(client, state)
     catalog = client.get("/api/v1/language-pairs")
     assert catalog.status_code == 200
-    assert next(
-        pair for pair in catalog.json()["pairs"] if pair["targetLanguageId"] == "mandarin"
-    )["available"] is True
-    assert next(
-        pair for pair in catalog.json()["pairs"] if pair["targetLanguageId"] == "spanish"
-    )["available"] is False
+    assert all(pair["available"] for pair in catalog.json()["pairs"])
 
     before = client.get("/api/v1/me").json()
     headers = {
@@ -249,7 +244,7 @@ def test_explicit_onboarding_is_atomic_and_retry_safe(
     assert _scalar(database_url, "SELECT count(*) FROM language_profiles") == 1
 
 
-def test_onboarding_rejects_unavailable_pair_and_supports_fluent(client: TestClient) -> None:
+def test_onboarding_rejects_unknown_language_and_supports_fluent(client: TestClient) -> None:
     state, _ = _start_login(client)
     _complete_login(client, state)
     csrf = client.get("/api/v1/me").json()["csrfToken"]
@@ -260,7 +255,7 @@ def test_onboarding_rejects_unavailable_pair_and_supports_fluent(client: TestCli
     unavailable = client.post(
         "/api/v1/language-profiles",
         json={
-            "baseLanguageId": "english", "targetLanguageId": "spanish",
+            "baseLanguageId": "english", "targetLanguageId": "italian",
             "startingChoice": "fluent",
             "learningGoal": "Have natural conversations",
             "speakingContext": "Casual conversations with friends",
@@ -274,7 +269,7 @@ def test_onboarding_rejects_unavailable_pair_and_supports_fluent(client: TestCli
     fluent = client.post(
         "/api/v1/language-profiles",
         json={
-            "baseLanguageId": "english", "targetLanguageId": "mandarin",
+            "baseLanguageId": "english", "targetLanguageId": "spanish",
             "startingChoice": "fluent",
             "learningGoal": "Have natural conversations",
             "speakingContext": "Casual conversations with friends",
@@ -282,6 +277,7 @@ def test_onboarding_rejects_unavailable_pair_and_supports_fluent(client: TestCli
         headers=headers,
     )
     assert fluent.status_code == 201
+    assert fluent.json()["activeLanguageProfile"]["targetLanguageId"] == "spanish"
     assert fluent.json()["activeLanguageProfile"]["learning"] == {
         "mode": "practice", "startingChoice": "fluent", "provisionalLevel": None,
         "version": 1,

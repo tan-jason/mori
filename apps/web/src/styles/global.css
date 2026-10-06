@@ -3070,7 +3070,6 @@ a.text-link:hover {
   grid-column: 1 / -1;
 }
 
-.onboarding-availability,
 .onboarding-note,
 .onboarding-confirmation {
   margin-top: 1rem;
@@ -3080,18 +3079,6 @@ a.text-link:hover {
   background: var(--forest-light);
   color: var(--ink-soft);
   font-size: 0.78rem;
-}
-
-.onboarding-availability {
-  display: flex;
-  gap: 0.8rem;
-  border-color: #e8dac8;
-  background: #f8f1e8;
-}
-
-.onboarding-availability strong {
-  flex: none;
-  color: var(--persimmon-ink);
 }
 
 .onboarding-choice {
