@@ -12,7 +12,7 @@ import type {
   TutorPace,
 } from "../../domain/identity";
 
-const steps = ["Languages", "Starting point", "Tutor style", "Review"] as const;
+const steps = ["Languages", "Starting point", "Learning goals", "Tutor style", "Review"] as const;
 const levelChoices: { value: StartingChoice; title: string; description: string }[] = [
   { value: "beginner", title: "Beginner", description: "I know some words or phrases, but conversation is hard." },
   { value: "intermediate", title: "Intermediate", description: "I can talk about familiar, everyday topics." },
@@ -62,6 +62,9 @@ export function OnboardingPage({ learner, onComplete }: OnboardingPageProps) {
   const [corrections, setCorrections] = useState<CorrectionPreference>("balanced");
   const [pace, setPace] = useState<TutorPace>("level");
   const [interestsText, setInterestsText] = useState("");
+  const [learningGoal, setLearningGoal] = useState("");
+  const [speakingContext, setSpeakingContext] = useState("");
+  const [learningNotes, setLearningNotes] = useState("");
   const [error, setError] = useState("");
   const idempotencyKey = useRef<string | null>(null);
   const timezone = useRef(getTimezone());
@@ -91,6 +94,9 @@ export function OnboardingPage({ learner, onComplete }: OnboardingPageProps) {
         tutorPace: pace,
         timezone: timezone.current,
         interests,
+        learningGoal: learningGoal.trim(),
+        speakingContext: speakingContext.trim(),
+        learningNotes: learningNotes.trim(),
         idempotencyKey: idempotencyKey.current,
         csrfToken: learner.csrfToken,
       });
@@ -111,6 +117,9 @@ export function OnboardingPage({ learner, onComplete }: OnboardingPageProps) {
       } else if (reason instanceof ApiError && reason.code === "idempotency_conflict") {
         idempotencyKey.current = null;
         setError("Your setup changed during confirmation. Check your choices and try again.");
+      } else if (reason instanceof ApiError && reason.status === 422) {
+        setStep(2);
+        setError("Check your learning details. Shorten them if they are too long, then try again.");
       } else {
         setError(reason instanceof Error && !(reason instanceof ApiError)
           ? reason.message
@@ -128,7 +137,15 @@ export function OnboardingPage({ learner, onComplete }: OnboardingPageProps) {
       setError("Choose a starting point before continuing.");
       return false;
     }
-    if (index === 2) {
+    if (index === 2 && (!learningGoal.trim() || !speakingContext.trim())) {
+      setError("Add a learning goal and how you would like to speak before continuing.");
+      return false;
+    }
+    if (index === 2 && learningGoal.length + speakingContext.length + learningNotes.length > 3000) {
+      setError("Keep your learning details within 3,000 characters.");
+      return false;
+    }
+    if (index === 3) {
       try {
         parseInterests(interestsText);
       } catch (reason) {
@@ -141,11 +158,11 @@ export function OnboardingPage({ learner, onComplete }: OnboardingPageProps) {
   };
 
   const next = () => {
-    if (step < 3) {
+    if (step < 4) {
       if (validateStep(step)) setStep(step + 1);
       return;
     }
-    if ([0, 1, 2].every(validateStep)) createProfile.mutate();
+    if ([0, 1, 2, 3].every(validateStep)) createProfile.mutate();
   };
 
   const goToStep = (destination: number) => {
@@ -163,7 +180,7 @@ export function OnboardingPage({ learner, onComplete }: OnboardingPageProps) {
       <div className="onboarding-intro">
         <p className="eyebrow">Welcome to Mori</p>
         <h1>Make a learning profile on purpose.</h1>
-        <p>Four short choices before your first conversation. Your progress will stay with the language profile you create.</p>
+        <p>A few choices before your first conversation. Your progress will stay with the language profile you create.</p>
       </div>
 
       <section className="onboarding-shell" aria-label="Your learning setup">
@@ -195,7 +212,7 @@ export function OnboardingPage({ learner, onComplete }: OnboardingPageProps) {
           <div className="onboarding-panel">
             {step === 0 ? (
               <section aria-labelledby="onboarding-heading">
-                <p className="eyebrow">Step 1 of 4</p>
+                <p className="eyebrow">Step 1 of 5</p>
                 <h2 id="onboarding-heading">Choose your languages</h2>
                 <p className="onboarding-description">Which language should Mori use to help you, and which would you like to practice?</p>
                 {catalog.isPending ? <p role="status">Loading available courses...</p> : null}
@@ -216,7 +233,7 @@ export function OnboardingPage({ learner, onComplete }: OnboardingPageProps) {
 
             {step === 1 ? (
               <section aria-labelledby="onboarding-heading">
-                <p className="eyebrow">Step 2 of 4</p>
+                <p className="eyebrow">Step 2 of 5</p>
                 <h2 id="onboarding-heading">Where would you like to begin?</h2>
                 <p className="onboarding-description">Pick the description that feels closest. This is a starting point, not a test result.</p>
                 <div className="onboarding-choices" role="radiogroup" aria-label="Starting point">
@@ -228,7 +245,20 @@ export function OnboardingPage({ learner, onComplete }: OnboardingPageProps) {
 
             {step === 2 ? (
               <section aria-labelledby="onboarding-heading">
-                <p className="eyebrow">Step 3 of 4</p>
+                <p className="eyebrow">Step 3 of 5</p>
+                <h2 id="onboarding-heading">What are you learning for?</h2>
+                <p className="onboarding-description">Tell Mori where you want to use the language and how you would like to sound. You can change this later.</p>
+                <div className="onboarding-fields">
+                  <label className="form-field onboarding-wide"><span>Your learning goal</span><textarea aria-label="Your learning goal" required maxLength={500} value={learningGoal} placeholder="For example: Talk naturally with family about everyday life" onChange={(event) => { setLearningGoal(event.target.value); changed(); }} /><small>What would you like to be able to do?</small></label>
+                  <label className="form-field onboarding-wide"><span>Who you will speak with and how</span><textarea aria-label="Who you will speak with and how" required maxLength={500} value={speakingContext} placeholder="For example: Casual conversations with relatives" onChange={(event) => { setSpeakingContext(event.target.value); changed(); }} /><small>Family, friends, work, formal or casual - use your own words.</small></label>
+                  <label className="form-field onboarding-wide"><span>Anything else Mori should know? (optional)</span><textarea aria-label="Anything else Mori should know?" maxLength={3000} value={learningNotes} placeholder="Topics or situations you would especially like to practice" onChange={(event) => { setLearningNotes(event.target.value); changed(); }} /><small>Learning details: {learningGoal.length + speakingContext.length + learningNotes.length} of 3,000 characters. Keep your answers brief.</small></label>
+                </div>
+              </section>
+            ) : null}
+
+            {step === 3 ? (
+              <section aria-labelledby="onboarding-heading">
+                <p className="eyebrow">Step 4 of 5</p>
                 <h2 id="onboarding-heading">Set the conversation style</h2>
                 <p className="onboarding-description">These preferences shape how Mori responds. You can edit them later.</p>
                 <div className="onboarding-fields">
@@ -240,9 +270,9 @@ export function OnboardingPage({ learner, onComplete }: OnboardingPageProps) {
               </section>
             ) : null}
 
-            {step === 3 ? (
+            {step === 4 ? (
               <section aria-labelledby="onboarding-heading">
-                <p className="eyebrow">Step 4 of 4</p>
+                <p className="eyebrow">Step 5 of 5</p>
                 <h2 id="onboarding-heading">Review your learning setup</h2>
                 <p className="onboarding-description">Check your choices before Mori creates this language profile.</p>
                 <dl className="onboarding-summary">
@@ -251,13 +281,16 @@ export function OnboardingPage({ learner, onComplete }: OnboardingPageProps) {
                   <div><dt>Starting point</dt><dd>{levelChoices.find((choice) => choice.value === startingChoice)?.title}{startingChoice === "unsure" ? " - provisional Beginner" : startingChoice === "fluent" ? " - practice mode" : " - provisional"}</dd></div>
                   <div><dt>Corrections and pace</dt><dd>{startingChoice === "fluent" ? "Corrections when asked" : `${corrections} corrections`} · {pace === "level" ? "adapt to my level" : pace} pace</dd></div>
                   <div><dt>Interests</dt><dd>{parseInterests(interestsText).join(", ") || "None added"}</dd></div>
+                  <div><dt>Learning goal</dt><dd>{learningGoal.trim()}</dd></div>
+                  <div><dt>Speaking context</dt><dd>{speakingContext.trim()}</dd></div>
+                  {learningNotes.trim() ? <div><dt>Other details</dt><dd>{learningNotes.trim()}</dd></div> : null}
                 </dl>
                 <div className="onboarding-confirmation"><strong>What happens when you confirm</strong>Mori creates or confirms this language profile and takes you to the Study desk. A voice session starts only when you choose to practice.</div>
               </section>
             ) : null}
 
             {error ? <p className="onboarding-error" role="alert">{error}</p> : null}
-            <div className="onboarding-actions"><button type="button" className="button onboarding-back" disabled={step === 0 || createProfile.isPending} onClick={() => { setError(""); setStep(step - 1); }}>Back</button><span>{step === 3 ? "No voice call starts yet." : "Your choices are saved when you confirm."}</span><button type="button" className="button button-primary" disabled={catalog.isPending || catalog.isError || createProfile.isPending} onClick={next}>{createProfile.isPending ? "Creating profile..." : step === 3 ? "Create my profile" : "Continue"}</button></div>
+            <div className="onboarding-actions"><button type="button" className="button onboarding-back" disabled={step === 0 || createProfile.isPending} onClick={() => { setError(""); setStep(step - 1); }}>Back</button><span>{step === 4 ? "No voice call starts yet." : "Your choices are saved when you confirm."}</span><button type="button" className="button button-primary" disabled={catalog.isPending || catalog.isError || createProfile.isPending} onClick={next}>{createProfile.isPending ? "Creating profile..." : step === 4 ? "Create my profile" : "Continue"}</button></div>
           </div>
         </div>
       </section>

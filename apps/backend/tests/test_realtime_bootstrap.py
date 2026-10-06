@@ -41,6 +41,8 @@ def _planned_session(client: TestClient, database_url: str) -> tuple[UUID, UUID]
             "baseLanguageId": "english",
             "targetLanguageId": "mandarin",
             "startingChoice": "beginner",
+            "learningGoal": "Talk with family",
+            "speakingContext": "Casual conversations with relatives",
         },
         headers=headers,
     )

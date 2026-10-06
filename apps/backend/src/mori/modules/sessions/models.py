@@ -147,6 +147,7 @@ class SessionCallAttemptModel(Base):
             ),
         ),
         Index("ix_session_call_attempt_recovery", "state", "pending_expires_at"),
+        Index("ix_session_call_attempt_lease", "state", "lease_until"),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)

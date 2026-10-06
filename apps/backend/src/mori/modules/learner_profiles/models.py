@@ -73,6 +73,14 @@ class LearnerPreferenceModel(Base):
             "jsonb_typeof(interests) = 'array'",
             name="ck_learner_preferences_interests_array",
         ),
+        CheckConstraint(
+            "length(btrim(learning_goal)) > 0",
+            name="ck_learner_preferences_learning_goal",
+        ),
+        CheckConstraint(
+            "length(btrim(speaking_context)) > 0",
+            name="ck_learner_preferences_speaking_context",
+        ),
     )
 
     language_profile_id: Mapped[UUID] = mapped_column(
@@ -87,6 +95,9 @@ class LearnerPreferenceModel(Base):
         String(64), nullable=False, server_default="America/New_York"
     )
     interests: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    learning_goal: Mapped[str] = mapped_column(String(500), nullable=False)
+    speaking_context: Mapped[str] = mapped_column(String(500), nullable=False)
+    learning_notes: Mapped[str] = mapped_column(String(3000), nullable=False, server_default="")
     version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")

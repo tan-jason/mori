@@ -157,6 +157,9 @@ export function createBackendWebAppGateway(
           tutorPace: command.tutorPace,
           timezone: command.timezone,
           interests: command.interests,
+          learningGoal: command.learningGoal,
+          speakingContext: command.speakingContext,
+          learningNotes: command.learningNotes,
         }),
       });
       return readCurrentLearner(response);

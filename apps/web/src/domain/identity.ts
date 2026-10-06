@@ -22,6 +22,9 @@ export interface LearnerPreferences {
   captionsEnabled: boolean;
   timezone: string;
   interests: string[];
+  learningGoal: string;
+  speakingContext: string;
+  learningNotes: string;
   version: number;
 }
 
@@ -70,6 +73,9 @@ export interface CreateProfileCommand {
   tutorPace: TutorPace;
   timezone: string;
   interests: string[];
+  learningGoal: string;
+  speakingContext: string;
+  learningNotes: string;
   idempotencyKey: string;
   csrfToken: string;
 }
@@ -78,6 +84,9 @@ export interface PreferenceChanges {
   correctionPreference: CorrectionPreference;
   tutorPace: TutorPace;
   timezone: string;
+  learningGoal: string;
+  speakingContext: string;
+  learningNotes: string;
 }
 
 export interface UpdatePreferencesCommand {

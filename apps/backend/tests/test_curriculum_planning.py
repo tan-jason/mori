@@ -10,7 +10,11 @@ from alembic.config import Config
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
-from mori.modules.curriculum.catalog import MANDARIN_FOUNDATIONS_V1, CodeCourseCatalog
+from mori.modules.curriculum.catalog import (
+    MANDARIN_COURSE,
+    CodeCourseCatalog,
+)
+from mori.modules.curriculum.curriculum import FRAMEWORK_ID, LESSONS
 from mori.modules.curriculum.domain import (
     CurriculumItem,
     PlanningContext,
@@ -185,13 +189,34 @@ async def test_code_catalog_exposes_published_course() -> None:
     assert not next(pair for pair in pairs if pair.target_language_id == "spanish").available
     assert (
         await catalog.published_course(base_language_id="english", target_language_id="mandarin")
-        is MANDARIN_FOUNDATIONS_V1
+        is MANDARIN_COURSE
     )
     assert (
         await catalog.published_course(base_language_id="english", target_language_id="spanish")
         is None
     )
-    validate_published_course(MANDARIN_FOUNDATIONS_V1)
+    validate_published_course(MANDARIN_COURSE)
+    assert (
+        catalog.course_version(
+            base_language_id="english",
+            target_language_id="mandarin",
+            version=FRAMEWORK_ID,
+        )
+        is MANDARIN_COURSE
+    )
+    assert [item.key for item in MANDARIN_COURSE.items] == [lesson.key for lesson in LESSONS]
+
+
+def test_shared_framework_selects_next_lesson_independent_of_language_level() -> None:
+    first = build_session_plan(PlanningContext("learning", "advanced", None, ()), MANDARIN_COURSE)
+    second = build_session_plan(
+        PlanningContext(
+            "learning", "beginner", None, (), mastered_keys=frozenset({LESSONS[0].key})
+        ),
+        MANDARIN_COURSE,
+    )
+    assert first[0].curriculum_item_key == LESSONS[0].key
+    assert second[0].curriculum_item_key == LESSONS[1].key
 
 
 def test_shared_course_tables_are_removed(database_url: str) -> None:

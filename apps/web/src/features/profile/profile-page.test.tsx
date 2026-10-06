@@ -51,4 +51,24 @@ describe("ProfilePage", () => {
 
     expect(await screen.findByText("Preferences saved.")).toBeVisible();
   });
+
+  it("saves edited learning intent with the profile", async () => {
+    const user = userEvent.setup();
+    const gateway = createMockWebAppGateway();
+    render(
+      <AppProviders dependencies={{ gateway }}>
+        <MemoryRouter><LanguageProfileProvider><ProfilePage /></LanguageProfileProvider></MemoryRouter>
+      </AppProviders>,
+    );
+
+    const goal = await screen.findByLabelText("Your learning goal");
+    await user.clear(goal);
+    await user.type(goal, "Speak naturally with family");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(await screen.findByText("Preferences saved.")).toBeVisible();
+    expect((await gateway.getCurrentLearner()).preferences?.learningGoal).toBe(
+      "Speak naturally with family",
+    );
+  });
 });

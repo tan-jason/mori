@@ -44,6 +44,12 @@ describe("explicit onboarding", () => {
     expect(screen.getByRole("heading", { name: "Where would you like to begin?" })).toBeVisible();
     await user.click(screen.getByRole("radio", { name: /I'm not sure/ }));
     await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByRole("heading", { name: "What are you learning for?" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Add a learning goal");
+    await user.type(screen.getByLabelText("Your learning goal"), "Talk with family");
+    await user.type(screen.getByLabelText("Who you will speak with and how"), "Casual conversations with relatives");
+    await user.click(screen.getByRole("button", { name: "Continue" }));
     await user.type(screen.getByLabelText(/Things you enjoy talking about/), "Cooking, city walks");
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.getByText("I'm not sure - provisional Beginner")).toBeVisible();
@@ -55,5 +61,6 @@ describe("explicit onboarding", () => {
       mode: "learning", startingChoice: "unsure", provisionalLevel: "beginner",
     });
     expect(learner.preferences?.interests).toEqual(["Cooking", "city walks"]);
+    expect(learner.preferences?.learningGoal).toBe("Talk with family");
   });
 });

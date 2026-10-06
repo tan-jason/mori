@@ -331,6 +331,9 @@ export function createMockWebAppGateway(
     captionsEnabled: false,
     timezone: "America/New_York",
     interests: [],
+    learningGoal: "Practice everyday conversation.",
+    speakingContext: "Casual conversations with people I know.",
+    learningNotes: "",
     version: 1,
   };
   let currentLearner: CurrentLearner = {
@@ -422,6 +425,9 @@ export function createMockWebAppGateway(
           tutorPace: command.tutorPace,
           timezone: command.timezone,
           interests: command.interests,
+          learningGoal: command.learningGoal,
+          speakingContext: command.speakingContext,
+          learningNotes: command.learningNotes,
         },
       };
       return currentLearner;

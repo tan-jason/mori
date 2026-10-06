@@ -48,6 +48,8 @@ def _planned(client: TestClient) -> tuple[UUID, str]:
             "baseLanguageId": "english",
             "targetLanguageId": "mandarin",
             "startingChoice": "beginner",
+            "learningGoal": "Talk with family",
+            "speakingContext": "Casual conversations with relatives",
         },
         headers=headers,
     )

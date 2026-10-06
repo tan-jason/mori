@@ -77,6 +77,9 @@ class SqlAlchemyLearnerProfileStore:
                 captions_enabled=preferences.captions_enabled,
                 timezone=preferences.timezone,
                 interests=tuple(preferences.interests),
+                learning_goal=preferences.learning_goal,
+                speaking_context=preferences.speaking_context,
+                learning_notes=preferences.learning_notes,
                 version=preferences.version,
             ),
         )
@@ -150,6 +153,9 @@ class SqlAlchemyLearnerProfileStore:
                     captions_enabled=False,
                     timezone=command.timezone,
                     interests=list(command.interests),
+                    learning_goal=command.learning_goal,
+                    speaking_context=command.speaking_context,
+                    learning_notes=command.learning_notes,
                     version=1,
                     updated_at=now,
                 )
@@ -159,6 +165,9 @@ class SqlAlchemyLearnerProfileStore:
             preferences.tutor_pace = command.tutor_pace.value
             preferences.timezone = command.timezone
             preferences.interests = list(command.interests)
+            preferences.learning_goal = command.learning_goal
+            preferences.speaking_context = command.speaking_context
+            preferences.learning_notes = command.learning_notes
             preferences.version += 1
             preferences.updated_at = now
 
@@ -241,6 +250,16 @@ class SqlAlchemyLearnerProfileStore:
             preferences.captions_enabled = changes.captions_enabled
         if changes.timezone is not None:
             preferences.timezone = changes.timezone
+        goal, speaking_context, notes = (
+            changes.learning_goal, changes.speaking_context, changes.learning_notes
+        )
+        intent = (goal, speaking_context, notes)
+        if any(value is not None for value in intent):
+            if goal is None or speaking_context is None or notes is None:
+                raise ValueError("learning context fields must be updated together")
+            preferences.learning_goal = goal
+            preferences.speaking_context = speaking_context
+            preferences.learning_notes = notes
         preferences.version += 1
         preferences.updated_at = now
         await self._session.flush()

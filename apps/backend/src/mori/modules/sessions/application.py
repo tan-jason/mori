@@ -315,6 +315,7 @@ class SessionService:
         level = profile.provisional_level.value if profile.provisional_level is not None else None
         if mode == "learning" and level is None:
             raise PlanUnavailable
+        level_policy_version = "practice" if mode == "practice" else str(level)
         session = SessionModel(
             user_id=user_id,
             language_profile_id=setup.profile_id,
@@ -352,7 +353,7 @@ class SessionService:
                 setup_digest=setup.request_digest,
                 base_policy_version=BASE_POLICY_VERSION,
                 pair_policy_version=course.pair_policy_version,
-                level_policy_version=("practice-v1" if mode == "practice" else f"{level}-v1"),
+                level_policy_version=level_policy_version,
                 objective_count=len(objectives),
                 created_at=now,
             )
@@ -491,6 +492,9 @@ class SessionService:
                 target_language_id=profile.target_language_id,
                 correction_preference=preferences.correction_preference,
                 tutor_pace=preferences.tutor_pace,
+                learning_goal=preferences.learning_goal,
+                speaking_context=preferences.speaking_context,
+                learning_notes=preferences.learning_notes,
             )
             try:
                 return compile_realtime_config(

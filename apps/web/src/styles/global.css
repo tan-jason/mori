@@ -76,7 +76,8 @@ select:not(:disabled) {
 button:focus-visible,
 a:focus-visible,
 select:focus-visible,
-input:focus-visible {
+input:focus-visible,
+textarea:focus-visible {
   outline: 3px solid rgb(217 113 75 / 48%);
   outline-offset: 3px;
 }
@@ -855,7 +856,8 @@ select:disabled {
 }
 
 .form-field input,
-.form-field select {
+.form-field select,
+.form-field textarea {
   width: 100%;
   min-height: 50px;
   padding: 0.75rem 1rem;
@@ -864,6 +866,12 @@ select:disabled {
   color: var(--ink);
   background: white;
   line-height: 1.25;
+}
+
+.form-field textarea {
+  min-height: 90px;
+  resize: vertical;
+  line-height: 1.5;
 }
 
 .form-field select {
@@ -876,12 +884,14 @@ select:disabled {
 }
 
 .form-field input:hover:not(:read-only),
-.form-field select:hover:not(:disabled) {
+.form-field select:hover:not(:disabled),
+.form-field textarea:hover:not(:disabled) {
   border-color: var(--forest);
 }
 
 .form-field input:read-only,
-.form-field select:disabled {
+.form-field select:disabled,
+.form-field textarea:disabled {
   opacity: 1;
   color: var(--muted);
   background-color: #eeece4;
@@ -3058,17 +3068,6 @@ a.text-link:hover {
 
 .onboarding-wide {
   grid-column: 1 / -1;
-}
-
-.onboarding-wide textarea {
-  width: 100%;
-  min-height: 90px;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--line-dark);
-  border-radius: var(--radius-sm);
-  background: white;
-  color: var(--ink);
-  resize: vertical;
 }
 
 .onboarding-availability,

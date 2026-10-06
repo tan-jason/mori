@@ -47,6 +47,18 @@ export type CreateProfileRequest = {
      * Interests
      */
     interests?: Array<string>;
+    /**
+     * Learninggoal
+     */
+    learningGoal: string;
+    /**
+     * Learningnotes
+     */
+    learningNotes?: string;
+    /**
+     * Speakingcontext
+     */
+    speakingContext: string;
     startingChoice: StartingChoice;
     /**
      * Targetlanguageid
@@ -219,6 +231,18 @@ export type PreferencePatch = {
      */
     correctionPreference?: CorrectionPreference;
     /**
+     * Learninggoal
+     */
+    learningGoal?: string;
+    /**
+     * Learningnotes
+     */
+    learningNotes?: string;
+    /**
+     * Speakingcontext
+     */
+    speakingContext?: string;
+    /**
      * Timezone
      */
     timezone?: string;
@@ -241,6 +265,18 @@ export type PreferencesResponse = {
      * Interests
      */
     interests: Array<string>;
+    /**
+     * Learninggoal
+     */
+    learningGoal: string;
+    /**
+     * Learningnotes
+     */
+    learningNotes: string;
+    /**
+     * Speakingcontext
+     */
+    speakingContext: string;
     /**
      * Timezone
      */
