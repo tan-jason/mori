@@ -6,7 +6,7 @@
 
 **MVP language pair:** English base language -> Standard Mandarin target language
 
-**Learning-system update (September 26, 2026):** The [learning system PRD](learning-system-prd.md) is the product contract for language selection, levels, session planning, tutor behavior, learning evidence, memories, and Fluent practice. Its explicit language selection and four-level framework supersede conflicting descriptions in this earlier draft. This document continues to define the remaining MVP product scope.
+**Learning-system update (October 5, 2026):** The [learning system PRD](learning-system-prd.md) is the product contract for language selection, levels, lesson progression, session planning, tutor behavior, learning evidence, memories, and Fluent practice. Its explicit language selection, four-level framework, lesson-guided conversations, and early Beginner use of the base language supersede conflicting descriptions in this earlier draft. This document continues to define the remaining MVP product scope.
 
 ## 1. Product summary
 
