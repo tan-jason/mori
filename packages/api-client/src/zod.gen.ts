@@ -146,6 +146,9 @@ export const zCreateProfileRequest = z.object({
     baseLanguageId: z.string().min(1).max(32),
     correctionPreference: zCorrectionPreference.optional().default('balanced'),
     interests: z.array(z.string()).optional(),
+    learningGoal: z.string().min(1).max(500),
+    learningNotes: z.string().max(3000).optional().default(''),
+    speakingContext: z.string().min(1).max(500),
     startingChoice: zStartingChoice,
     targetLanguageId: z.string().min(1).max(32),
     timezone: z.string().min(1).max(64).optional().default('UTC'),
@@ -158,6 +161,9 @@ export const zCreateProfileRequest = z.object({
 export const zPreferencePatch = z.object({
     captionsEnabled: z.boolean().optional(),
     correctionPreference: zCorrectionPreference.optional(),
+    learningGoal: z.string().max(500).optional(),
+    learningNotes: z.string().max(3000).optional(),
+    speakingContext: z.string().max(500).optional(),
     timezone: z.string().min(1).max(64).optional(),
     tutorPace: zTutorPace.optional()
 });
@@ -169,6 +175,9 @@ export const zPreferencesResponse = z.object({
     captionsEnabled: z.boolean(),
     correctionPreference: zCorrectionPreference,
     interests: z.array(z.string()),
+    learningGoal: z.string(),
+    learningNotes: z.string(),
+    speakingContext: z.string(),
     timezone: z.string().min(1),
     tutorPace: zTutorPace,
     version: z.int().gt(0)

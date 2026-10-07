@@ -46,6 +46,8 @@ def _complete_profile(client: TestClient, *, choice: str = "beginner"):
             "baseLanguageId": "english",
             "targetLanguageId": "mandarin",
             "startingChoice": choice,
+            "learningGoal": "Talk with family",
+            "speakingContext": "Casual conversations with relatives",
         },
         headers={
             "Origin": "http://web.test",
@@ -185,12 +187,7 @@ def test_explicit_onboarding_is_atomic_and_retry_safe(
     _complete_login(client, state)
     catalog = client.get("/api/v1/language-pairs")
     assert catalog.status_code == 200
-    assert next(
-        pair for pair in catalog.json()["pairs"] if pair["targetLanguageId"] == "mandarin"
-    )["available"] is True
-    assert next(
-        pair for pair in catalog.json()["pairs"] if pair["targetLanguageId"] == "spanish"
-    )["available"] is False
+    assert all(pair["available"] for pair in catalog.json()["pairs"])
 
     before = client.get("/api/v1/me").json()
     headers = {
@@ -206,6 +203,8 @@ def test_explicit_onboarding_is_atomic_and_retry_safe(
         "tutorPace": "gentle",
         "timezone": "Asia/Shanghai",
         "interests": ["Cooking", " cooking ", "Travel"],
+        "learningGoal": "Talk with family",
+        "speakingContext": "Casual conversations with relatives",
     }
     created = client.post("/api/v1/language-profiles", json=body, headers=headers)
     assert created.status_code == 201, created.text
@@ -216,6 +215,10 @@ def test_explicit_onboarding_is_atomic_and_retry_safe(
         "version": 1,
     }
     assert created.json()["preferences"]["interests"] == ["Cooking", "Travel"]
+    assert created.json()["preferences"]["learningGoal"] == "Talk with family"
+    assert created.json()["preferences"]["speakingContext"] == (
+        "Casual conversations with relatives"
+    )
     assert _scalar(database_url, "SELECT count(*) FROM language_profiles") == 1
     assert _scalar(database_url, "SELECT count(*) FROM profile_learning_settings") == 1
     assert _scalar(database_url, "SELECT count(*) FROM onboarding_commands") == 1
@@ -241,7 +244,7 @@ def test_explicit_onboarding_is_atomic_and_retry_safe(
     assert _scalar(database_url, "SELECT count(*) FROM language_profiles") == 1
 
 
-def test_onboarding_rejects_unavailable_pair_and_supports_fluent(client: TestClient) -> None:
+def test_onboarding_rejects_unknown_language_and_supports_fluent(client: TestClient) -> None:
     state, _ = _start_login(client)
     _complete_login(client, state)
     csrf = client.get("/api/v1/me").json()["csrfToken"]
@@ -252,8 +255,10 @@ def test_onboarding_rejects_unavailable_pair_and_supports_fluent(client: TestCli
     unavailable = client.post(
         "/api/v1/language-profiles",
         json={
-            "baseLanguageId": "english", "targetLanguageId": "spanish",
+            "baseLanguageId": "english", "targetLanguageId": "italian",
             "startingChoice": "fluent",
+            "learningGoal": "Have natural conversations",
+            "speakingContext": "Casual conversations with friends",
         },
         headers=headers,
     )
@@ -264,16 +269,34 @@ def test_onboarding_rejects_unavailable_pair_and_supports_fluent(client: TestCli
     fluent = client.post(
         "/api/v1/language-profiles",
         json={
-            "baseLanguageId": "english", "targetLanguageId": "mandarin",
+            "baseLanguageId": "english", "targetLanguageId": "spanish",
             "startingChoice": "fluent",
+            "learningGoal": "Have natural conversations",
+            "speakingContext": "Casual conversations with friends",
         },
         headers=headers,
     )
     assert fluent.status_code == 201
+    assert fluent.json()["activeLanguageProfile"]["targetLanguageId"] == "spanish"
     assert fluent.json()["activeLanguageProfile"]["learning"] == {
         "mode": "practice", "startingChoice": "fluent", "provisionalLevel": None,
         "version": 1,
     }
+
+
+def test_onboarding_requires_learning_intent(client: TestClient) -> None:
+    state, _ = _start_login(client)
+    _complete_login(client, state)
+    csrf = client.get("/api/v1/me").json()["csrfToken"]
+    response = client.post(
+        "/api/v1/language-profiles",
+        json={"baseLanguageId": "english", "targetLanguageId": "mandarin",
+              "startingChoice": "beginner"},
+        headers={"Origin": "http://web.test", "X-CSRF-Token": csrf,
+                 "Idempotency-Key": "profile-setup-123"},
+    )
+    assert response.status_code == 422
+    assert client.get("/api/v1/me").json()["activeLanguageProfile"] is None
 
 
 def test_legacy_unconfirmed_profile_is_not_preselected(
@@ -344,8 +367,26 @@ def test_preferences_require_csrf_origin_and_current_etag(client: TestClient) ->
         "captionsEnabled": True,
         "timezone": "Asia/Shanghai",
         "interests": [],
+        "learningGoal": "Talk with family",
+        "speakingContext": "Casual conversations with relatives",
+        "learningNotes": "",
         "version": 2,
     }
+
+    changed_goal = client.patch(
+        "/api/v1/me/preferences",
+        json={
+            "learningGoal": "Speak more naturally with family",
+            "speakingContext": "Casual chats with relatives",
+            "learningNotes": "Practice short follow-up questions",
+        },
+        headers={**headers, "If-Match": '"2"'},
+    )
+    assert changed_goal.status_code == 200
+    assert changed_goal.json()["preferences"]["learningGoal"] == (
+        "Speak more naturally with family"
+    )
+    assert changed_goal.json()["preferences"]["version"] == 3
 
     stale = client.patch(
         "/api/v1/me/preferences",

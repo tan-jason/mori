@@ -10,7 +10,8 @@ from alembic.config import Config
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
-from mori.modules.curriculum.catalog import MANDARIN_FOUNDATIONS_V1, CodeCourseCatalog
+from mori.modules.curriculum.catalog import CodeCourseCatalog
+from mori.modules.curriculum.curriculum import FRAMEWORK_ID, LESSONS
 from mori.modules.curriculum.domain import (
     CurriculumItem,
     PlanningContext,
@@ -18,6 +19,11 @@ from mori.modules.curriculum.domain import (
     build_session_plan,
     validate_published_course,
 )
+
+TEST_COURSE = CodeCourseCatalog().course_version(
+    base_language_id="english", target_language_id="mandarin", version=FRAMEWORK_ID
+)
+assert TEST_COURSE is not None
 
 
 def _course() -> PublishedCourse:
@@ -89,9 +95,7 @@ def _course() -> PublishedCourse:
         ),
         item("advanced-check", "Advanced diagnostic", "advanced", "diagnostic", 1, (), (), ()),
     )
-    return PublishedCourse(
-        "english", "mandarin", "v1", "pair-v1", "voice-v1", "pair policy", "voice policy", items
-    )
+    return PublishedCourse("v1", "language-v1", "voice-v1", items)
 
 
 def test_first_session_uses_placement_diagnostic_and_practice_is_ungraded() -> None:
@@ -182,16 +186,43 @@ async def test_code_catalog_exposes_published_course() -> None:
     catalog = CodeCourseCatalog()
     pairs = await catalog.language_pairs()
     assert next(pair for pair in pairs if pair.target_language_id == "mandarin").available
-    assert not next(pair for pair in pairs if pair.target_language_id == "spanish").available
+    assert all(pair.available for pair in pairs)
     assert (
         await catalog.published_course(base_language_id="english", target_language_id="mandarin")
-        is MANDARIN_FOUNDATIONS_V1
+        is TEST_COURSE
     )
+    spanish = await catalog.published_course(
+        base_language_id="english", target_language_id="spanish"
+    )
+    assert spanish is not None
+    assert spanish.items is TEST_COURSE.items
+    assert spanish is TEST_COURSE
     assert (
-        await catalog.published_course(base_language_id="english", target_language_id="spanish")
+        await catalog.published_course(base_language_id="spanish", target_language_id="english")
         is None
     )
-    validate_published_course(MANDARIN_FOUNDATIONS_V1)
+    validate_published_course(TEST_COURSE)
+    assert (
+        catalog.course_version(
+            base_language_id="english",
+            target_language_id="mandarin",
+            version=FRAMEWORK_ID,
+        )
+        is TEST_COURSE
+    )
+    assert [item.key for item in TEST_COURSE.items] == [lesson.key for lesson in LESSONS]
+
+
+def test_shared_framework_selects_next_lesson_independent_of_language_level() -> None:
+    first = build_session_plan(PlanningContext("learning", "advanced", None, ()), TEST_COURSE)
+    second = build_session_plan(
+        PlanningContext(
+            "learning", "beginner", None, (), mastered_keys=frozenset({LESSONS[0].key})
+        ),
+        TEST_COURSE,
+    )
+    assert first[0].curriculum_item_key == LESSONS[0].key
+    assert second[0].curriculum_item_key == LESSONS[1].key
 
 
 def test_shared_course_tables_are_removed(database_url: str) -> None:

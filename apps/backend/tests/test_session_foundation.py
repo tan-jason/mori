@@ -44,6 +44,8 @@ def _sign_in(client: TestClient, choice: str = "beginner") -> tuple[str, str]:
             "baseLanguageId": "english",
             "targetLanguageId": "mandarin",
             "startingChoice": choice,
+            "learningGoal": "Talk with family",
+            "speakingContext": "Casual conversations with relatives",
         },
         headers={
             "Origin": "http://web.test",
@@ -135,11 +137,14 @@ def test_plan_pins_curriculum_and_rejects_changed_setup(
     assert changed.json()["error"]["code"] == "idempotency_conflict"
     assert _rows(
         database_url,
-        "SELECT schema_version, curriculum_version, selection_rule_version, mode, "
+        "SELECT schema_version, curriculum_version, prompt_version, selection_rule_version, mode, "
         "profile_version, preference_version, settings_version, "
         "(setup_digest = (SELECT request_digest FROM sessions LIMIT 1)) "
         "FROM session_plans",
-    ) == [("learning_plan_v1", "mandarin-foundations-v1", "selector-v1", "learning", 1, 2, 1, True)]
+    ) == [(
+        "learning_plan_v1", "mori-framework", "mori-framework-v2", "selector-v1",
+        "learning", 1, 2, 1, True,
+    )]
     assert _rows(database_url, "SELECT kind FROM session_plan_objectives") == [("graded",)]
     assert _rows(database_url, "SELECT requested_words FROM session_plans") == [(["market"],)]
 
@@ -181,14 +186,21 @@ async def test_saved_plan_compiles_and_stale_preferences_block_connection(
     service: SessionService = app.state.session_service
 
     compiled = await service.load_realtime_config(user_id=user_id, session_id=session_id)
-    assert compiled.pair_policy_version == "en-zh-pair-v1"
-    assert "# Topic-Led Conversation\n" in compiled.instructions
-    assert "supports several connected questions and answers" in compiled.instructions
-    assert "Share a simple introduction and answer a follow-up." in compiled.instructions
+    assert compiled.pair_policy_version == "mori-language-v1"
+    assert compiled.base_policy_version == "mori-framework-v2"
+    assert compiled.level_policy_version == "beginner"
+    assert "# Lesson\n" in compiled.instructions
+    assert "Start mostly in the base language" in compiled.instructions
+    assert "where they live" in compiled.instructions
+    assert '"learningGoal":"Talk with family"' in compiled.instructions
 
     updated = client.patch(
         "/api/v1/me/preferences",
-        json={"tutorPace": "gentle"},
+        json={
+            "learningGoal": "Talk at family gatherings",
+            "speakingContext": "Casual conversations with relatives",
+            "learningNotes": "",
+        },
         headers={"Origin": "http://web.test", "X-CSRF-Token": csrf, "If-Match": '"1"'},
     )
     assert updated.status_code == 200
@@ -228,7 +240,7 @@ def test_planning_failure_rolls_back_reservation(
     assert _rows(database_url, "SELECT id FROM usage_reservations") == []
 
 
-def test_unsupported_pair_blocks_onboarding(client: TestClient, database_url: str) -> None:
+def test_unsupported_language_blocks_onboarding(client: TestClient, database_url: str) -> None:
     start = client.get("/auth/google/start")
     state = parse_qs(urlsplit(start.headers["location"]).query)["state"][0]
     assert (
@@ -239,14 +251,15 @@ def test_unsupported_pair_blocks_onboarding(client: TestClient, database_url: st
     )
     me = client.get("/api/v1/me").json()
     pairs = client.get("/api/v1/language-pairs").json()["pairs"]
-    spanish = next(pair for pair in pairs if pair["targetLanguageId"] == "spanish")
-    assert spanish["available"] is False
+    assert all(pair["available"] for pair in pairs)
     response = client.post(
         "/api/v1/language-profiles",
         json={
             "baseLanguageId": "english",
-            "targetLanguageId": "spanish",
+            "targetLanguageId": "italian",
             "startingChoice": "beginner",
+            "learningGoal": "Talk with family",
+            "speakingContext": "Casual conversations with relatives",
         },
         headers={
             "Origin": "http://web.test",
@@ -400,6 +413,8 @@ async def test_concurrent_keys_cannot_reserve_the_last_grant(
             tutor_pace=TutorPace.LEVEL,
             timezone="UTC",
             interests=(),
+            learning_goal="Talk with family",
+            speaking_context="Casual conversations with relatives",
         ),
     )
     identity_rows = _rows(

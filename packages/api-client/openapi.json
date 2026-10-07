@@ -65,6 +65,24 @@
             "title": "Interests",
             "type": "array"
           },
+          "learningGoal": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Learninggoal",
+            "type": "string"
+          },
+          "learningNotes": {
+            "default": "",
+            "maxLength": 3000,
+            "title": "Learningnotes",
+            "type": "string"
+          },
+          "speakingContext": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Speakingcontext",
+            "type": "string"
+          },
           "startingChoice": {
             "$ref": "#/components/schemas/StartingChoice"
           },
@@ -89,7 +107,9 @@
         "required": [
           "baseLanguageId",
           "targetLanguageId",
-          "startingChoice"
+          "startingChoice",
+          "learningGoal",
+          "speakingContext"
         ],
         "title": "CreateProfileRequest",
         "type": "object"
@@ -374,6 +394,21 @@
             "$ref": "#/components/schemas/CorrectionPreference",
             "title": "Correctionpreference"
           },
+          "learningGoal": {
+            "maxLength": 500,
+            "title": "Learninggoal",
+            "type": "string"
+          },
+          "learningNotes": {
+            "maxLength": 3000,
+            "title": "Learningnotes",
+            "type": "string"
+          },
+          "speakingContext": {
+            "maxLength": 500,
+            "title": "Speakingcontext",
+            "type": "string"
+          },
           "timezone": {
             "maxLength": 64,
             "minLength": 1,
@@ -405,6 +440,18 @@
             "title": "Interests",
             "type": "array"
           },
+          "learningGoal": {
+            "title": "Learninggoal",
+            "type": "string"
+          },
+          "learningNotes": {
+            "title": "Learningnotes",
+            "type": "string"
+          },
+          "speakingContext": {
+            "title": "Speakingcontext",
+            "type": "string"
+          },
           "timezone": {
             "minLength": 1,
             "title": "Timezone",
@@ -425,6 +472,9 @@
           "captionsEnabled",
           "timezone",
           "interests",
+          "learningGoal",
+          "speakingContext",
+          "learningNotes",
           "version"
         ],
         "title": "PreferencesResponse",

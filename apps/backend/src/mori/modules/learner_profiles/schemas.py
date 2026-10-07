@@ -19,6 +19,7 @@ from mori.modules.learner_profiles.domain import (
     StartingChoice,
     TutorPace,
 )
+from mori.modules.learner_profiles.intent import normalize_intent
 
 
 class LanguageProfileResponse(ApiModel):
@@ -44,6 +45,9 @@ class PreferencesResponse(ApiModel):
     captions_enabled: bool
     timezone: str = Field(min_length=1)
     interests: list[str]
+    learning_goal: str
+    speaking_context: str
+    learning_notes: str
     version: int = Field(gt=0)
 
 
@@ -72,6 +76,9 @@ class CreateProfileRequest(ApiModel):
     tutor_pace: TutorPace = TutorPace.LEVEL
     timezone: str = Field(default="UTC", min_length=1, max_length=64)
     interests: list[str] = Field(default_factory=list)
+    learning_goal: str = Field(min_length=1, max_length=500)
+    speaking_context: str = Field(min_length=1, max_length=500)
+    learning_notes: str = Field(default="", max_length=3000)
 
     @model_validator(mode="after")
     def validate_profile(self) -> CreateProfileRequest:
@@ -92,6 +99,9 @@ class CreateProfileRequest(ApiModel):
         if len(normalized) > 12:
             raise ValueError("interests must contain at most 12 distinct entries")
         self.interests = normalized
+        self.learning_goal, self.speaking_context, self.learning_notes = normalize_intent(
+            self.learning_goal, self.speaking_context, self.learning_notes
+        )
         return self
 
     def to_domain(self) -> CreateProfile:
@@ -103,6 +113,9 @@ class CreateProfileRequest(ApiModel):
             tutor_pace=self.tutor_pace,
             timezone=self.timezone,
             interests=tuple(self.interests),
+            learning_goal=self.learning_goal,
+            speaking_context=self.speaking_context,
+            learning_notes=self.learning_notes,
         )
 
 
@@ -111,6 +124,9 @@ class PreferencePatch(ApiModel):
     tutor_pace: TutorPace | SkipJsonSchema[None] = None
     captions_enabled: bool | SkipJsonSchema[None] = None
     timezone: str | SkipJsonSchema[None] = Field(default=None, min_length=1, max_length=64)
+    learning_goal: str | SkipJsonSchema[None] = Field(default=None, max_length=500)
+    speaking_context: str | SkipJsonSchema[None] = Field(default=None, max_length=500)
+    learning_notes: str | SkipJsonSchema[None] = Field(default=None, max_length=3000)
 
     @model_validator(mode="after")
     def validate_patch(self) -> PreferencePatch:
@@ -124,6 +140,16 @@ class PreferencePatch(ApiModel):
                 ZoneInfo(self.timezone)
             except ZoneInfoNotFoundError as error:
                 raise ValueError("timezone must be a valid IANA timezone") from error
+        intent_fields = {"learning_goal", "speaking_context", "learning_notes"}
+        if fields_set & intent_fields:
+            if not intent_fields <= fields_set:
+                raise ValueError("update all learning context fields together")
+            assert self.learning_goal is not None
+            assert self.speaking_context is not None
+            assert self.learning_notes is not None
+            self.learning_goal, self.speaking_context, self.learning_notes = normalize_intent(
+                self.learning_goal, self.speaking_context, self.learning_notes
+            )
         return self
 
     def to_domain(self) -> PreferenceChanges:
@@ -132,4 +158,7 @@ class PreferencePatch(ApiModel):
             tutor_pace=self.tutor_pace,
             captions_enabled=self.captions_enabled,
             timezone=self.timezone,
+            learning_goal=self.learning_goal,
+            speaking_context=self.speaking_context,
+            learning_notes=self.learning_notes,
         )

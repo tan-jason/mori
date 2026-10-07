@@ -331,6 +331,9 @@ export function createMockWebAppGateway(
     captionsEnabled: false,
     timezone: "America/New_York",
     interests: [],
+    learningGoal: "Practice everyday conversation.",
+    speakingContext: "Casual conversations with people I know.",
+    learningNotes: "",
     version: 1,
   };
   let currentLearner: CurrentLearner = {
@@ -366,7 +369,7 @@ export function createMockWebAppGateway(
     baseLanguageName: BASE_LANGUAGE.name,
     targetLanguageName: target.name,
     targetNativeName: target.nativeName,
-    available: target.id === "mandarin",
+    available: true,
   }));
 
   const getContent = (languageProfileId: string): LanguageMockContent => {
@@ -395,7 +398,7 @@ export function createMockWebAppGateway(
       const previous = completedKeys.get(command.idempotencyKey);
       if (previous && previous !== payload) throw new Error("This key was already used.");
       if (previous) return currentLearner;
-      if (command.baseLanguageId !== "english" || command.targetLanguageId !== "mandarin") {
+      if (command.baseLanguageId !== BASE_LANGUAGE.id || !TARGET_LANGUAGES.some((target) => target.id === command.targetLanguageId)) {
         throw new Error("This language course is not available.");
       }
       completedKeys.set(command.idempotencyKey, payload);
@@ -422,6 +425,9 @@ export function createMockWebAppGateway(
           tutorPace: command.tutorPace,
           timezone: command.timezone,
           interests: command.interests,
+          learningGoal: command.learningGoal,
+          speakingContext: command.speakingContext,
+          learningNotes: command.learningNotes,
         },
       };
       return currentLearner;

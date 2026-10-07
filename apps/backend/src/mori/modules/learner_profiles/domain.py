@@ -59,6 +59,9 @@ class PreferencesView:
     captions_enabled: bool
     timezone: str
     interests: tuple[str, ...]
+    learning_goal: str
+    speaking_context: str
+    learning_notes: str
     version: int
 
 
@@ -80,6 +83,9 @@ class PreferenceChanges:
     tutor_pace: TutorPace | None = None
     captions_enabled: bool | None = None
     timezone: str | None = None
+    learning_goal: str | None = None
+    speaking_context: str | None = None
+    learning_notes: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,3 +97,6 @@ class CreateProfile:
     tutor_pace: TutorPace
     timezone: str
     interests: tuple[str, ...]
+    learning_goal: str
+    speaking_context: str
+    learning_notes: str = ""

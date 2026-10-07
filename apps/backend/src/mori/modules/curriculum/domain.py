@@ -32,18 +32,16 @@ class CurriculumItem:
     topic_tags: tuple[str, ...]
     word_tags: tuple[str, ...]
     prerequisites: tuple[str, ...]
+    conversation_guidance: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class PublishedCourse:
-    base_language_id: str
-    target_language_id: str
     curriculum_version: str
-    pair_policy_version: str
+    language_policy_version: str
     voice_policy_version: str
-    pair_policy: str
-    voice_policy: str
     items: tuple[CurriculumItem, ...]
+    framework_version: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,17 +65,12 @@ class PlannedObjective:
 def validate_published_course(course: PublishedCourse) -> None:
     """Reject incomplete, cross-version, or cyclic publication data."""
     if (
-        not course.base_language_id
-        or not course.target_language_id
-        or course.base_language_id == course.target_language_id
-        or not course.items
-        or not course.pair_policy_version
+        not course.items
+        or not course.language_policy_version
         or not course.voice_policy_version
-        or not course.pair_policy
-        or not course.voice_policy
     ):
         raise ValueError("published course is incomplete")
-    if {
+    if course.framework_version is None and {
         item.level for item in course.items if item.enabled and item.purpose == "diagnostic"
     } != set(LEVEL_ORDER):
         raise ValueError("published course is missing a starting diagnostic")
@@ -95,10 +88,14 @@ def validate_published_course(course: PublishedCourse) -> None:
         visiting.add(key)
         item = by_key[key]
         if (
-            item.level not in LEVEL_ORDER
+            (
+                item.level != "all"
+                if course.framework_version is not None
+                else item.level not in LEVEL_ORDER
+            )
             or item.kind not in {"vocabulary", "grammar", "conversation", "pronunciation"}
             or item.purpose not in {"diagnostic", "skill"}
-            or not item.target_language_content
+            or not (item.target_language_content or item.conversation_guidance)
             or item.selection_weight <= 0
         ):
             raise ValueError("invalid curriculum item")
@@ -126,6 +123,23 @@ def build_session_plan(
         return (PlannedObjective(label=focus, kind="conversation_focus", curriculum_item_key=None),)
     if context.mode != "learning" or context.provisional_level not in LEVEL_ORDER:
         raise ValueError("invalid learning placement")
+
+    if course.framework_version is not None:
+        by_key = {item.key: item for item in course.items}
+        for keys in (context.repair_keys, context.due_keys):
+            for key in sorted(keys):
+                item = by_key.get(key)
+                if item is not None and item.enabled:
+                    return (PlannedObjective(item.label, "graded", item.key),)
+        next_item = next(
+            (
+                item
+                for item in course.items
+                if item.enabled and item.key not in context.mastered_keys
+            ),
+            course.items[-1],
+        )
+        return (PlannedObjective(next_item.label, "graded", next_item.key),)
 
     level = context.provisional_level
     eligible = [

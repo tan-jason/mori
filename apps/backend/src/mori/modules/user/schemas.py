@@ -67,6 +67,9 @@ class MeResponse(ApiModel):
                 captions_enabled=learner.preferences.captions_enabled,
                 timezone=learner.preferences.timezone,
                 interests=list(learner.preferences.interests),
+                learning_goal=learner.preferences.learning_goal,
+                speaking_context=learner.preferences.speaking_context,
+                learning_notes=learner.preferences.learning_notes,
                 version=learner.preferences.version,
             )
             if learner.preferences is not None

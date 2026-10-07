@@ -36,6 +36,10 @@ export function ProfilePage() {
     useState<CorrectionPreference>(learner.preferences.correctionPreference);
   const [pace, setPace] = useState<TutorPace>(learner.preferences.tutorPace);
   const [timezone, setTimezone] = useState(learner.preferences.timezone);
+  const [learningGoal, setLearningGoal] = useState(learner.preferences.learningGoal);
+  const [speakingContext, setSpeakingContext] = useState(learner.preferences.speakingContext);
+  const [learningNotes, setLearningNotes] = useState(learner.preferences.learningNotes);
+  const [intentError, setIntentError] = useState("");
   const [saved, setSaved] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const timezoneOptions = timezones.some((item) => item.value === timezone)
@@ -45,11 +49,21 @@ export function ProfilePage() {
   const savePreferences = useMutation({
     mutationFn: () =>
       gateway.updatePreferences({
-        changes: { correctionPreference, tutorPace: pace, timezone },
+        changes: {
+          correctionPreference, tutorPace: pace, timezone,
+          learningGoal: learningGoal.trim(),
+          speakingContext: speakingContext.trim(),
+          learningNotes: learningNotes.trim(),
+        },
         expectedVersion: learner.preferences.version,
         csrfToken: learner.csrfToken,
       }),
     onSuccess: (updatedLearner) => {
+      if (updatedLearner.preferences) {
+        setLearningGoal(updatedLearner.preferences.learningGoal);
+        setSpeakingContext(updatedLearner.preferences.speakingContext);
+        setLearningNotes(updatedLearner.preferences.learningNotes);
+      }
       setSaved(true);
       setIsDirty(false);
       replaceLearner(updatedLearner);
@@ -77,11 +91,20 @@ export function ProfilePage() {
 
   const markChanged = () => {
     savePreferences.reset();
+    setIntentError("");
     setSaved(false);
     setIsDirty(true);
   };
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!learningGoal.trim() || !speakingContext.trim()) {
+      setIntentError("Add your learning goal and speaking context before saving.");
+      return;
+    }
+    if (learningGoal.length + speakingContext.length + learningNotes.length > 3000) {
+      setIntentError("Keep your learning details within 3,000 characters.");
+      return;
+    }
     if (isDirty && !savePreferences.isPending) {
       savePreferences.mutate();
     }
@@ -202,9 +225,23 @@ export function ProfilePage() {
           </div>
         </section>
 
-        <section className="settings-card" aria-labelledby="tutor-settings-title">
+        <section className="settings-card" aria-labelledby="learning-goals-title">
           <div className="settings-card-heading">
             <span className="settings-number" aria-hidden="true">03</span>
+            <div><p className="eyebrow">Your purpose</p><h2 id="learning-goals-title">Learning goals</h2></div>
+          </div>
+          <p className="form-note">Mori uses these details to choose useful situations for your conversations.</p>
+          <div className="profile-fields">
+            <label className="form-field"><span>Your learning goal</span><textarea aria-label="Your learning goal" required maxLength={500} value={learningGoal} disabled={savePreferences.isPending} onChange={(event) => { setLearningGoal(event.target.value); markChanged(); }} /><small>What would you like to be able to do?</small></label>
+            <label className="form-field"><span>Who you will speak with and how</span><textarea aria-label="Who you will speak with and how" required maxLength={500} value={speakingContext} disabled={savePreferences.isPending} onChange={(event) => { setSpeakingContext(event.target.value); markChanged(); }} /><small>Describe the people and the tone you want to use.</small></label>
+            <label className="form-field"><span>Anything else Mori should know? (optional)</span><textarea aria-label="Anything else Mori should know?" maxLength={3000} value={learningNotes} disabled={savePreferences.isPending} onChange={(event) => { setLearningNotes(event.target.value); markChanged(); }} /><small>Learning details: {learningGoal.length + speakingContext.length + learningNotes.length} of 3,000 characters. Keep your answers brief.</small></label>
+          </div>
+          {intentError ? <p className="onboarding-error" role="alert">{intentError}</p> : null}
+        </section>
+
+        <section className="settings-card" aria-labelledby="tutor-settings-title">
+          <div className="settings-card-heading">
+            <span className="settings-number" aria-hidden="true">04</span>
             <div>
               <p className="eyebrow">Conversation style</p>
               <h2 id="tutor-settings-title">Tutor preferences</h2>
@@ -283,6 +320,8 @@ export function ProfilePage() {
                 ? savePreferences.error instanceof ApiError &&
                   savePreferences.error.code === "preference_version_conflict"
                   ? "These preferences changed elsewhere. Refresh the page before saving."
+                  : savePreferences.error instanceof ApiError && savePreferences.error.status === 422
+                    ? "Check your learning details. Shorten them if they are too long, then try again."
                   : "We could not save your preferences. Please try again."
                 : saved
                   ? "Preferences saved."

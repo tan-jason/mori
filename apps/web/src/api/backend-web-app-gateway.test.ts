@@ -31,6 +31,9 @@ const learnerResponse = {
     captionsEnabled: false,
     timezone: "America/New_York",
     interests: [],
+    learningGoal: "Talk with family",
+    speakingContext: "Casual conversations with relatives",
+    learningNotes: "",
     version: 1,
   },
   csrfToken: "csrf-token",
@@ -120,6 +123,8 @@ describe("createBackendWebAppGateway", () => {
       baseLanguageId: "english", targetLanguageId: "mandarin", startingChoice: "unsure",
       correctionPreference: "balanced", tutorPace: "level", timezone: "UTC",
       interests: ["Cooking"], idempotencyKey: "profile-setup-123", csrfToken: "csrf-token",
+      learningGoal: "Talk with family", speakingContext: "Casual conversations with relatives",
+      learningNotes: "",
     });
     const [url, init] = fetchMock.mock.calls[1] ?? [];
     expect(url).toEqual(new URL("http://api.test/api/v1/language-profiles"));
@@ -132,6 +137,8 @@ describe("createBackendWebAppGateway", () => {
     expect(typeof init?.body).toBe("string");
     expect(JSON.parse(init?.body as string)).toMatchObject({
       baseLanguageId: "english", targetLanguageId: "mandarin", startingChoice: "unsure",
+      learningGoal: "Talk with family",
+      speakingContext: "Casual conversations with relatives",
     });
   });
   it("restores the learner session with credentials and validates the response", async () => {
@@ -177,6 +184,9 @@ describe("createBackendWebAppGateway", () => {
         correctionPreference: "frequent",
         tutorPace: "level",
         timezone: "America/New_York",
+        learningGoal: "Talk with family",
+        speakingContext: "Casual conversations with relatives",
+        learningNotes: "",
       },
       csrfToken: "csrf-token",
       expectedVersion: 1,
@@ -199,6 +209,9 @@ describe("createBackendWebAppGateway", () => {
         correctionPreference: "frequent",
         tutorPace: "level",
         timezone: "America/New_York",
+        learningGoal: "Talk with family",
+        speakingContext: "Casual conversations with relatives",
+        learningNotes: "",
       }),
     );
   });
