@@ -6,15 +6,11 @@ export function RecapPage() {
   const { sessionId } = useParams();
   const recap = useRecap(sessionId ?? "unknown");
 
-  if (recap.isPending) {
-    return <PageLoadingState />;
-  }
-
-  if (recap.isError) {
-    return <PageErrorState onRetry={() => void recap.refetch()} />;
-  }
+  if (recap.isPending) return <PageLoadingState />;
+  if (recap.isError) return <PageErrorState onRetry={() => void recap.refetch()} />;
 
   const data = recap.data;
+  const ready = data.status === "ready";
 
   return (
     <div className="detail-page recap-page">
@@ -24,67 +20,55 @@ export function RecapPage() {
 
       <header className="detail-hero">
         <p className="eyebrow">Session recap</p>
-        <h1>{data.title}</h1>
-        <p className="detail-meta">
-          {data.completedAtLabel} · {data.durationMinutes} minutes
+        <h1>{ready ? "Your conversation" : data.status === "processing" ? "Putting your recap together" : "Recap unavailable"}</h1>
+        <p className="detail-summary" role="status">
+          {ready ? data.summary : data.status === "processing"
+            ? "Your conversation has ended. Mori is preparing a short recap."
+            : "We could not prepare a reliable recap from this conversation."}
         </p>
-        <p className="detail-summary">{data.summary}</p>
       </header>
 
-      <div className="detail-grid">
-        <section className="card" aria-labelledby="objectives-title">
-          <p className="eyebrow">Practice plan</p>
-          <h2 id="objectives-title">Your objectives</h2>
-          <ul className="objective-list">
-            {data.objectives.map((objective) => (
-              <li key={objective.label}>
-                <span className={`objective-mark objective-${objective.outcome}`}>
-                  {objective.outcome === "demonstrated" ? "✓" : "○"}
-                </span>
-                <span>
-                  <strong>{objective.label}</strong>
-                  <small>
-                    {objective.outcome === "demonstrated"
-                      ? "Demonstrated in conversation"
-                      : "Attempted with support"}
-                  </small>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="card next-focus-card" aria-labelledby="next-focus-title">
-          <p className="eyebrow">Looking ahead</p>
-          <h2 id="next-focus-title">Next session</h2>
-          <p>{data.nextFocus}</p>
-          <Link className="text-link" to="/session">
-            Prepare another conversation →
-          </Link>
-        </section>
-      </div>
-
-      <section className="section-block" aria-labelledby="corrections-title">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Worth noticing</p>
-            <h2 id="corrections-title">A useful correction</h2>
-          </div>
-        </div>
-        {data.corrections.map((correction) => (
-          <article className="correction-card" key={correction.after}>
-            <div>
-              <span>Your version</span>
-              <p>{correction.before}</p>
+      {ready && data.mode === "learning" && (
+        <>
+          <section className="section-block" aria-labelledby="observations-title">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">From your conversation</p>
+                <h2 id="observations-title">Things you practiced</h2>
+              </div>
             </div>
-            <div>
-              <span>A more natural version</span>
-              <p>{correction.after}</p>
-            </div>
-            <p className="correction-note">{correction.explanation}</p>
-          </article>
-        ))}
-      </section>
+            {data.observations?.length ? (
+              <ul className="objective-list">
+                {data.observations.map((observation, index) => (
+                  <li key={`${observation.kind}-${index}`}>
+                    <span className="objective-mark objective-attempted" aria-hidden="true">○</span>
+                    <span>{observation.detail}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : <p>There was not enough clear conversation to highlight a specific practice moment.</p>}
+          </section>
+
+          {Boolean(data.corrections?.length) && (
+            <section className="section-block" aria-labelledby="corrections-title">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Worth noticing</p>
+                  <h2 id="corrections-title">A useful way to say it</h2>
+                </div>
+              </div>
+              {data.corrections?.map((correction) => (
+                <article className="correction-card" key={correction.learnerTurnId}>
+                  <div><span>Your version</span><p>{correction.before}</p></div>
+                  <div><span>Another way</span><p>{correction.suggestion}</p></div>
+                </article>
+              ))}
+            </section>
+          )}
+        </>
+      )}
+
+      <Link className="text-link" to="/session">Prepare another conversation →</Link>
     </div>
   );
 }

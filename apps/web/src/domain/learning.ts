@@ -66,22 +66,34 @@ export interface RecapCorrection {
 
 export interface SessionRecap {
   id: string;
-  title: string;
-  completedAtLabel: string;
-  durationMinutes: number;
-  summary: string;
-  objectives: Array<{
-    label: string;
-    outcome: "attempted" | "demonstrated";
+  mode: "learning" | "practice";
+  status: "processing" | "ready" | "failed";
+  summary?: string;
+  observations?: Array<{
+    kind: string;
+    detail: string;
+    learnerTurnIds: string[];
   }>;
-  corrections: RecapCorrection[];
-  nextFocus: string;
+  corrections?: Array<{
+    learnerTurnId: string;
+    before: string;
+    suggestion: string;
+  }>;
 }
 
-export interface LearnerMemory {
+export interface LearnerFileEntry {
   id: string;
-  label: string;
-  detail: string;
-  sourceLabel: string;
-  expiresLabel: string;
+  kind: "learning" | "insight";
+  text: string;
+  origin: "capture" | "learner_edit";
+  version: number;
+  sourceSessionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string | null;
+}
+
+export interface LearnerFilePage {
+  entries: LearnerFileEntry[];
+  nextCursor: string | null;
 }

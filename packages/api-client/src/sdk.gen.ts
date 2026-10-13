@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostData, AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostErrors, AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostResponses, CreateLanguageProfileApiV1LanguageProfilesPostData, CreateLanguageProfileApiV1LanguageProfilesPostErrors, CreateLanguageProfileApiV1LanguageProfilesPostResponses, CreateSessionApiV1SessionsPostData, CreateSessionApiV1SessionsPostErrors, CreateSessionApiV1SessionsPostResponses, EndSessionApiV1SessionsSessionIdEndPostData, EndSessionApiV1SessionsSessionIdEndPostErrors, EndSessionApiV1SessionsSessionIdEndPostResponses, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostData, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostErrors, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponses, GetLanguagePairsApiV1LanguagePairsGetData, GetLanguagePairsApiV1LanguagePairsGetErrors, GetLanguagePairsApiV1LanguagePairsGetResponses, GetMeApiV1MeGetData, GetMeApiV1MeGetErrors, GetMeApiV1MeGetResponses, GetSessionApiV1SessionsSessionIdGetData, GetSessionApiV1SessionsSessionIdGetErrors, GetSessionApiV1SessionsSessionIdGetResponses, HealthHealthGetData, HealthHealthGetResponses, LogoutAuthLogoutPostData, LogoutAuthLogoutPostErrors, LogoutAuthLogoutPostResponses, ReadyReadyGetData, ReadyReadyGetResponses, UpdatePreferencesApiV1MePreferencesPatchData, UpdatePreferencesApiV1MePreferencesPatchErrors, UpdatePreferencesApiV1MePreferencesPatchResponses, VoiceAvailabilityApiV1SessionsAvailabilityGetData, VoiceAvailabilityApiV1SessionsAvailabilityGetErrors, VoiceAvailabilityApiV1SessionsAvailabilityGetResponses } from './types.gen';
+import type { AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostData, AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostErrors, AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostResponses, CreateLanguageProfileApiV1LanguageProfilesPostData, CreateLanguageProfileApiV1LanguageProfilesPostErrors, CreateLanguageProfileApiV1LanguageProfilesPostResponses, CreateSessionApiV1SessionsPostData, CreateSessionApiV1SessionsPostErrors, CreateSessionApiV1SessionsPostResponses, DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteData, DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteErrors, DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteResponses, EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchData, EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchErrors, EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchResponses, EndSessionApiV1SessionsSessionIdEndPostData, EndSessionApiV1SessionsSessionIdEndPostErrors, EndSessionApiV1SessionsSessionIdEndPostResponses, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostData, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostErrors, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponses, GetLanguagePairsApiV1LanguagePairsGetData, GetLanguagePairsApiV1LanguagePairsGetErrors, GetLanguagePairsApiV1LanguagePairsGetResponses, GetMeApiV1MeGetData, GetMeApiV1MeGetErrors, GetMeApiV1MeGetResponses, GetRecapApiV1SessionsSessionIdRecapGetData, GetRecapApiV1SessionsSessionIdRecapGetErrors, GetRecapApiV1SessionsSessionIdRecapGetResponses, GetSessionApiV1SessionsSessionIdGetData, GetSessionApiV1SessionsSessionIdGetErrors, GetSessionApiV1SessionsSessionIdGetResponses, HealthHealthGetData, HealthHealthGetResponses, ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetData, ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetErrors, ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetResponses, LogoutAuthLogoutPostData, LogoutAuthLogoutPostErrors, LogoutAuthLogoutPostResponses, ReadyReadyGetData, ReadyReadyGetResponses, UpdatePreferencesApiV1MePreferencesPatchData, UpdatePreferencesApiV1MePreferencesPatchErrors, UpdatePreferencesApiV1MePreferencesPatchResponses, VoiceAvailabilityApiV1SessionsAvailabilityGetData, VoiceAvailabilityApiV1SessionsAvailabilityGetErrors, VoiceAvailabilityApiV1SessionsAvailabilityGetResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -28,6 +28,28 @@ export const getLanguagePairsApiV1LanguagePairsGet = <ThrowOnError extends boole
  */
 export const createLanguageProfileApiV1LanguageProfilesPost = <ThrowOnError extends boolean = false>(options: Options<CreateLanguageProfileApiV1LanguageProfilesPostData, ThrowOnError>) => (options.client ?? client).post<CreateLanguageProfileApiV1LanguageProfilesPostResponses, CreateLanguageProfileApiV1LanguageProfilesPostErrors, ThrowOnError>({
     url: '/api/v1/language-profiles',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List Entries
+ */
+export const listEntriesApiV1LanguageProfilesProfileIdLearnerFileGet = <ThrowOnError extends boolean = false>(options: Options<ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetData, ThrowOnError>) => (options.client ?? client).get<ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetResponses, ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetErrors, ThrowOnError>({ url: '/api/v1/language-profiles/{profile_id}/learner-file', ...options });
+
+/**
+ * Delete Entry
+ */
+export const deleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteResponses, DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteErrors, ThrowOnError>({ url: '/api/v1/language-profiles/{profile_id}/learner-file/{entry_id}', ...options });
+
+/**
+ * Edit Entry
+ */
+export const editEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatch = <ThrowOnError extends boolean = false>(options: Options<EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchData, ThrowOnError>) => (options.client ?? client).patch<EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchResponses, EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchErrors, ThrowOnError>({
+    url: '/api/v1/language-profiles/{profile_id}/learner-file/{entry_id}',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -83,6 +105,11 @@ export const acknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckP
  * End Session
  */
 export const endSessionApiV1SessionsSessionIdEndPost = <ThrowOnError extends boolean = false>(options: Options<EndSessionApiV1SessionsSessionIdEndPostData, ThrowOnError>) => (options.client ?? client).post<EndSessionApiV1SessionsSessionIdEndPostResponses, EndSessionApiV1SessionsSessionIdEndPostErrors, ThrowOnError>({ url: '/api/v1/sessions/{session_id}/end', ...options });
+
+/**
+ * Get Recap
+ */
+export const getRecapApiV1SessionsSessionIdRecapGet = <ThrowOnError extends boolean = false>(options: Options<GetRecapApiV1SessionsSessionIdRecapGetData, ThrowOnError>) => (options.client ?? client).get<GetRecapApiV1SessionsSessionIdRecapGetResponses, GetRecapApiV1SessionsSessionIdRecapGetErrors, ThrowOnError>({ url: '/api/v1/sessions/{session_id}/recap', ...options });
 
 /**
  * Exchange Webrtc

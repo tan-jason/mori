@@ -122,7 +122,7 @@ The process limits concurrent call task groups with configuration derived from f
 
 The analysis worker is a concurrent durable-job worker. Its primary conversation job loads one finalized session at a fixed transcript watermark, asks the extraction model for structured candidates, validates those candidates, applies deterministic rules, and commits the resulting learner state atomically.
 
-One process may analyze several different sessions concurrently through a bounded worker pool. PostgreSQL job claims and the unique analysis-run identity ensure that only one writer can commit a particular session and analyzer version. Provider concurrency, token budgets, and database write pressure independently limit the pool. A failure releases or retries the durable job; it never leaves a partially committed recap or learner snapshot.
+One process may analyze several different sessions concurrently through a bounded worker pool. PostgreSQL job claims, the run ID, and a one-pending-run-per-session constraint prevent competing analysis commits. Provider concurrency, token budgets, and database write pressure independently limit the pool. A failure releases or retries the durable job; it never leaves a partially committed recap or learner snapshot.
 
 The extraction model may propose explicit personal facts, learning evidence, corrections, and assessment observations. These remain candidates. Source-turn validation, memory sensitivity rules, curriculum rules, and deterministic progression decide what becomes durable.
 
@@ -192,7 +192,7 @@ A partial unique index prevents more than one `realtime_calls` row in `provider_
 
 | Record | Key fields and constraints |
 | --- | --- |
-| `analysis_runs` | Session, analyzer, prompt, schema, model, and policy versions; unique retry identity |
+| `analysis_runs` | Session, run ID, extraction model, pinned curriculum, final turn watermark, and status; run ID is the retry identity |
 | `learning_evidence` | Source turn IDs, curriculum item, observation, confidence, extractor and rule provenance; append-only |
 | `learner_item_states` | Current projection derived from evidence, with optimistic version |
 | `level_assessments` | Dimension scores, evidence IDs, rule version, decision, confidence; append-only |
@@ -333,7 +333,7 @@ Ending is safe to repeat whether initiated by the learner, spoken intent, provid
 7. For a usable session, transition to `analysis_pending` and insert the ID-only analysis job in the same PostgreSQL transaction.
 8. For a session with no usable turn, enter the appropriate non-analysis terminal state.
 
-The job payload contains `session_id`, `analysis_run_id`, analyzer version, schema version, policy version, and curriculum version. It never contains the transcript, memory, or audio bytes.
+The job payload contains only `analysis_run_id`. The worker reloads the session, finalized transcript, pinned curriculum, and extraction model from the database. The job never contains transcript, memory, or audio bytes.
 
 ## 13. Post-session learning design
 
@@ -354,12 +354,12 @@ The worker pool may process different sessions concurrently. A single analysis-r
 
 1. Claim or resume the unique analysis run.
 2. Load the immutable plan, transcript through the final watermark, prior learner snapshot, published curriculum, and current consented audio metadata.
-3. Send a bounded, versioned bundle to the extraction adapter using strict structured output.
+3. Send the bounded finalized session bundle to the extraction adapter using strict structured output.
 4. Reject unknown turn references, schema drift, unsupported facts, invalid memory, disallowed sensitivity, and candidates below configured policy.
 5. Apply deterministic item-state, review, promotion, demotion, and memory rules without provider access.
 6. Commit accepted evidence, item state, assessment, recap, memories, hooks, immutable snapshot, and successful run status in one transaction.
 
-Retries reload authoritative inputs and reuse the same analysis identity. Exhausted automatic retries produce `analysis_failed`, an alert, and an explicit repair command. A newer analyzer or policy version creates a new run and corrective snapshot rather than rewriting historical evidence.
+Retries reload authoritative inputs and reuse the same run ID. Exhausted automatic retries produce `analysis_failed`, an alert, and an explicit repair command. Deliberate reanalysis creates a new run after the previous run finishes and does not rewrite historical evidence.
 
 The curriculum graph, assessment thresholds, and evaluator corpus are versioned data inputs. The first complete published versions must be approved before the full learning loop can ship.
 
@@ -414,7 +414,7 @@ Pydantic response models generate OpenAPI. The committed generated TypeScript cl
 - Provider events, tool arguments, transcripts, and model candidates are untrusted input.
 - The supervisor is the only tool executor. Tool handlers repeat authorization and validate arguments.
 - The extraction model has no database credentials and cannot directly commit state.
-- Model, prompt, voice, schema, curriculum, analyzer, and rule versions are persisted with decisions.
+- Session plans pin curriculum and tutor prompt inputs; analysis runs record the extraction model and finalized transcript watermark.
 
 ### 15.3 Data protection
 

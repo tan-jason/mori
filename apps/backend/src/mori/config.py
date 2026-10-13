@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = Field(default=None, alias="OPENAI_API_KEY")
     openai_realtime_model: str = Field(default="gpt-realtime-2.1", alias="OPENAI_REALTIME_MODEL")
     openai_realtime_voice: str = Field(default="marin", alias="OPENAI_REALTIME_VOICE")
+    openai_extractor_model: str = Field(default="", alias="OPENAI_EXTRACTOR_MODEL")
     openai_safety_id_secret: SecretStr | None = Field(default=None, alias="OPENAI_SAFETY_ID_SECRET")
 
     google_client_id: str = Field(alias="GOOGLE_CLIENT_ID", min_length=1)

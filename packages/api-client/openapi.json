@@ -152,6 +152,22 @@
         "title": "CreateSessionRequest",
         "type": "object"
       },
+      "EditLearnerFileEntryRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "EditLearnerFileEntryRequest",
+        "type": "object"
+      },
       "LanguagePairResponse": {
         "additionalProperties": false,
         "properties": {
@@ -260,6 +276,114 @@
         "title": "LanguageProfileStatus",
         "type": "string"
       },
+      "LearnerFileEntryResponse": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiresat"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "learning",
+              "insight"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "origin": {
+            "enum": [
+              "capture",
+              "learner_edit"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "sourceSessionId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcesessionid"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "text",
+          "origin",
+          "version",
+          "sourceSessionId",
+          "createdAt",
+          "updatedAt",
+          "expiresAt"
+        ],
+        "title": "LearnerFileEntryResponse",
+        "type": "object"
+      },
+      "LearnerFileResponse": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/LearnerFileEntryResponse"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          }
+        },
+        "required": [
+          "entries",
+          "nextCursor"
+        ],
+        "title": "LearnerFileResponse",
+        "type": "object"
+      },
       "LearningMode": {
         "enum": [
           "learning",
@@ -267,6 +391,69 @@
         ],
         "title": "LearningMode",
         "type": "string"
+      },
+      "LearningRecapResponse": {
+        "properties": {
+          "corrections": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RecapCorrectionResponse"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrections"
+          },
+          "mode": {
+            "const": "learning",
+            "default": "learning",
+            "title": "Mode",
+            "type": "string"
+          },
+          "observations": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RecapObservationResponse"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observations"
+          },
+          "status": {
+            "enum": [
+              "processing",
+              "ready",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "LearningRecapResponse",
+        "type": "object"
       },
       "LearningSettingsResponse": {
         "additionalProperties": false,
@@ -383,6 +570,41 @@
         "title": "PlanPreviewResponse",
         "type": "object"
       },
+      "PracticeRecapResponse": {
+        "properties": {
+          "mode": {
+            "const": "practice",
+            "default": "practice",
+            "title": "Mode",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "processing",
+              "ready",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "PracticeRecapResponse",
+        "type": "object"
+      },
       "PreferencePatch": {
         "additionalProperties": false,
         "properties": {
@@ -478,6 +700,57 @@
           "version"
         ],
         "title": "PreferencesResponse",
+        "type": "object"
+      },
+      "RecapCorrectionResponse": {
+        "properties": {
+          "before": {
+            "title": "Before",
+            "type": "string"
+          },
+          "learnerTurnId": {
+            "format": "uuid",
+            "title": "Learnerturnid",
+            "type": "string"
+          },
+          "suggestion": {
+            "title": "Suggestion",
+            "type": "string"
+          }
+        },
+        "required": [
+          "learnerTurnId",
+          "before",
+          "suggestion"
+        ],
+        "title": "RecapCorrectionResponse",
+        "type": "object"
+      },
+      "RecapObservationResponse": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "learnerTurnIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Learnerturnids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "detail",
+          "learnerTurnIds"
+        ],
+        "title": "RecapObservationResponse",
         "type": "object"
       },
       "SessionResponse": {
@@ -709,6 +982,204 @@
           }
         },
         "summary": "Create Language Profile"
+      }
+    },
+    "/api/v1/language-profiles/{profile_id}/learner-file": {
+      "get": {
+        "operationId": "list_entries_api_v1_language_profiles__profile_id__learner_file_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearnerFileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Mori error envelope"
+          }
+        },
+        "summary": "List Entries",
+        "tags": [
+          "learner-file"
+        ]
+      }
+    },
+    "/api/v1/language-profiles/{profile_id}/learner-file/{entry_id}": {
+      "delete": {
+        "operationId": "delete_entry_api_v1_language_profiles__profile_id__learner_file__entry_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Mori error envelope"
+          }
+        },
+        "summary": "Delete Entry",
+        "tags": [
+          "learner-file"
+        ]
+      },
+      "patch": {
+        "operationId": "edit_entry_api_v1_language_profiles__profile_id__learner_file__entry_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditLearnerFileEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearnerFileEntryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Mori error envelope"
+          }
+        },
+        "summary": "Edit Entry",
+        "tags": [
+          "learner-file"
+        ]
       }
     },
     "/api/v1/me": {
@@ -1005,6 +1476,57 @@
           }
         },
         "summary": "End Session",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/api/v1/sessions/{session_id}/recap": {
+      "get": {
+        "operationId": "get_recap_api_v1_sessions__session_id__recap_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/LearningRecapResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/PracticeRecapResponse"
+                    }
+                  ],
+                  "title": "Response Get Recap Api V1 Sessions  Session Id  Recap Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Mori error envelope"
+          }
+        },
+        "summary": "Get Recap",
         "tags": [
           "sessions"
         ]

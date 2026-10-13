@@ -197,7 +197,7 @@ This file is the compact decision record for the Mori backend. Update an entry i
 | Repository | Polyglot monorepo with uv for Python and npm for web | Pin Python 3.13 and Node 22. Keep native lockfiles. |
 | Data access | SQLAlchemy 2.0, psycopg 3, and Alembic | Prefer explicit Core statements for ledgers and bulk evidence writes. Never auto-migrate on application boot. |
 | Background work | Procrastinate | IDs-only idempotent tasks behind a queue port. |
-| Extraction | OpenAI Responses with strict structured output | Persist model, prompt, schema, analyzer, and policy versions. The model proposes only. |
+| Extraction | OpenAI Responses with strict structured output | The run pins the extraction model and finalized transcript watermark. The model proposes only; the application validates before commit. |
 | Billing | Stripe Billing and signed webhooks | Internal versioned plans authorize access. Store and deduplicate provider events. |
 | Observability | structlog and OpenTelemetry | Never export transcripts, audio, memories, credentials, or raw prompts to general telemetry. |
 | Testing | pytest, Testcontainers, Hypothesis, Vitest, and Playwright | Concurrency, replay, contract, migration, and browser security tests are release gates. |

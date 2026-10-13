@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from mori.modules.learning.application import RecapView
 from mori.modules.sessions.application import SessionView
 from mori.modules.sessions.domain import normalize_requested_words, normalize_topic
 
@@ -69,3 +70,58 @@ class SessionResponse(BaseModel):
             planPreview=PlanPreviewResponse(objectives=list(view.objectives)),
             createdAt=view.created_at,
         )
+
+
+class RecapObservationResponse(BaseModel):
+    kind: str
+    detail: str
+    learner_turn_ids: list[UUID] = Field(alias="learnerTurnIds")
+
+
+class RecapCorrectionResponse(BaseModel):
+    learner_turn_id: UUID = Field(alias="learnerTurnId")
+    before: str
+    suggestion: str
+
+
+class LearningRecapResponse(BaseModel):
+    mode: Literal["learning"] = "learning"
+    status: Literal["processing", "ready", "failed"]
+    summary: str | None = None
+    observations: list[RecapObservationResponse] | None = None
+    corrections: list[RecapCorrectionResponse] | None = None
+
+
+class PracticeRecapResponse(BaseModel):
+    mode: Literal["practice"] = "practice"
+    status: Literal["processing", "ready", "failed"]
+    summary: str | None = None
+
+
+def recap_response(view: RecapView) -> LearningRecapResponse | PracticeRecapResponse:
+    if view.mode == "practice":
+        return PracticeRecapResponse(status=view.status, summary=view.summary)
+    return LearningRecapResponse(
+        status=view.status,
+        summary=view.summary,
+        observations=[
+            RecapObservationResponse(
+                kind=observation.kind,
+                detail=observation.detail,
+                learnerTurnIds=list(observation.learner_turn_ids),
+            )
+            for observation in view.observations
+        ]
+        if view.status == "ready"
+        else None,
+        corrections=[
+            RecapCorrectionResponse(
+                learnerTurnId=correction.learner_turn_id,
+                before=correction.before,
+                suggestion=correction.suggestion,
+            )
+            for correction in view.corrections
+        ]
+        if view.status == "ready"
+        else None,
+    )

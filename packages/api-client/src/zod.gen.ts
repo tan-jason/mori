@@ -37,6 +37,13 @@ export const zCreateSessionRequest = z.object({
 });
 
 /**
+ * EditLearnerFileEntryRequest
+ */
+export const zEditLearnerFileEntryRequest = z.object({
+    text: z.string().min(1).max(240)
+});
+
+/**
  * LanguagePairResponse
  */
 export const zLanguagePairResponse = z.object({
@@ -61,6 +68,29 @@ export const zLanguagePairsResponse = z.object({
 export const zLanguageProfileStatus = z.enum(['active', 'archived']);
 
 /**
+ * LearnerFileEntryResponse
+ */
+export const zLearnerFileEntryResponse = z.object({
+    createdAt: z.iso.datetime(),
+    expiresAt: z.iso.datetime().nullable(),
+    id: z.uuid(),
+    kind: z.enum(['learning', 'insight']),
+    origin: z.enum(['capture', 'learner_edit']),
+    sourceSessionId: z.uuid().nullable(),
+    text: z.string(),
+    updatedAt: z.iso.datetime(),
+    version: z.int()
+});
+
+/**
+ * LearnerFileResponse
+ */
+export const zLearnerFileResponse = z.object({
+    entries: z.array(zLearnerFileEntryResponse),
+    nextCursor: z.string().nullable()
+});
+
+/**
  * LearningMode
  */
 export const zLearningMode = z.enum(['learning', 'practice']);
@@ -77,6 +107,52 @@ export const zOnboardingResponse = z.object({
  */
 export const zPlanPreviewResponse = z.object({
     objectives: z.array(z.string())
+});
+
+/**
+ * PracticeRecapResponse
+ */
+export const zPracticeRecapResponse = z.object({
+    mode: z.literal('practice').optional().default('practice'),
+    status: z.enum([
+        'processing',
+        'ready',
+        'failed'
+    ]),
+    summary: z.string().nullish()
+});
+
+/**
+ * RecapCorrectionResponse
+ */
+export const zRecapCorrectionResponse = z.object({
+    before: z.string(),
+    learnerTurnId: z.uuid(),
+    suggestion: z.string()
+});
+
+/**
+ * RecapObservationResponse
+ */
+export const zRecapObservationResponse = z.object({
+    detail: z.string(),
+    kind: z.string(),
+    learnerTurnIds: z.array(z.uuid())
+});
+
+/**
+ * LearningRecapResponse
+ */
+export const zLearningRecapResponse = z.object({
+    corrections: z.array(zRecapCorrectionResponse).nullish(),
+    mode: z.literal('learning').optional().default('learning'),
+    observations: z.array(zRecapObservationResponse).nullish(),
+    status: z.enum([
+        'processing',
+        'ready',
+        'failed'
+    ]),
+    summary: z.string().nullish()
 });
 
 /**
@@ -239,6 +315,51 @@ export const zCreateLanguageProfileApiV1LanguageProfilesPostHeaders = z.object({
  */
 export const zCreateLanguageProfileApiV1LanguageProfilesPostResponse = zMeResponse;
 
+export const zListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetPath = z.object({
+    profile_id: z.uuid()
+});
+
+export const zListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetQuery = z.object({
+    cursor: z.string().nullish()
+});
+
+/**
+ * Successful Response
+ */
+export const zListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetResponse = zLearnerFileResponse;
+
+export const zDeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteHeaders = z.object({
+    'X-CSRF-Token': z.string(),
+    'If-Match': z.string()
+});
+
+export const zDeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeletePath = z.object({
+    profile_id: z.uuid(),
+    entry_id: z.uuid()
+});
+
+/**
+ * Successful Response
+ */
+export const zDeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteResponse = z.void();
+
+export const zEditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchBody = zEditLearnerFileEntryRequest;
+
+export const zEditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchHeaders = z.object({
+    'X-CSRF-Token': z.string(),
+    'If-Match': z.string()
+});
+
+export const zEditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchPath = z.object({
+    profile_id: z.uuid(),
+    entry_id: z.uuid()
+});
+
+/**
+ * Successful Response
+ */
+export const zEditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchResponse = zLearnerFileEntryResponse;
+
 /**
  * Successful Response
  */
@@ -300,6 +421,20 @@ export const zEndSessionApiV1SessionsSessionIdEndPostPath = z.object({
  * Successful Response
  */
 export const zEndSessionApiV1SessionsSessionIdEndPostResponse = z.void();
+
+export const zGetRecapApiV1SessionsSessionIdRecapGetPath = z.object({
+    session_id: z.uuid()
+});
+
+/**
+ * Response Get Recap Api V1 Sessions  Session Id  Recap Get
+ *
+ * Successful Response
+ */
+export const zGetRecapApiV1SessionsSessionIdRecapGetResponse = z.union([
+    zLearningRecapResponse,
+    zPracticeRecapResponse
+]);
 
 export const zExchangeWebrtcApiV1SessionsSessionIdWebrtcPostPath = z.object({
     session_id: z.uuid()

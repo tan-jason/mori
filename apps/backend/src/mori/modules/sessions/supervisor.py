@@ -18,8 +18,15 @@ from websockets.asyncio.client import ClientConnection, connect
 
 from mori.modules.access.application import AccessCommands
 from mori.modules.access.usage_models import UsageReservationModel
+from mori.modules.learning.models import AnalysisRunModel
+from mori.modules.learning.queue import enqueue_capture
 from mori.modules.sessions.application import UNCERTAIN_CALL_WINDOW, SessionService
-from mori.modules.sessions.models import SessionCallAttemptModel, SessionModel, SessionTurnModel
+from mori.modules.sessions.models import (
+    SessionCallAttemptModel,
+    SessionModel,
+    SessionPlanModel,
+    SessionTurnModel,
+)
 from mori.modules.sessions.realtime_provider import AmbiguousProviderFailure, OpenAIRealtimeProvider
 
 logger = structlog.get_logger(__name__)
@@ -43,11 +50,13 @@ class RealtimeSupervisor:
         service: SessionService,
         provider: OpenAIRealtimeProvider,
         api_key: str,
+        extractor_model: str = "",
     ) -> None:
         self._session_maker = session_maker
         self._service = service
         self._provider = provider
         self._api_key = api_key
+        self._extractor_model = extractor_model
         self._owner = uuid4()
         self._runner: asyncio.Task[None] | None = None
         self._watchers: dict[UUID, asyncio.Task[None]] = {}
@@ -403,7 +412,46 @@ class RealtimeSupervisor:
                     SessionTurnModel.text != "",
                 )
             )
+            if session.state == "analysis_pending":
+                if session.final_turn_sequence is None:
+                    session.state = "analysis_failed"
+                else:
+                    await self._queue_analysis(db, session, now)
             attempt.state = "ended"
             attempt.lease_owner = None
             attempt.lease_until = None
             attempt.updated_at = now
+
+    async def _queue_analysis(self, db: AsyncSession, session: SessionModel, now: datetime) -> None:
+        assert session.final_turn_sequence is not None
+        has_learner_turn = await db.scalar(
+            select(SessionTurnModel.id)
+            .where(
+                SessionTurnModel.session_id == session.id,
+                SessionTurnModel.sequence <= session.final_turn_sequence,
+                SessionTurnModel.role == "learner",
+                SessionTurnModel.text != "",
+            )
+            .limit(1)
+        )
+        if has_learner_turn is None or not self._extractor_model:
+            session.state = "analysis_failed"
+            return
+        plan = await db.get(SessionPlanModel, session.id)
+        if plan is None or plan.mode not in {"learning", "practice"}:
+            session.state = "analysis_failed"
+            return
+        run_id = uuid4()
+        db.add(
+            AnalysisRunModel(
+                id=run_id,
+                session_id=session.id,
+                extractor_model=self._extractor_model,
+                curriculum_version=plan.curriculum_version,
+                mode=plan.mode,
+                final_turn_sequence=session.final_turn_sequence,
+                status="pending",
+                created_at=now,
+            )
+        )
+        await enqueue_capture(db, run_id)

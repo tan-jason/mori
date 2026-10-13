@@ -30,6 +30,12 @@ from mori.modules.learner_profiles.errors import (
     ProfileAlreadyConfirmed,
     UnsupportedLanguagePair,
 )
+from mori.modules.learning.learner_file import (
+    InvalidLearnerFileCursor,
+    LearnerFileCallActive,
+    LearnerFileNotFound,
+    LearnerFileVersionConflict,
+)
 from mori.modules.sessions.errors import (
     IdempotencyConflict,
     InvalidIdempotencyKey,
@@ -89,6 +95,14 @@ _EXPECTED_ERRORS: dict[type[Exception], ErrorDefinition] = {
     PreferenceVersionConflict: ErrorDefinition(
         412, "preference_version_conflict", "Preferences changed since they were read."
     ),
+    LearnerFileNotFound: ErrorDefinition(404, "learner_file_not_found", "The entry was not found."),
+    LearnerFileVersionConflict: ErrorDefinition(
+        412, "learner_file_version_conflict", "The entry changed since it was read."
+    ),
+    LearnerFileCallActive: ErrorDefinition(
+        409, "learner_file_call_active", "Finish the current call before changing this entry."
+    ),
+    InvalidLearnerFileCursor: ErrorDefinition(422, "invalid_cursor", "The page cursor is invalid."),
     InvalidOnboardingKey: ErrorDefinition(
         400, "invalid_idempotency_key", "A valid Idempotency-Key header is required."
     ),

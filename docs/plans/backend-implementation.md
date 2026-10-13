@@ -48,7 +48,7 @@ Deliverables:
 - Define transaction boundaries for session creation, activation, finalization, analysis commit, billing events, and privacy jobs.
 - Specify `/api/v1` request and response schemas, the common error envelope, authorization cases, pagination, optimistic concurrency, and idempotency replay behavior.
 - Define normalized OpenAI Realtime event envelopes and pinned analysis bundle schemas.
-- Define version identifiers for curriculum, planning rules, prompts, models, extraction schemas, analyzers, progression rules, consent policies, and retention policies.
+- Define version identifiers for curriculum, planning rules, tutor prompts, progression rules, consent policies, and retention policies. Capture jobs use a run ID instead of extractor policy or schema versions.
 - Decide which open values block M1 through M3. Audio-specific values may remain gated until M4.
 - Establish architecture tests and generated-contract drift checks.
 
@@ -135,11 +135,19 @@ Verification:
 
 **Objective:** Turn a finalized transcript into validated evidence, deterministic learner state, and a queryable recap exactly once.
 
+The first capture slice now has transactional analysis jobs, strict structured extraction,
+exact-turn validation, queryable learning/practice recaps, and profile-owned Learner File
+entries. Captured learnings and narrow topic insights can be inspected, corrected, and
+deleted; insights expire after 90 days. Edits feed the next call's bounded context. The
+remaining M3 work is deterministic passage and level rules for all ten lessons, derived
+state and snapshots, the fuller memory suppression and active-call replacement workflow,
+replay tools, and transcript evaluation gates.
+
 Deliverables:
 
 - Add Procrastinate behind the queue port and insert the analysis job in the finalization transaction.
 - Define immutable session bundle and strict extraction candidate schemas.
-- Implement the OpenAI Responses extraction adapter with model, prompt, schema, and analyzer version capture.
+- Implement the OpenAI Responses extraction adapter with a pinned model and strict candidate validation.
 - Validate candidate schema, exact turn provenance, confidence, allowed memory, and curriculum references.
 - Implement pure deterministic evidence, progression, item-state, and level-assessment rules for the initial curriculum slice.
 - Atomically commit evidence, item state, assessment, recap, memories, conversation hooks, snapshot, and analysis run status.
@@ -171,7 +179,8 @@ Deliverables:
 - Integrate Stripe checkout and signed lifecycle webhooks with an internal plan projection.
 - Resolve audio retention and evaluator threshold decisions before starting the retained-audio path.
 - Add explicit audio consent, learner-microphone capture, bounded multipart uploads, private SSE-KMS storage, analysis gating, and lifecycle deletion.
-- Add memory inspection and idempotent deletion.
+- Extend the current Learner File inspection and idempotent deletion to the full memory
+  suppression model and safe active-call replacement workflow.
 - Implement 90-day transcript expiry and cascade-and-rebuild session deletion.
 - Implement private export generation and account erasure with auditable job status.
 - Add feedback, safety report, snapshot review, audit, and repair records.
@@ -285,7 +294,7 @@ This lane owns learning correctness. It publishes pinned session bundles and exp
 
 - Provide the first published curriculum graph and promotion rules as versioned Python source definitions.
 - Create a gold transcript evaluation set across all four levels and verify live-call transport. Add consented retained-audio evaluation only before pronunciation-derived progress or acoustic-quality claims are enabled.
-- Approve memory retention, transcript evaluator thresholds, and rollback policy. Approve audio consent copy and retention before storing learner audio.
+- Use the approved 90-day expiry for automatically saved permitted facts. Approve transcript evaluator thresholds and rollback policy. Approve audio consent copy and retention before storing learner audio.
 - Select the OpenTelemetry backend, alert destinations, and incident owner.
 
 Do not commit any secret. Use ignored local configuration and managed secrets in deployed environments.
