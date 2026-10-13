@@ -10,5 +10,6 @@ export function useRecap(sessionId: string) {
     queryKey: ["recap", languageProfile.id, sessionId],
     queryFn: ({ signal }) =>
       gateway.getRecap(sessionId, languageProfile.id, signal),
+    refetchInterval: (query) => query.state.data?.status === "processing" ? 2000 : false,
   });
 }

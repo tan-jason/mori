@@ -143,9 +143,9 @@ A session with no usable learner turn does not produce learning progress. Analys
 
 ## 8. Personal insights and memories
 
-Memories help Mori ask relevant questions. They are separate from curriculum evidence and learning snapshots. Mori may retain only bounded, useful facts the learner explicitly volunteered, such as interests, preferred topics, broad context, or low-sensitivity upcoming events. It must not infer identity, beliefs, relationships, or emotional state from hints. Sensitive facts are not saved or proactively resurfaced.
+Memories help Mori ask relevant questions. They are separate from curriculum evidence and learning snapshots. The current beta capturer retains specific, explicitly volunteered interests and occupations, with exact learner-turn provenance. For example, "Enjoys playing beach volleyball" is useful context; "Interested in sports" is too broad. Hypothetical and role-play statements are not personal facts. It must not infer identity, beliefs, relationships, or emotional state from hints. Sensitive facts are not saved or proactively resurfaced. Learnings instead summarize the target-language words, structures, and conversation moves practiced in the lesson and explain their progress toward the lesson objective.
 
-Each memory has source session and turn references, confidence, creation time, expiry, sensitivity classification, and deletion state. A remembered event is not asserted as still current without confirmation. The learner can inspect and delete memories. Deletion prevents future prompt use; deleting a session also removes memories derived from it under the approved privacy workflow.
+Each memory has source session and turn references, confidence, creation time, expiry, sensitivity classification, and deletion state. A remembered event is not asserted as still current without confirmation. The learner can inspect, correct, and delete captured learnings and insights, but cannot add entries manually. A correction is available as context for future conversations without changing the underlying learning evidence. Deletion prevents future prompt use; deleting a session also removes memories derived from it under the approved privacy workflow. For beta, captured personal insights expire after 90 days.
 
 ## 9. Product requirements
 
@@ -182,6 +182,6 @@ Evaluation fixtures must cover every level, new and returning learners, conflict
 
 - Publish Mori's shared course with supported language choices, lesson objectives, and level thresholds. Unsupported languages cannot start voice practice.
 - Decide numerical assessment thresholds and evaluator pass criteria for each level.
-- Approve the memory sensitivity and retention policy. Approve an audio evidence policy before using pronunciation to change progress or level.
+- Validate the low-sensitivity memory policy and implement inspect, delete, suppression, and active-call sanitization before enabling automatic saving. Automatically saved permitted facts expire after 90 days. Approve an audio evidence policy before using pronunciation to change progress or level.
 - Reconcile the original MVP PRD and architecture documents with the four-level and explicit-language decisions before their affected implementation slices are marked complete.
 - Validate the selected Realtime model, prompt versions, and extraction model with representative transcript reviews; validate voice connection and delivery in live calls. Acoustic quality evaluation is a later gate if it becomes a product claim.

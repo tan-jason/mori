@@ -1,4 +1,4 @@
-import { zApiErrorResponse, zLanguagePairsResponse, zMeResponse, zSessionResponse, zVoiceAvailabilityResponse } from "@mori/api-client/zod";
+import { zApiErrorResponse, zGetRecapApiV1SessionsSessionIdRecapGetResponse, zLanguagePairsResponse, zLearnerFileEntryResponse, zLearnerFileResponse, zMeResponse, zSessionResponse, zVoiceAvailabilityResponse } from "@mori/api-client/zod";
 import type { CurrentLearner } from "../domain/identity";
 import { isTargetLanguageId, type TargetLanguageId } from "../domain/languages";
 import { getApiOrigin } from "./api-config";
@@ -238,16 +238,50 @@ export function createBackendWebAppGateway(
       return previewGateway.getDashboard(previewLanguageProfileId, signal);
     },
 
-    getRecap(sessionId, _languageProfileId, signal) {
-      return previewGateway.getRecap(
-        sessionId,
-        previewLanguageProfileId,
-        signal,
-      );
+    async getRecap(sessionId, _languageProfileId, signal) {
+      const response = await request(`/api/v1/sessions/${encodeURIComponent(sessionId)}/recap`, { signal });
+      const payload: unknown = await response.json();
+      const parsed = zGetRecapApiV1SessionsSessionIdRecapGetResponse.safeParse(payload);
+      if (!parsed.success) {
+        throw new ApiError(response.status, "invalid_response", "Mori returned an invalid recap.");
+      }
+      if (parsed.data.mode === "practice") {
+        return { id: sessionId, mode: "practice", status: parsed.data.status, summary: parsed.data.summary ?? undefined };
+      }
+      return {
+        id: sessionId,
+        mode: "learning",
+        status: parsed.data.status,
+        summary: parsed.data.summary ?? undefined,
+        observations: parsed.data.observations ?? undefined,
+        corrections: parsed.data.corrections ?? undefined,
+      };
     },
 
-    getMemories(_languageProfileId, signal) {
-      return previewGateway.getMemories(previewLanguageProfileId, signal);
+    async getLearnerFile(languageProfileId, cursor, signal) {
+      const path = `/api/v1/language-profiles/${encodeURIComponent(languageProfileId)}/learner-file`;
+      const response = await request(cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path, { signal });
+      const parsed = zLearnerFileResponse.safeParse(await response.json());
+      if (!parsed.success) throw new ApiError(response.status, "invalid_response", "Mori returned an invalid learner file.");
+      return parsed.data;
+    },
+
+    async editLearnerFileEntry(command, signal) {
+      const response = await request(`/api/v1/language-profiles/${encodeURIComponent(command.languageProfileId)}/learner-file/${encodeURIComponent(command.entryId)}`, {
+        method: "PATCH", signal,
+        headers: { "Content-Type": "application/json", "If-Match": `"${command.expectedVersion}"`, "X-CSRF-Token": command.csrfToken },
+        body: JSON.stringify({ text: command.text }),
+      });
+      const parsed = zLearnerFileEntryResponse.safeParse(await response.json());
+      if (!parsed.success) throw new ApiError(response.status, "invalid_response", "Mori returned an invalid learner file entry.");
+      return parsed.data;
+    },
+
+    async deleteLearnerFileEntry(command, signal) {
+      await request(`/api/v1/language-profiles/${encodeURIComponent(command.languageProfileId)}/learner-file/${encodeURIComponent(command.entryId)}`, {
+        method: "DELETE", signal,
+        headers: { "If-Match": `"${command.expectedVersion}"`, "X-CSRF-Token": command.csrfToken },
+      });
     },
   };
 }

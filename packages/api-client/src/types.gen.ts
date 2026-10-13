@@ -90,6 +90,16 @@ export type CreateSessionRequest = {
 };
 
 /**
+ * EditLearnerFileEntryRequest
+ */
+export type EditLearnerFileEntryRequest = {
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
  * LanguagePairResponse
  */
 export type LanguagePairResponse = {
@@ -163,9 +173,91 @@ export type LanguageProfileResponse = {
 export type LanguageProfileStatus = 'active' | 'archived';
 
 /**
+ * LearnerFileEntryResponse
+ */
+export type LearnerFileEntryResponse = {
+    /**
+     * Createdat
+     */
+    createdAt: string;
+    /**
+     * Expiresat
+     */
+    expiresAt: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Kind
+     */
+    kind: 'learning' | 'insight';
+    /**
+     * Origin
+     */
+    origin: 'capture' | 'learner_edit';
+    /**
+     * Sourcesessionid
+     */
+    sourceSessionId: string | null;
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Updatedat
+     */
+    updatedAt: string;
+    /**
+     * Version
+     */
+    version: number;
+};
+
+/**
+ * LearnerFileResponse
+ */
+export type LearnerFileResponse = {
+    /**
+     * Entries
+     */
+    entries: Array<LearnerFileEntryResponse>;
+    /**
+     * Nextcursor
+     */
+    nextCursor: string | null;
+};
+
+/**
  * LearningMode
  */
 export type LearningMode = 'learning' | 'practice';
+
+/**
+ * LearningRecapResponse
+ */
+export type LearningRecapResponse = {
+    /**
+     * Corrections
+     */
+    corrections?: Array<RecapCorrectionResponse> | null;
+    /**
+     * Mode
+     */
+    mode?: 'learning';
+    /**
+     * Observations
+     */
+    observations?: Array<RecapObservationResponse> | null;
+    /**
+     * Status
+     */
+    status: 'processing' | 'ready' | 'failed';
+    /**
+     * Summary
+     */
+    summary?: string | null;
+};
 
 /**
  * LearningSettingsResponse
@@ -216,6 +308,24 @@ export type PlanPreviewResponse = {
      * Objectives
      */
     objectives: Array<string>;
+};
+
+/**
+ * PracticeRecapResponse
+ */
+export type PracticeRecapResponse = {
+    /**
+     * Mode
+     */
+    mode?: 'practice';
+    /**
+     * Status
+     */
+    status: 'processing' | 'ready' | 'failed';
+    /**
+     * Summary
+     */
+    summary?: string | null;
 };
 
 /**
@@ -286,6 +396,42 @@ export type PreferencesResponse = {
      * Version
      */
     version: number;
+};
+
+/**
+ * RecapCorrectionResponse
+ */
+export type RecapCorrectionResponse = {
+    /**
+     * Before
+     */
+    before: string;
+    /**
+     * Learnerturnid
+     */
+    learnerTurnId: string;
+    /**
+     * Suggestion
+     */
+    suggestion: string;
+};
+
+/**
+ * RecapObservationResponse
+ */
+export type RecapObservationResponse = {
+    /**
+     * Detail
+     */
+    detail: string;
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Learnerturnids
+     */
+    learnerTurnIds: Array<string>;
 };
 
 /**
@@ -432,6 +578,117 @@ export type CreateLanguageProfileApiV1LanguageProfilesPostResponses = {
 };
 
 export type CreateLanguageProfileApiV1LanguageProfilesPostResponse = CreateLanguageProfileApiV1LanguageProfilesPostResponses[keyof CreateLanguageProfileApiV1LanguageProfilesPostResponses];
+
+export type ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetData = {
+    body?: never;
+    path: {
+        /**
+         * Profile Id
+         */
+        profile_id: string;
+    };
+    query?: {
+        /**
+         * Cursor
+         */
+        cursor?: string | null;
+    };
+    url: '/api/v1/language-profiles/{profile_id}/learner-file';
+};
+
+export type ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetErrors = {
+    /**
+     * Mori error envelope
+     */
+    default: ApiErrorResponse;
+};
+
+export type ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetError = ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetErrors[keyof ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetErrors];
+
+export type ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: LearnerFileResponse;
+};
+
+export type ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetResponse = ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetResponses[keyof ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetResponses];
+
+export type DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteData = {
+    body?: never;
+    headers: {
+        'X-CSRF-Token': string;
+        'If-Match': string;
+    };
+    path: {
+        /**
+         * Profile Id
+         */
+        profile_id: string;
+        /**
+         * Entry Id
+         */
+        entry_id: string;
+    };
+    query?: never;
+    url: '/api/v1/language-profiles/{profile_id}/learner-file/{entry_id}';
+};
+
+export type DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteErrors = {
+    /**
+     * Mori error envelope
+     */
+    default: ApiErrorResponse;
+};
+
+export type DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteError = DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteErrors[keyof DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteErrors];
+
+export type DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteResponse = DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteResponses[keyof DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteResponses];
+
+export type EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchData = {
+    body: EditLearnerFileEntryRequest;
+    headers: {
+        'X-CSRF-Token': string;
+        'If-Match': string;
+    };
+    path: {
+        /**
+         * Profile Id
+         */
+        profile_id: string;
+        /**
+         * Entry Id
+         */
+        entry_id: string;
+    };
+    query?: never;
+    url: '/api/v1/language-profiles/{profile_id}/learner-file/{entry_id}';
+};
+
+export type EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchErrors = {
+    /**
+     * Mori error envelope
+     */
+    default: ApiErrorResponse;
+};
+
+export type EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchError = EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchErrors[keyof EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchErrors];
+
+export type EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: LearnerFileEntryResponse;
+};
+
+export type EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchResponse = EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchResponses[keyof EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchResponses];
 
 export type GetMeApiV1MeGetData = {
     body?: never;
@@ -634,6 +891,38 @@ export type EndSessionApiV1SessionsSessionIdEndPostResponses = {
 };
 
 export type EndSessionApiV1SessionsSessionIdEndPostResponse = EndSessionApiV1SessionsSessionIdEndPostResponses[keyof EndSessionApiV1SessionsSessionIdEndPostResponses];
+
+export type GetRecapApiV1SessionsSessionIdRecapGetData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query?: never;
+    url: '/api/v1/sessions/{session_id}/recap';
+};
+
+export type GetRecapApiV1SessionsSessionIdRecapGetErrors = {
+    /**
+     * Mori error envelope
+     */
+    default: ApiErrorResponse;
+};
+
+export type GetRecapApiV1SessionsSessionIdRecapGetError = GetRecapApiV1SessionsSessionIdRecapGetErrors[keyof GetRecapApiV1SessionsSessionIdRecapGetErrors];
+
+export type GetRecapApiV1SessionsSessionIdRecapGetResponses = {
+    /**
+     * Response Get Recap Api V1 Sessions  Session Id  Recap Get
+     *
+     * Successful Response
+     */
+    200: LearningRecapResponse | PracticeRecapResponse;
+};
+
+export type GetRecapApiV1SessionsSessionIdRecapGetResponse = GetRecapApiV1SessionsSessionIdRecapGetResponses[keyof GetRecapApiV1SessionsSessionIdRecapGetResponses];
 
 export type ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostData = {
     body?: never;

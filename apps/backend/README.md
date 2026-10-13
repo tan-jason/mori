@@ -9,6 +9,32 @@ The session foundation adds idempotent intro-grant reservation and an immutable,
 versioned learning plan. A pure prompt compiler loads that pinned plan, validates
 its course and policy versions, and builds server-only tutor instructions.
 
+When `OPENAI_EXTRACTOR_MODEL` is set, usable finalized sessions atomically enqueue
+an analysis job. A separate Procrastinate worker extracts a brief structured recap,
+one to three transcript-cited learnings about lesson practice, and specific volunteered
+interests or occupations. Accepted insights enter the editable Learner File for up to
+90 days and can personalize later calls. Analysis does not yet update lesson passage,
+level, or a planning snapshot.
+
+Learning extraction receives the selected languages and full pinned lesson guidance.
+Observations preserve exact learner quote spans, optional preceding tutor opportunities,
+and assistance labels. A separate semantic review checks whether the full transcript
+supports each claim; unsupported or uncertain observations are omitted. A failed or
+incomplete review leaves analysis retryable without a partial capture commit. This adds
+one request using the configured extraction model when learning observations are present.
+Both requests disable provider storage; Fluent sessions do not run evidence review.
+Migration `20261012_0015` adds the evidence fields and keeps existing observations as
+legacy records. Apply migrations before starting the updated API or analysis worker.
+
+Run the worker in another terminal:
+
+```sh
+uv run --directory apps/backend procrastinate --app mori.modules.learning.queue.app worker --queues analysis
+```
+
+Keep `OPENAI_EXTRACTOR_MODEL` empty until a model passes transcript evaluation. With
+no configured model, voice sessions can still end, but recap status is unavailable.
+
 Realtime bootstrap persists a call attempt and prompt-build manifest before a provider
 request. The API exchanges SDP server-side, and an asyncio supervisor owns each call
 through a renewable PostgreSQL lease. It persists an absolute deadline, hangs up
@@ -104,7 +130,7 @@ The Google client must register the redirect URI exactly, including scheme, port
 | `OPENAI_API_KEY` | OpenAI development project | Project-scoped API key used by the server Realtime adapter. |
 | `OPENAI_REALTIME_MODEL` | Mori configuration | Defaults to `gpt-realtime-2.1`; pin or change after live evaluation. |
 | `OPENAI_REALTIME_VOICE` | Mori configuration | Defaults to `marin`. |
-| `OPENAI_EXTRACTOR_MODEL` | Mori configuration | Leave empty until the extraction evaluation selects a model. |
+| `OPENAI_EXTRACTOR_MODEL` | Mori configuration | Leave empty until the extraction evaluation selects a model; then start the analysis worker. |
 | `OPENAI_SAFETY_ID_SECRET` | Generate locally | Independent random 32-byte or longer secret used to derive privacy-preserving safety identifiers. |
 
 The model and safety variables are Mori configuration, not values issued by OpenAI. A project-scoped API key does not require an additional organization or project ID variable for the initial integration.

@@ -137,7 +137,7 @@ Pydantic HTTP models generate OpenAPI. The generated TypeScript client and runti
 | Live | Session state, immutable plan, connection history, ordered turns, provider facts, leases, and consented audio metadata | `sessions`, `session_connections`, `session_plans`, `session_plan_objectives`, `session_turns`, `realtime_events`, `supervisor_leases`, `audio_consents`, `session_audio_assets` |
 | Curriculum | Published pair catalog, competency graph, dependencies, and evidence policy | Versioned Python definitions in `mori.modules.curriculum.catalog` |
 | Learning | Append-only evidence, derived item state, assessments, and immutable snapshots | `learning_evidence`, `learner_item_states`, `level_assessments`, `learner_state_snapshots` |
-| Analysis and privacy | Versioned runs, learner-facing output, bounded memory, retention, deletion, review, safety, and audit | `analysis_runs`, `recaps`, `memories`, `conversation_hooks`, `retention_policies`, `privacy_jobs`, `export_manifests`, `snapshot_reviews`, `safety_reports`, `audit_events` |
+| Analysis and privacy | Session analysis runs, learner-facing output, bounded memory, retention, deletion, review, safety, and audit | `analysis_runs`, `recaps`, `memories`, `conversation_hooks`, `retention_policies`, `privacy_jobs`, `export_manifests`, `snapshot_reviews`, `safety_reports`, `audit_events` |
 
 This list establishes ownership and required concepts, not a final physical schema. M0 must produce the reviewed ERD, constraints, indexes, and migration order before implementation begins.
 

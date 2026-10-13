@@ -10,7 +10,11 @@ This design fits the approved modular-monolith architecture. It specifies how on
 
 ## 1. Starting state and migration boundary
 
-At the September 26 design handoff, the repository had Google sign-in, an opaque application session, an intro grant, per-profile correction and pace preferences, `POST /api/v1/sessions`, a reserved session, and a one-objective placeholder plan. The current implementation has explicit onboarding, a versioned first English-to-Mandarin course and policy bundle in Python code, deterministic objective plans, and a pure prompt compiler that loads pinned plans through an eligibility-checked application method. Realtime browser transport and supervision have since been added. The shared lesson profile, lesson selection and outcomes, learning snapshots, memory persistence, and post-session analysis remain to be implemented. The existing objective-only prompt is retired when lesson-aware planning is activated; it does not remain as a second runtime path.
+At the September 26 design handoff, the repository had Google sign-in, an opaque application session, an intro grant, per-profile correction and pace preferences, `POST /api/v1/sessions`, a reserved session, and a one-objective placeholder plan. The current implementation has explicit onboarding, a shared ten-lesson course across supported target languages, deterministic lesson selection, a pure lesson-aware prompt compiler, Realtime browser transport and supervision, finalized transcript turns, and a first post-session capture slice. That slice creates a transactional analysis job, validates exact learner-turn references, and serves learning or practice recaps. It also projects bundled, lesson-specific target-language learnings and specific, explicitly volunteered interests or occupations into an editable Learner File. Lesson outcomes, learning snapshots, and progression remain to be implemented.
+
+Call bootstrap selects at most three active learnings and five unexpired insights, ordered by update time and ID. Fluent practice excludes learning records. Entries are bounded conversational context rather than proof of mastery.
+
+The structured-evidence slice also supplies pinned languages and full lesson guidance to extraction, retains exact learner and optional tutor-opportunity quote spans with assistance labels, and requires a separate semantic review before committing learning observations. Unsupported or uncertain claims are omitted; missing or failed review results leave analysis failed and retryable without a partial capture commit. Migration `20261012_0015` preserves older observations as legacy instead of inventing evidence. No passage, review scheduling, or level decision is enabled by this slice. Deterministic lesson progression and the full memory-policy evaluation remain release dependencies.
 
 The former sign-in path created an English-to-Mandarin profile automatically. `GET /api/v1/me` formerly required a non-null `activeLanguageProfile`. The former dashboard type contained six levels. Those were migration inputs, not the current product contract. The live dashboard preview now uses the four display levels; the real assessed-level read model remains pending.
 
@@ -82,6 +86,9 @@ Resource ownership determines the URL: `/me` is the current account and its acti
 | `GET /api/v1/sessions/{id}` | State, authoritative time, reconnect eligibility, plan preview, and recap readiness. | Never returns the raw prompt or hidden memory context. |
 | `POST /api/v1/sessions/{id}/webrtc` | Browser SDP offer; returns SDP answer and call attempt metadata. | Revalidate ownership, reservation, profile, plan, memory eligibility, and current call state before provider request. |
 | `GET /api/v1/sessions/{id}/recap` | Discriminated `learning` or `practice` result plus `processing | ready | failed` status. | Fluent practice has summary and memory references, without objective scores or advice fields. |
+| `GET /api/v1/language-profiles/{id}/learner-file` | Current captured learnings and unexpired insights, each labeled by type. | Profile-owned keyset pages of 50 with `nextCursor`; no manual creation route. |
+| `PATCH /api/v1/language-profiles/{id}/learner-file/{entryId}` | Correct captured text for future conversation context. | Requires CSRF and `If-Match`; does not rewrite analysis evidence or progression. |
+| `DELETE /api/v1/language-profiles/{id}/learner-file/{entryId}` | Clear entry text and suppress source replay. | Requires CSRF and `If-Match`; idempotent after revocation. Mutations during a connecting or active call return `409` until live context replacement is implemented. |
 | `GET /api/v1/language-profiles/{id}/memories` | Cursor-paginated inspectable memory entries. | Only active memories owned by the profile. |
 | `DELETE /api/v1/language-profiles/{id}/memories/{memoryId}` | Idempotent `204` after revocation. | Check both profile and memory ownership. Deleted memory cannot reappear from a retry or replay. Active-call context is sanitized as described above. |
 
@@ -183,7 +190,7 @@ sequenceDiagram
     participant API as FastAPI
     Supervisor->>DB: Transaction: final turn watermark, session state, ID-only job
     Worker->>DB: Claim job; load pinned plan and finalized turns
-    DB-->>Worker: Versioned analysis bundle
+    DB-->>Worker: Pinned plan and finalized transcript
     Worker->>Extractor: Structured candidate request
     Extractor-->>Worker: Turn-cited candidates
     Worker->>Worker: Validate provenance, policy, confidence, and consent
@@ -290,10 +297,10 @@ mori/modules/curriculum/
 | `session_plan_memory_refs` | Session-plan ID and memory ID. | Deletion/revocation removes eligibility. It never embeds raw memory text in the plan. |
 | `session_call_attempts` | Session ID, attempt number, provider call ID, status and timestamps. | A reconnect creates a new attempt under the same immutable plan; prompt builds and turns refer to an exact attempt. |
 | `session_prompt_builds` | Call attempt ID, plan ID, base-policy version, pair-policy version, level-block version, shared lesson-profile and guidance versions when present, model/voice config versions, selected memory IDs, instructions hash, creation time. | One build per call attempt. No raw instructions or memory text in general logs. Reconnect can rebuild from the same plan with revoked context removed. |
-| `session_turns` and `analysis_runs` | Ordered turn identity, final watermark, run ID, mode, schema/model/prompt/rule versions, status. | Provider-event deduplication and one successful commit per session/run version. |
+| `session_turns` and `analysis_runs` | Ordered turn identity, final watermark, run ID, mode, extraction model, pinned curriculum, status. | Provider-event deduplication, one pending run per session, and one successful commit per run ID. |
 | `learning_evidence`, `learner_lesson_states`, `learner_item_states`, `level_assessments`, `learner_state_snapshots` | Profile, session, exact turn IDs, lesson and curriculum versions, confidence, derived lesson, item, and level state. | Learning mode only. Evidence and snapshots append decisions rather than silently rewriting them. A lesson decision is unique per analysis run and lesson key. |
 | `recaps` | Session ID, mode, status, brief summary, versioned learning-only fields where applicable. | One current recap per analyzed session. Practice recaps have no objective outcomes, corrections, or level advice. |
-| `memories`, `conversation_hooks`, `memory_suppressions` | Profile, source session/turns, normalized fact or hook, confidence, sensitivity, expiry, revocation; suppression source identity. | Only explicitly volunteered safe content. A deletion tombstone prevents analysis retry or newer-version replay from resurrecting the same fact. |
+| `memories`, `conversation_hooks`, `memory_suppressions` | Profile, source session/turns, normalized fact or hook, confidence, sensitivity, expiry, revocation; suppression source identity. | Only explicitly volunteered safe content. A deletion tombstone prevents analysis retry or deliberate reanalysis from resurrecting the same fact. |
 
 Index the latest snapshot per profile, due lesson and item state, active memories by profile/expiry, analysis-run idempotency, and session recovery by state/deadline. Keep memory and evidence provenance linked to the source session so approved cascade deletion can remove and rebuild derived state.
 
@@ -341,7 +348,7 @@ The initial evaluator uses transcripts, including tutor turns that offer a pronu
 
 ## 9. Delivery slices and gates
 
-Implementation status as of October 5, 2026: slice 1's explicit onboarding path and slice 2's first published objective course, pure selector, setup request, and current plan are implemented. Slice 3's pure base, pair, and level compiler and persisted-plan loading are implemented. The realtime browser transport, SDP route, persisted deadline, lease-based supervisor, and finalized transcript turn storage are implemented but still need a real provider call and process-loss drill. The planned profile-scoped preference, active-profile, and learning-settings routes remain outstanding. The shared lesson profile and replacement selector/compiler described here are not implemented. The selector supports due and repair item input, but those inputs stay empty until analysis state is persisted. The seeded evidence rules are disabled until evaluation thresholds and progression gates are approved. Memory and post-session analysis remain outstanding.
+Implementation status as of October 7, 2026: explicit onboarding, the shared ten-lesson course, deterministic selection, lesson-aware prompting, realtime transport, supervision, finalized transcript turns, and the first capture-and-recap slice are implemented. A real provider call and process-loss drill are still needed for the realtime gate. Profile-scoped preference, active-profile, and learning-settings routes remain outstanding. The selector's due and repair inputs stay empty until derived learning state is persisted. Evidence rules remain disabled until all ten passage criteria and evaluation thresholds are approved. Automatic memories remain outstanding. The beta memory decision is automatic capture of permitted safe facts with a 90-day expiry, once inspection, deletion, suppression, and active-call sanitization are implemented.
 
 1. **Profile and onboarding:** nullable `GET /me`, supported-pair catalog, explicit onboarding mutation, legacy-profile confirmation migration, four-level web type, optional interests. Gate: new and legacy accounts cannot start without explicit supported selection; old auth behavior remains valid.
 2. **Curriculum and deterministic planning:** publish the shared lesson profile and compatible pair-course content; add lesson fields to the active plan, deterministic selection and encounter kind, supporting objectives, and snapshot inputs. Drain old active calls and move objective-only plans to history-only status. Gate: fixtures and PostgreSQL tests prove eligibility, continuation and review behavior, deterministic replay, idempotent creation, history reads, and reservation cleanup.
@@ -357,6 +364,6 @@ Connect committed lesson snapshots, due items, and repairs to the selector in th
 - Initial supported language pair or pairs and their published course content.
 - Numeric level thresholds, curriculum promotion gates, and accepted evaluation thresholds.
 - Prompt, Realtime model, voice, and extraction model versions after transcript review and live-call transport validation.
-- Exact memory retention policy. An approved audio evidence policy and evaluator are required only before pronunciation-derived progress is enabled.
+- The approved beta memory policy is automatic saving of explicitly volunteered, low-sensitivity facts with a 90-day expiry. Memory safety evaluation and deletion controls are still required before enabling capture. An approved audio evidence policy and evaluator are required only before pronunciation-derived progress is enabled.
 
 These are release gates, not reasons to leave API shapes or module ownership undefined.

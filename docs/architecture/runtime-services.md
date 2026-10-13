@@ -74,8 +74,8 @@ The worker runs post-session extraction and deterministic learning updates. It a
 
 Failure rules:
 
-- Job payloads contain stable record identifiers and required version pins only.
-- Retries reuse a unique analysis run and pipeline version.
+- Job payloads contain the analysis run ID only.
+- Retries reuse that run ID.
 - The worker reloads authoritative inputs by identifier on every attempt.
 - Model candidates are disposable. Only one validated atomic commit becomes authoritative.
 - Poison jobs become visible through bounded retries, failure status, alerts, and a repair path.
@@ -172,12 +172,12 @@ The worker:
 1. Claims the unique analysis run.
 2. Loads the transcript only through the final watermark, the immutable plan, the published curriculum version, learner snapshot, and current consented audio metadata.
 3. Reads audio only when the consent is current, the asset is complete, and retention has not expired.
-4. Sends a bounded, versioned bundle to the extraction adapter.
+4. Sends the bounded finalized session bundle to the extraction adapter.
 5. Rejects schema drift, unknown turn references, unsupported claims, invalid memory, and evidence below the configured threshold.
 6. Runs deterministic progression and level rules without provider access.
 7. Commits accepted evidence, current item states, assessment, recap, memories, conversation hooks, immutable snapshot, and analysis status in one transaction.
 
-Replay with the same inputs and versions must produce the same domain decision. A newer analysis or policy version creates a new run and snapshot rather than editing history.
+Replay of a durable job uses its run ID and the same pinned session inputs. Deliberate reanalysis creates a new run and snapshot after the previous run finishes rather than editing history.
 
 ## Transaction boundaries
 

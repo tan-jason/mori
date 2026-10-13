@@ -47,6 +47,52 @@ function jsonResponse(payload: unknown, status = 200): Response {
 }
 
 describe("createBackendWebAppGateway", () => {
+  it("reads and manages captured learner-file entries with CSRF and versions", async () => {
+    const fetchMock = vi.fn<typeof window.fetch>();
+    const entry = {
+      id: "7ed83ec5-7f63-416c-aedb-cf30b9224170",
+      kind: "insight", text: "Interested in food.", origin: "capture", version: 1,
+      sourceSessionId: "f89df529-19ce-4022-9653-06f2adeb5e0c",
+      createdAt: "2026-10-07T12:00:00Z", updatedAt: "2026-10-07T12:00:00Z",
+      expiresAt: "2027-01-05T12:00:00Z",
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse({ entries: [entry], nextCursor: null }));
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ...entry, text: "Interested in cooking.", origin: "learner_edit", version: 2 }));
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const gateway = createBackendWebAppGateway({ apiOrigin: "http://api.test", fetch: fetchMock });
+    const profileId = learnerResponse.activeLanguageProfile.id;
+    await expect(gateway.getLearnerFile(profileId)).resolves.toMatchObject({ entries: [entry] });
+    await expect(gateway.editLearnerFileEntry({ languageProfileId: profileId, entryId: entry.id,
+      expectedVersion: 1, text: "Interested in cooking.", csrfToken: "csrf-token" }))
+      .resolves.toMatchObject({ version: 2 });
+    await gateway.deleteLearnerFileEntry({ languageProfileId: profileId, entryId: entry.id,
+      expectedVersion: 2, csrfToken: "csrf-token" });
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ method: "PATCH", headers: {
+      "If-Match": '"1"', "X-CSRF-Token": "csrf-token",
+    } });
+    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({ method: "DELETE", headers: {
+      "If-Match": '"2"', "X-CSRF-Token": "csrf-token",
+    } });
+  });
+
+  it("reads a validated recap instead of preview content", async () => {
+    const fetchMock = vi.fn<typeof window.fetch>();
+    fetchMock.mockResolvedValue(jsonResponse({
+      mode: "learning",
+      status: "ready",
+      summary: "You practiced an introduction.",
+      observations: [{ kind: "use", detail: "You described your day.", learnerTurnIds: ["61a971ee-4cd7-465c-a9f9-1cbfc4342cd4"] }],
+      corrections: [],
+    }));
+    const gateway = createBackendWebAppGateway({ apiOrigin: "http://api.test", fetch: fetchMock });
+    await expect(gateway.getRecap("session-123", learnerResponse.activeLanguageProfile.id)).resolves.toMatchObject({
+      id: "session-123",
+      status: "ready",
+      observations: [{ detail: "You described your day." }],
+    });
+    expect(fetchMock.mock.calls[0]?.[0]).toEqual(new URL("http://api.test/api/v1/sessions/session-123/recap"));
+  });
+
   it("creates a session with the selected profile and validates the saved plan", async () => {
     const fetchMock = vi.fn<typeof window.fetch>();
     const session = {

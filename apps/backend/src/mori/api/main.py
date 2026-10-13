@@ -27,6 +27,10 @@ from mori.modules.identity.ports import GoogleOIDCClient
 from mori.modules.identity.routes import router as identity_router
 from mori.modules.learner_profiles.application import LearnerProfileService
 from mori.modules.learner_profiles.routes import router as learner_profile_router
+from mori.modules.learning.application import AnalysisService
+from mori.modules.learning.extractor import OpenAIExtractor
+from mori.modules.learning.learner_file import LearnerFileService
+from mori.modules.learning.learner_file_routes import router as learner_file_router
 from mori.modules.sessions.application import SessionService
 from mori.modules.sessions.realtime_provider import OpenAIRealtimeProvider
 from mori.modules.sessions.routes import router as session_router
@@ -99,6 +103,7 @@ def create_app(
             service=session_service,
             provider=provider,
             api_key=api_key.get_secret_value(),
+            extractor_model=runtime_settings.openai_extractor_model,
         )
         if provider is not None and api_key is not None
         else None
@@ -133,6 +138,12 @@ def create_app(
         unit_of_work_factory=unit_of_work_factory, identity=service
     )
     app.state.session_service = session_service
+    app.state.analysis_service = AnalysisService(
+        session_maker=session_maker,
+        extractor=OpenAIExtractor(api_key.get_secret_value()) if api_key is not None else None,
+        fact_digest_key=runtime_settings.session_signing_key.get_secret_value(),
+    )
+    app.state.learner_file_service = LearnerFileService(session_maker)
     app.state.realtime_provider = provider
     app.state.realtime_supervisor = supervisor
 
@@ -140,10 +151,14 @@ def create_app(
         CORSMiddleware,
         allow_origins=[runtime_settings.web_origin],
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Accept", "Content-Type", "Idempotency-Key", "If-Match", "X-CSRF-Token"],
         expose_headers=[
-            "ETag", "Location", "X-Request-ID", "X-Call-Attempt-ID", "X-Call-Deadline-At"
+            "ETag",
+            "Location",
+            "X-Request-ID",
+            "X-Call-Attempt-ID",
+            "X-Call-Deadline-At",
         ],
     )
     allowed_hosts = [runtime_settings.api_host]
@@ -158,6 +173,7 @@ def create_app(
     app.include_router(identity_router, responses=error_contract)
     app.include_router(user_router, responses=error_contract)
     app.include_router(learner_profile_router, responses=error_contract)
+    app.include_router(learner_file_router, responses=error_contract)
     app.include_router(session_router, responses=error_contract)
 
     @app.get("/health", tags=["operations"])

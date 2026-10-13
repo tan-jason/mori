@@ -27,6 +27,7 @@ from mori.modules.learner_profiles.domain import PlanningProfile
 from mori.modules.learner_profiles.errors import OnboardingRequired, UnsupportedLanguagePair
 from mori.modules.learner_profiles.models import LearnerPreferenceModel
 from mori.modules.learner_profiles.persistence import SqlAlchemyLearnerProfileStore
+from mori.modules.learning.models import LearnerFileEntryModel
 from mori.modules.sessions.domain import normalize_requested_words, normalize_topic
 from mori.modules.sessions.errors import (
     IdempotencyConflict,
@@ -487,6 +488,40 @@ class SessionService:
                     for objective in objectives
                 ),
             )
+            now = datetime.now(UTC)
+            file_filter = (
+                LearnerFileEntryModel.language_profile_id == profile.id,
+                LearnerFileEntryModel.deleted_at.is_(None),
+                LearnerFileEntryModel.text.is_not(None),
+                or_(
+                    LearnerFileEntryModel.expires_at.is_(None),
+                    LearnerFileEntryModel.expires_at > now,
+                ),
+            )
+            insight_rows = (
+                await db.scalars(
+                    select(LearnerFileEntryModel)
+                    .where(*file_filter, LearnerFileEntryModel.kind == "insight")
+                    .order_by(
+                        LearnerFileEntryModel.updated_at.desc(), LearnerFileEntryModel.id.desc()
+                    )
+                    .limit(5)
+                )
+            ).all()
+            learning_rows = (
+                (
+                    await db.scalars(
+                        select(LearnerFileEntryModel)
+                        .where(*file_filter, LearnerFileEntryModel.kind == "learning")
+                        .order_by(
+                            LearnerFileEntryModel.updated_at.desc(), LearnerFileEntryModel.id.desc()
+                        )
+                        .limit(3)
+                    )
+                ).all()
+                if plan.mode == "learning"
+                else []
+            )
             prompt_profile = PromptProfile(
                 base_language_id=profile.base_language_id,
                 target_language_id=profile.target_language_id,
@@ -495,6 +530,9 @@ class SessionService:
                 learning_goal=preferences.learning_goal,
                 speaking_context=preferences.speaking_context,
                 learning_notes=preferences.learning_notes,
+                learner_file_context=tuple(
+                    (entry.kind, entry.text or "") for entry in (*insight_rows, *learning_rows)
+                ),
             )
             try:
                 return compile_realtime_config(
@@ -509,11 +547,11 @@ class SessionService:
         """Commit the call intent and prompt build before any provider request."""
         if not model_alias or not voice_alias or len(model_alias) > 128 or len(voice_alias) > 128:
             raise ValueError("model and voice aliases are required")
-        compiled = await self.load_realtime_config(user_id=user_id, session_id=session_id)
         async with self._session_maker() as db, db.begin():
             account = await SqlAlchemyUserStore(db).lock_for_session(user_id)
             if account is None or account.status != UserStatus.ACTIVE:
                 raise VoiceEntitlementUnavailable
+            compiled = await self.load_realtime_config(user_id=user_id, session_id=session_id)
             session = await db.scalar(
                 select(SessionModel)
                 .where(SessionModel.id == session_id, SessionModel.user_id == user_id)

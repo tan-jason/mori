@@ -1,6 +1,7 @@
 import type {
   DashboardSnapshot,
-  LearnerMemory,
+  LearnerFileEntry,
+  LearnerFilePage,
   SessionRecap,
 } from "../domain/learning";
 import type {
@@ -41,8 +42,22 @@ export interface WebAppGateway {
     languageProfileId: string,
     signal?: AbortSignal,
   ): Promise<SessionRecap>;
-  getMemories(
+  getLearnerFile(
     languageProfileId: string,
+    cursor?: string | null,
     signal?: AbortSignal,
-  ): Promise<LearnerMemory[]>;
+  ): Promise<LearnerFilePage>;
+  editLearnerFileEntry(command: {
+    languageProfileId: string;
+    entryId: string;
+    expectedVersion: number;
+    text: string;
+    csrfToken: string;
+  }, signal?: AbortSignal): Promise<LearnerFileEntry>;
+  deleteLearnerFileEntry(command: {
+    languageProfileId: string;
+    entryId: string;
+    expectedVersion: number;
+    csrfToken: string;
+  }, signal?: AbortSignal): Promise<void>;
 }

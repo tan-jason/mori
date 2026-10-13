@@ -14,6 +14,7 @@ from fastapi.responses import PlainTextResponse
 from mori.api.auth import session_token, verify_csrf
 from mori.api.contracts import mutation_headers
 from mori.config import Settings
+from mori.modules.learning.application import AnalysisService
 from mori.modules.sessions.application import LIVE_CALL_LIMIT_SECONDS, SessionService
 from mori.modules.sessions.errors import (
     InvalidIdempotencyKey,
@@ -28,8 +29,11 @@ from mori.modules.sessions.realtime_provider import (
 )
 from mori.modules.sessions.schemas import (
     CreateSessionRequest,
+    LearningRecapResponse,
+    PracticeRecapResponse,
     SessionResponse,
     VoiceAvailabilityResponse,
+    recap_response,
 )
 from mori.modules.sessions.supervisor import RealtimeSupervisor
 from mori.modules.user.application import UserService
@@ -83,6 +87,22 @@ async def get_session(request: Request, session_id: UUID) -> SessionResponse:
     return SessionResponse.from_view(
         await service.get(user_id=learner.user_id, session_id=session_id)
     )
+
+
+@router.get(
+    "/{session_id}/recap",
+    response_model=LearningRecapResponse | PracticeRecapResponse,
+    response_model_exclude_none=True,
+)
+async def get_recap(
+    request: Request, session_id: UUID
+) -> LearningRecapResponse | PracticeRecapResponse:
+    token = session_token(request)
+    learner = await cast(UserService, request.app.state.user_service).current_learner(
+        session_token=token
+    )
+    service = cast(AnalysisService, request.app.state.analysis_service)
+    return recap_response(await service.recap(user_id=learner.user_id, session_id=session_id))
 
 
 @router.post("/{session_id}/webrtc", response_class=PlainTextResponse)

@@ -3,6 +3,7 @@ import type { CurrentLearner, LanguagePair } from "../domain/identity";
 import type { PlannedSession } from "../domain/session";
 import type {
   LearningItem,
+  LearnerFileEntry,
   LearningTerm,
   RecapCorrection,
 } from "../domain/learning";
@@ -363,6 +364,19 @@ export function createMockWebAppGateway(
   const completedKeys = new Map<string, string>();
   const plannedSessions = new Map<string, PlannedSession>();
   const sessionKeys = new Map<string, { payload: string; id: string }>();
+  let learnerFile: LearnerFileEntry[] = [
+    {
+      id: "learning-preview", kind: "learning", text: "Used a time phrase to describe a recent event.",
+      origin: "capture", version: 1, sourceSessionId: "session-7b1",
+      createdAt: "2026-09-25T12:00:00Z", updatedAt: "2026-09-25T12:00:00Z", expiresAt: null,
+    },
+    {
+      id: "insight-preview", kind: "insight", text: "Interested in food.",
+      origin: "capture", version: 1, sourceSessionId: "session-7b1",
+      createdAt: "2026-09-25T12:00:00Z", updatedAt: "2026-09-25T12:00:00Z",
+      expiresAt: "2026-12-24T12:00:00Z",
+    },
+  ];
   const languagePairs: LanguagePair[] = TARGET_LANGUAGES.map((target) => ({
     baseLanguageId: BASE_LANGUAGE.id,
     targetLanguageId: target.id,
@@ -561,41 +575,43 @@ export function createMockWebAppGateway(
 
       return {
         id: sessionId,
-        title: "Weekend plans",
-        completedAtLabel: "August 29",
-        durationMinutes: 16,
+        mode: "learning",
+        status: "ready",
         summary:
           "You talked about visiting friends and planning a quiet Sunday. You kept the conversation moving with short follow-up questions.",
-        objectives: [
-          { label: "Describe a recent event", outcome: "demonstrated" },
-          { label: content.connectorObjective, outcome: "attempted" },
+        observations: [
+          { kind: "use", detail: "You described a recent event.", learnerTurnIds: [] },
+          { kind: "use", detail: content.connectorObjective, learnerTurnIds: [] },
         ],
-        corrections: [content.correction],
-        nextFocus: "Practice telling a short sequence of past events.",
+        corrections: [{
+          learnerTurnId: "preview-turn",
+          before: content.correction.before,
+          suggestion: content.correction.after,
+        }],
       };
     },
 
-    async getMemories(languageProfileId, signal) {
+    async getLearnerFile(languageProfileId, cursor, signal) {
       await pause(signal);
       getContent(languageProfileId);
+      return { entries: cursor ? [] : learnerFile, nextCursor: null };
+    },
 
-      return [
-        {
-          id: "memory-1",
-          label: "Enjoys cooking",
-          detail: "You mentioned that you like trying simple noodle recipes.",
-          sourceLabel: "Food and cooking session",
-          expiresLabel: "Expires September 24",
-        },
-        {
-          id: "memory-2",
-          label: "Learning for travel",
-          detail:
-            "You want to feel comfortable having everyday conversations while traveling.",
-          sourceLabel: "Introductory session",
-          expiresLabel: "Kept as a learning preference",
-        },
-      ];
+    async editLearnerFileEntry(command, signal) {
+      await pause(signal);
+      getContent(command.languageProfileId);
+      const entry = learnerFile.find((item) => item.id === command.entryId);
+      if (!entry || entry.version !== command.expectedVersion) throw new Error("Entry changed.");
+      const updated = { ...entry, text: command.text.trim(), origin: "learner_edit" as const,
+        version: entry.version + 1, updatedAt: new Date().toISOString() };
+      learnerFile = learnerFile.map((item) => item.id === entry.id ? updated : item);
+      return updated;
+    },
+
+    async deleteLearnerFileEntry(command, signal) {
+      await pause(signal);
+      getContent(command.languageProfileId);
+      learnerFile = learnerFile.filter((item) => item.id !== command.entryId);
     },
   };
 }

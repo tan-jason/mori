@@ -8,13 +8,10 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from mori.modules.access import models as access_models  # noqa: F401
-from mori.modules.access import usage_models as access_usage_models  # noqa: F401
-from mori.modules.identity import models as identity_models  # noqa: F401
-from mori.modules.learner_profiles import models as learner_profile_models  # noqa: F401
-from mori.modules.sessions import models as session_models  # noqa: F401
-from mori.modules.user import models as user_models  # noqa: F401
 from mori.persistence.base import Base
+from mori.persistence.model_registry import load_models
+
+load_models()
 
 config = context.config
 
@@ -28,6 +25,14 @@ if database_url:
 target_metadata = Base.metadata
 
 
+def include_object(
+    object: object, name: str | None, type_: str, reflected: bool, compare_to: object
+) -> bool:
+    return not (
+        type_ == "table" and reflected and name is not None and name.startswith("procrastinate_")
+    )
+
+
 def run_migrations_offline() -> None:
     context.configure(
         url=config.get_main_option("sqlalchemy.url"),
@@ -35,6 +40,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
+        include_object=include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -47,7 +53,12 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,
+            include_object=include_object,
+        )
         with context.begin_transaction():
             context.run_migrations()
 

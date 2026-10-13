@@ -273,6 +273,12 @@ export function SessionPage() {
             </div>
           )}
 
+          {planned && terminalStates.has(planned.state) && planned.state !== "setup_failed" && (
+            <Link className="text-link" to={`/recaps/${planned.id}`}>
+              View conversation recap →
+            </Link>
+          )}
+
           {!voiceEnabled && connectionState === "idle" && (
             <div className="foundation-notice" role="note">
               <strong>Voice practice is unavailable</strong>
