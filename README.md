@@ -62,4 +62,4 @@ The original PRD defines the broader MVP scope. The learning system PRD owns the
 
 ## Repository status
 
-The responsive webapp lives in `apps/web`. Its account flow is connected to the backend for Google sign-in, application sessions, learner profiles, preferences, and sign-out. Session recaps and the editable Learner File use the capture APIs when the analysis worker is configured. See each application README for local setup and integration notes.
+The responsive webapp scaffold lives in `apps/web`. Its account flow is connected to the backend for Google sign-in, application sessions, learner profiles, preferences, and sign-out. Learning content still uses a preview adapter while those APIs are built. See each application README for local setup and integration notes.

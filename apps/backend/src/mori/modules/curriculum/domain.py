@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,6 +18,100 @@ class CoursePairView:
 
 LEVEL_ORDER = {"beginner": 0, "intermediate": 1, "advanced": 2}
 SELECTION_RULE_VERSION = "selector-v1"
+
+Assistance = Literal["independent", "cued", "modelled", "unknown"]
+
+
+@dataclass(frozen=True, slots=True)
+class CapabilityEvidenceRequirement:
+    """Semantic evidence contract, not an enabled advancement rule."""
+
+    outcome: Literal["communicated"]
+    permitted_support: tuple[Assistance, ...]
+    productive_use: bool
+    varied_opportunities: bool
+    later_session_recall: bool
+
+    def __post_init__(self) -> None:
+        if (
+            self.outcome != "communicated"
+            or not isinstance(self.permitted_support, tuple)
+            or not self.permitted_support
+            or len(set(self.permitted_support)) != len(self.permitted_support)
+            or any(
+                support not in {"independent", "cued", "modelled", "unknown"}
+                for support in self.permitted_support
+            )
+            or any(
+                type(value) is not bool
+                for value in (
+                    self.productive_use,
+                    self.varied_opportunities,
+                    self.later_session_recall,
+                )
+            )
+        ):
+            raise ValueError("invalid capability evidence requirement")
+
+
+@dataclass(frozen=True, slots=True)
+class LessonCapability:
+    key: str
+    description: str
+    evidence: CapabilityEvidenceRequirement
+
+    def __post_init__(self) -> None:
+        if (
+            not self.key
+            or self.key != self.key.strip()
+            or not self.description.strip()
+            or not isinstance(self.evidence, CapabilityEvidenceRequirement)
+        ):
+            raise ValueError("invalid lesson capability")
+
+
+@dataclass(frozen=True, slots=True)
+class LessonDefinition:
+    """A published, immutable goal and ordered capability contract."""
+
+    lesson_key: str
+    content_version: str
+    level: Literal["beginner", "intermediate", "advanced"]
+    goal: str
+    capabilities: tuple[LessonCapability, ...]
+    suggested_encounters: int | None = None
+
+    def __post_init__(self) -> None:
+        if (
+            not self.lesson_key.strip()
+            or not self.content_version.strip()
+            or self.level not in LEVEL_ORDER
+            or not self.goal.strip()
+            or not isinstance(self.capabilities, tuple)
+            or not self.capabilities
+            or any(not isinstance(item, LessonCapability) for item in self.capabilities)
+            or len({item.key for item in self.capabilities}) != len(self.capabilities)
+            or (
+                self.suggested_encounters is not None
+                and (type(self.suggested_encounters) is not int or self.suggested_encounters < 1)
+            )
+        ):
+            raise ValueError("invalid lesson definition")
+
+    @property
+    def capability_keys(self) -> tuple[str, ...]:
+        return tuple(capability.key for capability in self.capabilities)
+
+
+@dataclass(frozen=True, slots=True)
+class NewItemAllowance:
+    """Maximum deliberate teaching targets, not required introductions."""
+
+    maximum: int = 2
+
+    def __post_init__(self) -> None:
+        if type(self.maximum) is not int or not 1 <= self.maximum <= 5:
+            raise ValueError("new-item allowance must be from one to five")
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +137,7 @@ class PublishedCourse:
     voice_policy_version: str
     items: tuple[CurriculumItem, ...]
     framework_version: str | None = None
+    lesson_definitions: tuple[LessonDefinition, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,11 +160,7 @@ class PlannedObjective:
 
 def validate_published_course(course: PublishedCourse) -> None:
     """Reject incomplete, cross-version, or cyclic publication data."""
-    if (
-        not course.items
-        or not course.language_policy_version
-        or not course.voice_policy_version
-    ):
+    if not course.items or not course.language_policy_version or not course.voice_policy_version:
         raise ValueError("published course is incomplete")
     if course.framework_version is None and {
         item.level for item in course.items if item.enabled and item.purpose == "diagnostic"
@@ -77,6 +169,15 @@ def validate_published_course(course: PublishedCourse) -> None:
     by_key = {item.key: item for item in course.items}
     if len(by_key) != len(course.items):
         raise ValueError("duplicate curriculum item key")
+    if not isinstance(course.lesson_definitions, tuple) or any(
+        not isinstance(definition, LessonDefinition) or definition.lesson_key not in by_key
+        for definition in course.lesson_definitions
+    ):
+        raise ValueError("lesson definition is outside the curriculum")
+    if len({(item.lesson_key, item.level) for item in course.lesson_definitions}) != len(
+        course.lesson_definitions
+    ):
+        raise ValueError("duplicate lesson definition")
     visiting: set[str] = set()
     visited: set[str] = set()
 

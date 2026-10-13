@@ -211,7 +211,9 @@ def test_explicit_onboarding_is_atomic_and_retry_safe(
     assert created.json()["onboarding"] == {"complete": True}
     assert created.json()["version"] == 2
     assert created.json()["activeLanguageProfile"]["learning"] == {
-        "mode": "learning", "startingChoice": "unsure", "provisionalLevel": "beginner",
+        "mode": "learning",
+        "startingChoice": "unsure",
+        "provisionalLevel": "beginner",
         "version": 1,
     }
     assert created.json()["preferences"]["interests"] == ["Cooking", "Travel"]
@@ -238,8 +240,9 @@ def test_explicit_onboarding_is_atomic_and_retry_safe(
     )
     assert duplicate.status_code == 409
     assert duplicate.json()["error"]["code"] == "profile_already_confirmed"
-    assert client.get("/api/v1/me").json()["activeLanguageProfile"]["learning"] == (
-        created.json()["activeLanguageProfile"]["learning"]
+    assert (
+        client.get("/api/v1/me").json()["activeLanguageProfile"]["learning"]
+        == (created.json()["activeLanguageProfile"]["learning"])
     )
     assert _scalar(database_url, "SELECT count(*) FROM language_profiles") == 1
 
@@ -249,13 +252,15 @@ def test_onboarding_rejects_unknown_language_and_supports_fluent(client: TestCli
     _complete_login(client, state)
     csrf = client.get("/api/v1/me").json()["csrfToken"]
     headers = {
-        "Origin": "http://web.test", "X-CSRF-Token": csrf,
+        "Origin": "http://web.test",
+        "X-CSRF-Token": csrf,
         "Idempotency-Key": "profile-setup-123",
     }
     unavailable = client.post(
         "/api/v1/language-profiles",
         json={
-            "baseLanguageId": "english", "targetLanguageId": "italian",
+            "baseLanguageId": "english",
+            "targetLanguageId": "italian",
             "startingChoice": "fluent",
             "learningGoal": "Have natural conversations",
             "speakingContext": "Casual conversations with friends",
@@ -269,7 +274,8 @@ def test_onboarding_rejects_unknown_language_and_supports_fluent(client: TestCli
     fluent = client.post(
         "/api/v1/language-profiles",
         json={
-            "baseLanguageId": "english", "targetLanguageId": "spanish",
+            "baseLanguageId": "english",
+            "targetLanguageId": "spanish",
             "startingChoice": "fluent",
             "learningGoal": "Have natural conversations",
             "speakingContext": "Casual conversations with friends",
@@ -279,7 +285,9 @@ def test_onboarding_rejects_unknown_language_and_supports_fluent(client: TestCli
     assert fluent.status_code == 201
     assert fluent.json()["activeLanguageProfile"]["targetLanguageId"] == "spanish"
     assert fluent.json()["activeLanguageProfile"]["learning"] == {
-        "mode": "practice", "startingChoice": "fluent", "provisionalLevel": None,
+        "mode": "practice",
+        "startingChoice": "fluent",
+        "provisionalLevel": None,
         "version": 1,
     }
 
@@ -290,10 +298,16 @@ def test_onboarding_requires_learning_intent(client: TestClient) -> None:
     csrf = client.get("/api/v1/me").json()["csrfToken"]
     response = client.post(
         "/api/v1/language-profiles",
-        json={"baseLanguageId": "english", "targetLanguageId": "mandarin",
-              "startingChoice": "beginner"},
-        headers={"Origin": "http://web.test", "X-CSRF-Token": csrf,
-                 "Idempotency-Key": "profile-setup-123"},
+        json={
+            "baseLanguageId": "english",
+            "targetLanguageId": "mandarin",
+            "startingChoice": "beginner",
+        },
+        headers={
+            "Origin": "http://web.test",
+            "X-CSRF-Token": csrf,
+            "Idempotency-Key": "profile-setup-123",
+        },
     )
     assert response.status_code == 422
     assert client.get("/api/v1/me").json()["activeLanguageProfile"] is None

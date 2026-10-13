@@ -1,6 +1,6 @@
 """Deterministic selection and published-course integrity."""
 
-from dataclasses import replace
+from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -10,10 +10,16 @@ from alembic.config import Config
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
-from mori.modules.curriculum.catalog import CodeCourseCatalog
-from mori.modules.curriculum.curriculum import FRAMEWORK_ID, LESSONS
+from mori.modules.curriculum.catalog import CodeCourseCatalog, published_lesson_definition
+from mori.modules.curriculum.curriculum import (
+    BEGINNER_LESSON_DEFINITIONS,
+    FRAMEWORK_ID,
+    LEGACY_FRAMEWORK_ID,
+    LESSONS,
+)
 from mori.modules.curriculum.domain import (
     CurriculumItem,
+    NewItemAllowance,
     PlanningContext,
     PublishedCourse,
     build_session_plan,
@@ -223,6 +229,61 @@ def test_shared_framework_selects_next_lesson_independent_of_language_level() ->
     )
     assert first[0].curriculum_item_key == LESSONS[0].key
     assert second[0].curriculum_item_key == LESSONS[1].key
+
+
+def test_lesson_contract_is_pinned_to_course_and_level() -> None:
+    catalog = CodeCourseCatalog()
+    legacy = catalog.course_version(
+        base_language_id="english", target_language_id="mandarin", version=LEGACY_FRAMEWORK_ID
+    )
+    assert legacy is not None
+    assert legacy.curriculum_version != TEST_COURSE.curriculum_version
+    assert legacy.items == TEST_COURSE.items
+    assert (
+        published_lesson_definition(course=legacy, lesson_key=LESSONS[0].key, level="beginner")
+        is None
+    )
+    assert (
+        published_lesson_definition(course=TEST_COURSE, lesson_key=LESSONS[0].key, level="advanced")
+        is None
+    )
+    definition = published_lesson_definition(
+        course=TEST_COURSE, lesson_key=LESSONS[0].key, level="beginner"
+    )
+    assert definition is BEGINNER_LESSON_DEFINITIONS[0]
+    assert definition.content_version == "beginner-conversation-v1"
+    assert definition.capability_keys == (
+        "express-detail",
+        "answer-related-question",
+        "return-turn",
+    )
+    assert definition.suggested_encounters == 4
+    with pytest.raises(FrozenInstanceError):
+        definition.goal = "A changed goal"  # type: ignore[misc]
+    with pytest.raises(FrozenInstanceError):
+        definition.capabilities[0].evidence.later_session_recall = False  # type: ignore[misc]
+
+
+def test_invalid_capability_and_publication_contracts_fail_closed() -> None:
+    definition = BEGINNER_LESSON_DEFINITIONS[0]
+    with pytest.raises(ValueError, match="lesson definition"):
+        replace(definition, capabilities=(definition.capabilities[0],) * 2)
+    with pytest.raises(ValueError, match="lesson definition"):
+        replace(definition, suggested_encounters=0)
+    with pytest.raises(ValueError, match="evidence requirement"):
+        replace(definition.capabilities[0].evidence, permitted_support=())
+    with pytest.raises(ValueError, match="outside the curriculum"):
+        validate_published_course(
+            replace(TEST_COURSE, lesson_definitions=(replace(definition, lesson_key="missing"),))
+        )
+    with pytest.raises(ValueError, match="duplicate lesson definition"):
+        validate_published_course(replace(TEST_COURSE, lesson_definitions=(definition,) * 2))
+
+
+@pytest.mark.parametrize("maximum", [0, 6, -1, True, 2.5])
+def test_invalid_new_item_allowance_is_rejected(maximum: int) -> None:
+    with pytest.raises(ValueError, match="one to five"):
+        NewItemAllowance(maximum)
 
 
 def test_shared_course_tables_are_removed(database_url: str) -> None:

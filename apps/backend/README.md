@@ -61,10 +61,12 @@ the learner's reservation has already been released.
 Mori's language-independent ten-lesson sequence and conversation guidance live in
 `src/mori/modules/curriculum/curriculum.py`. The catalog exposes one course for
 all supported target languages. The compiler uses one shared tutor prompt for
-all lessons and languages. The first Beginner lesson starts mostly in the
-learner's base language and guides a personal introduction without a fixed question
-script. Create a new session to try it. Plans pinned to the retired prompt engine
-cannot start a new call. Migration 0005 still converts historical course references
+all lessons and languages. Beginner treats basic greetings, name/origin introductions,
+and common short phrases as familiar. Lesson 1 builds beyond them into daily life,
+opening with a connected question before teaching or modelling an answer. New call
+builds use `mori-framework-v4`, including compatible v2/v3 saved plans; the build
+manifest records the resolved policy. Older unsupported engines remain history-only.
+Create a new session to try it. Migration 0005 still converts historical course references
 to stable item keys.
 
 ## Prerequisites
@@ -200,6 +202,16 @@ See [the identity contract](../../docs/architecture/identity-contract.md) for se
 callback, CSRF, cookie, and optimistic-concurrency behavior.
 
 ## Verification
+
+An opt-in evaluator checks generated openings and one follow-up with synthetic
+learner context using the configured Realtime model and API key. It makes provider
+requests without creating app sessions or consuming learner grants. These are
+transcript checks; audio output does not evaluate acoustic quality or browser delivery.
+
+```sh
+uv run --directory apps/backend python scripts/evaluate_tutor_openings.py --trials 2 --output ../../.codex/tutor-opening-evaluation.json
+uv run --directory apps/backend python scripts/evaluate_tutor_openings.py --trials 2 --modality audio --scenario returning_introduction --output ../../.codex/tutor-opening-audio-evaluation.json
+```
 
 Run the complete backend gate from the repository root:
 

@@ -32,7 +32,9 @@ from mori.modules.learning.evidence import (
     ReviewDecision,
 )
 from mori.modules.learning.queue import enqueue_capture
+from mori.modules.sessions import application as session_application
 from mori.modules.sessions.application import SessionService
+from mori.modules.sessions.prompt import BASE_POLICY_VERSION
 from mori.modules.sessions.realtime_provider import CreatedCall
 from mori.modules.sessions.supervisor import RealtimeSupervisor
 
@@ -327,8 +329,52 @@ async def test_future_prompt_keeps_insights_when_learnings_fill_the_file(
     assert "Practiced structure 0." not in prompt.instructions
     if starting_choice == "beginner":
         assert "Practiced structure 8." in prompt.instructions
+        assert "# Build on previous practice" in prompt.instructions
+        assert "Briefly welcome the learner back" in prompt.instructions
     else:
         assert "Practiced structure" not in prompt.instructions
+        assert "# Build on previous practice" not in prompt.instructions
+
+
+@pytest.mark.asyncio
+async def test_compatible_saved_plan_bootstraps_current_policy_with_captured_introduction(
+    client: TestClient, app: FastAPI, database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(session_application, "BASE_POLICY_VERSION", "mori-framework-v3")
+    session_id, _ = _planned(client)
+    me = client.get("/api/v1/me").json()
+    async with app.state.session_maker() as db, db.begin():
+        await db.execute(
+            text(
+                "INSERT INTO learner_file_entries "
+                "(id, language_profile_id, source_session_id, kind, text, origin, version, "
+                "created_at, updated_at) VALUES "
+                "(:id, :profile, :session, 'learning', :detail, 'learner_edit', 1, :now, :now)"
+            ),
+            {
+                "id": uuid4(),
+                "profile": UUID(me["activeLanguageProfile"]["id"]),
+                "session": session_id,
+                "now": datetime.now(UTC),
+                "detail": "Introduced himself as Jason using 我叫 and described work using 我是.",
+            },
+        )
+    prepared = await app.state.session_service.prepare_call(
+        user_id=UUID(me["user"]["id"]),
+        session_id=session_id,
+        model_alias="test-realtime",
+        voice_alias="test-voice",
+    )
+    assert "Introduced himself as Jason" in prepared.instructions
+    assert "rather than quizzing personal facts" in prepared.instructions
+    assert "Ask the opening question and wait for the learner's answer" in prepared.instructions
+    assert "Assume no target-language vocabulary" not in prepared.instructions
+    assert _sql(database_url, "SELECT base_policy_version FROM session_plans") == [
+        ("mori-framework-v3",)
+    ]
+    assert _sql(database_url, "SELECT base_policy_version FROM session_prompt_builds") == [
+        (BASE_POLICY_VERSION,)
+    ]
 
 
 @pytest.mark.asyncio
@@ -625,6 +671,7 @@ async def test_webapp_call_consumes_once_and_supervisor_finishes(
         session_id=UUID(repeated.json()["id"]),
     )
     assert "I practiced a greeting." in prompt.instructions
+    assert "# Build on previous practice" in prompt.instructions
     deleted = client.delete(entry_path, headers={**headers, "If-Match": '"2"'})
     assert deleted.status_code == 204
     assert client.delete(entry_path, headers={**headers, "If-Match": '"2"'}).status_code == 204
@@ -634,6 +681,7 @@ async def test_webapp_call_consumes_once_and_supervisor_finishes(
         session_id=UUID(repeated.json()["id"]),
     )
     assert "I practiced a greeting." not in prompt_after_delete.instructions
+    assert "# Build on previous practice" not in prompt_after_delete.instructions
     assert sorted(_sql(database_url, "SELECT state FROM usage_reservations")) == [
         ("consumed",),
         ("reserved",),

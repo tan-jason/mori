@@ -4,9 +4,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from mori.modules.curriculum.curriculum import FRAMEWORK_ID, FRAMEWORK_ITEMS
+from mori.modules.curriculum.curriculum import (
+    BEGINNER_LESSON_DEFINITIONS,
+    FRAMEWORK_ID,
+    FRAMEWORK_ITEMS,
+    LEGACY_FRAMEWORK_ID,
+)
 from mori.modules.curriculum.domain import (
     CoursePairView,
+    LessonDefinition,
     PublishedCourse,
     validate_published_course,
 )
@@ -38,9 +44,7 @@ TRANSCRIPT_RULE = EvidenceRule(
 )
 
 
-EVIDENCE_RULES: dict[str, EvidenceRule] = {
-    item.key: TRANSCRIPT_RULE for item in FRAMEWORK_ITEMS
-}
+EVIDENCE_RULES: dict[str, EvidenceRule] = {item.key: TRANSCRIPT_RULE for item in FRAMEWORK_ITEMS}
 
 _TARGET_LANGUAGES = (
     ("mandarin", "Mandarin", "中文"),
@@ -60,7 +64,32 @@ MORI_COURSE = PublishedCourse(
     voice_policy_version="mori-voice-v1",
     items=FRAMEWORK_ITEMS,
     framework_version=FRAMEWORK_ID,
+    lesson_definitions=BEGINNER_LESSON_DEFINITIONS,
 )
+LEGACY_MORI_COURSE = PublishedCourse(
+    curriculum_version=LEGACY_FRAMEWORK_ID,
+    language_policy_version="mori-language-v1",
+    voice_policy_version="mori-voice-v1",
+    items=FRAMEWORK_ITEMS,
+    framework_version=LEGACY_FRAMEWORK_ID,
+)
+
+
+def published_lesson_definition(
+    *,
+    course: PublishedCourse,
+    lesson_key: str,
+    level: str,
+) -> LessonDefinition | None:
+    """Resolve the definition pinned by a published course, never latest content."""
+    return next(
+        (
+            definition
+            for definition in course.lesson_definitions
+            if definition.lesson_key == lesson_key and definition.level == level
+        ),
+        None,
+    )
 
 
 def supported_languages(*, base_language_id: str, target_language_id: str) -> bool:
@@ -101,10 +130,18 @@ class CodeCourseCatalog:
         if supported_languages(
             base_language_id=base_language_id, target_language_id=target_language_id
         ):
-            return MORI_COURSE if version == MORI_COURSE.curriculum_version else None
+            return next(
+                (
+                    course
+                    for course in (MORI_COURSE, LEGACY_MORI_COURSE)
+                    if course.curriculum_version == version
+                ),
+                None,
+            )
         return None
 
 
 validate_published_course(MORI_COURSE)
+validate_published_course(LEGACY_MORI_COURSE)
 if set(EVIDENCE_RULES) != {item.key for item in FRAMEWORK_ITEMS}:
     raise ValueError("course evidence rules do not match framework lessons")

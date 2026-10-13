@@ -23,6 +23,7 @@ from mori.modules.learning.queue import enqueue_capture
 from mori.modules.sessions.application import UNCERTAIN_CALL_WINDOW, SessionService
 from mori.modules.sessions.models import (
     SessionCallAttemptModel,
+    SessionControlModel,
     SessionModel,
     SessionPlanModel,
     SessionTurnModel,
@@ -31,6 +32,14 @@ from mori.modules.sessions.realtime_provider import AmbiguousProviderFailure, Op
 
 logger = structlog.get_logger(__name__)
 _LEASE = timedelta(seconds=6)
+_WRAP_UP_WINDOW = timedelta(seconds=90)
+_CONTROL_RETRY = timedelta(seconds=5)
+_MAX_CONTROL_ATTEMPTS = 12
+_WRAP_UP_INSTRUCTIONS = (
+    "This session is nearing its time limit. Stop introducing new material. "
+    "Finish the current exchange, then briefly recap what was practiced and close warmly. "
+    "Let the learner finish speaking and use your next normal turn."
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,16 +225,18 @@ class RealtimeSupervisor:
             self._watchers.pop(attempt_id, None)
 
     async def _renew(self, attempt_id: UUID) -> _Call | None:
-        now = datetime.now(UTC)
         async with self._session_maker() as db, db.begin():
             attempt = await db.scalar(
                 select(SessionCallAttemptModel)
                 .where(SessionCallAttemptModel.id == attempt_id)
                 .with_for_update()
             )
+            now = datetime.now(UTC)
             if (
                 attempt is None
                 or attempt.lease_owner != self._owner
+                or attempt.lease_until is None
+                or attempt.lease_until <= now
                 or attempt.state not in {"awaiting_client", "active", "ending"}
                 or attempt.provider_call_id is None
                 or attempt.hard_deadline_at is None
@@ -255,6 +266,7 @@ class RealtimeSupervisor:
 
     async def _watch(self, attempt_id: UUID) -> None:
         socket: ClientConnection | None = None
+        attached = False
         loss_started = monotonic()
         try:
             while True:
@@ -308,6 +320,7 @@ class RealtimeSupervisor:
                             close_timeout=1,
                         )
                         await self._mark_sideband(attempt_id, ready=True)
+                        attached = True
                         loss_started = monotonic()
                     except Exception:
                         if socket is not None:
@@ -318,6 +331,8 @@ class RealtimeSupervisor:
                 else:
                     await self._mark_sideband(attempt_id, ready=True)
                 try:
+                    await self._wrap_up(attempt_id, socket, reattached=attached)
+                    attached = False
                     raw = await asyncio.wait_for(socket.recv(), timeout=1)
                 except TimeoutError:
                     continue
@@ -340,6 +355,8 @@ class RealtimeSupervisor:
         except json.JSONDecodeError:
             return
         if not isinstance(event, dict):
+            return
+        if await self._control_event(attempt_id, event):
             return
         kind = event.get("type")
         if kind in {"conversation.item.added", "response.output_item.added"}:
@@ -364,6 +381,181 @@ class RealtimeSupervisor:
             await self._service.record_turn(
                 attempt_id=attempt_id, provider_item_id=item_id, role=role, text=transcript
             )
+
+    def _owns_live_call(self, attempt: SessionCallAttemptModel | None, now: datetime) -> bool:
+        return bool(
+            attempt is not None
+            and attempt.lease_owner == self._owner
+            and attempt.lease_until is not None
+            and attempt.lease_until > now
+            and attempt.state == "active"
+            and attempt.end_requested_at is None
+            and attempt.hard_deadline_at is not None
+            and attempt.hard_deadline_at > now
+        )
+
+    async def _wrap_up(
+        self, attempt_id: UUID, socket: ClientConnection, *, reattached: bool
+    ) -> None:
+        async with self._session_maker() as db, db.begin():
+            attempt = await db.scalar(
+                select(SessionCallAttemptModel)
+                .where(SessionCallAttemptModel.id == attempt_id)
+                .with_for_update()
+            )
+            now = datetime.now(UTC)
+            if not self._owns_live_call(attempt, now):
+                return
+            assert attempt is not None and attempt.hard_deadline_at is not None
+            if attempt.hard_deadline_at - now > _WRAP_UP_WINDOW:
+                return
+            control = await db.get(SessionControlModel, attempt_id)
+            if control is None:
+                control = SessionControlModel(
+                    call_attempt_id=attempt_id,
+                    provider_item_id=f"item_wrap_{attempt_id.hex}",
+                    instructions=_WRAP_UP_INSTRUCTIONS,
+                    state="pending",
+                    attempt_count=0,
+                    created_at=now,
+                )
+                db.add(control)
+            if control.state in {"acknowledged", "failed"}:
+                return
+            if control.attempt_count >= _MAX_CONTROL_ATTEMPTS:
+                control.state = "failed"
+                control.error_code = "retry_budget_exhausted"
+                await logger.awarning("realtime_wrap_up_unconfirmed", attempt_id=str(attempt_id))
+                return
+            if (
+                not reattached
+                and control.last_attempt_at is not None
+                and now - control.last_attempt_at < _CONTROL_RETRY
+            ):
+                return
+            # A committed intent can outlive a socket write or process. Resolve it by
+            # retrieval before recreating; a successful write is not an acknowledgment.
+            request_kind = (
+                "retrieve"
+                if control.state == "uncertain"
+                or (reattached and control.last_attempt_at is not None)
+                else "create"
+            )
+            event_id = f"event_{uuid4().hex}"
+            event: dict[str, object] = {
+                "type": f"conversation.item.{request_kind}",
+                "event_id": event_id,
+            }
+            if request_kind == "retrieve":
+                event["item_id"] = control.provider_item_id
+            else:
+                event["item"] = {
+                    "id": control.provider_item_id,
+                    "type": "message",
+                    "role": "system",
+                    "content": [{"type": "input_text", "text": control.instructions}],
+                }
+            control.state = "uncertain"
+            control.request_kind = request_kind
+            control.request_event_id = event_id
+            control.last_attempt_at = now
+            control.attempt_count += 1
+        # Fence the external write with the attempt lock and a bounded send. A new
+        # lease owner cannot send concurrently while this transaction holds the lock.
+        async with self._session_maker() as db, db.begin():
+            attempt = await db.scalar(
+                select(SessionCallAttemptModel)
+                .where(SessionCallAttemptModel.id == attempt_id)
+                .with_for_update()
+            )
+            control = await db.get(SessionControlModel, attempt_id)
+            if (
+                not self._owns_live_call(attempt, datetime.now(UTC))
+                or control is None
+                or control.state != "uncertain"
+                or control.request_event_id != event_id
+            ):
+                return
+            try:
+                await asyncio.wait_for(socket.send(json.dumps(event)), timeout=1)
+            except TimeoutError as exc:
+                # The watch loop treats a receive timeout as idle. A timed-out
+                # send needs a fresh socket and retrieval of the committed intent.
+                raise ConnectionError("wrap-up send timed out") from exc
+
+    async def _control_event(self, attempt_id: UUID, event: dict[str, object]) -> bool:
+        kind = event.get("type")
+        if kind not in {
+            "conversation.item.added",
+            "conversation.item.done",
+            "conversation.item.retrieved",
+            "response.output_item.added",
+            "conversation.item.input_audio_transcription.completed",
+            "response.output_audio_transcript.done",
+            "error",
+        }:
+            return False
+        async with self._session_maker() as db, db.begin():
+            attempt = await db.scalar(
+                select(SessionCallAttemptModel)
+                .where(SessionCallAttemptModel.id == attempt_id)
+                .with_for_update()
+            )
+            control = await db.get(SessionControlModel, attempt_id)
+            if control is None:
+                return False
+            item = event.get("item")
+            matching_item = (
+                isinstance(item, dict) and item.get("id") == control.provider_item_id
+            ) or event.get("item_id") == control.provider_item_id
+            now = datetime.now(UTC)
+            # Drain acknowledgments while ending, but never let an expired owner
+            # modify the new owner's delivery state.
+            if (
+                attempt is None
+                or attempt.lease_owner != self._owner
+                or attempt.lease_until is None
+                or attempt.lease_until <= now
+            ):
+                return matching_item
+            if control.state == "acknowledged":
+                return matching_item
+            if (
+                kind
+                in {
+                    "conversation.item.added",
+                    "conversation.item.done",
+                    "conversation.item.retrieved",
+                }
+                and isinstance(item, dict)
+                and matching_item
+            ):
+                if (
+                    item.get("type") == "message"
+                    and item.get("role") == "system"
+                    and item.get("content")
+                    == [{"type": "input_text", "text": control.instructions}]
+                ):
+                    control.state = "acknowledged"
+                    control.acknowledged_at = now
+                    control.error_code = None
+                else:
+                    control.state = "failed"
+                    control.error_code = "control_item_mismatch"
+                return True
+            error = event.get("error")
+            if not isinstance(error, dict) or error.get("event_id") != control.request_event_id:
+                return matching_item
+            code = error.get("code")
+            control.error_code = code[:160] if isinstance(code, str) else "unknown_error"
+            if control.request_kind == "retrieve" and code in {
+                "item_not_found",
+                "conversation_item_not_found",
+            }:
+                control.state = "pending"
+            # Unrecognized errors never establish absence. Keep retrieving instead
+            # of claiming exactly-once delivery or blindly recreating the message.
+            return True
 
     async def _finish(self, attempt_id: UUID, *, reason: str) -> None:
         async with self._session_maker() as db, db.begin():

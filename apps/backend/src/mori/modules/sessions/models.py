@@ -172,6 +172,41 @@ class SessionCallAttemptModel(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class SessionControlModel(Base):
+    """Delivery evidence for a wrap-up instruction on one provider call attempt."""
+
+    __tablename__ = "session_controls"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN ('pending', 'uncertain', 'acknowledged', 'failed')",
+            name="ck_session_control_state",
+        ),
+        CheckConstraint(
+            "request_kind IS NULL OR request_kind IN ('create', 'retrieve')",
+            name="ck_session_control_request_kind",
+        ),
+        CheckConstraint(
+            "(state = 'acknowledged') = (acknowledged_at IS NOT NULL)",
+            name="ck_session_control_acknowledged",
+        ),
+        CheckConstraint("attempt_count >= 0", name="ck_session_control_attempt_count"),
+    )
+
+    call_attempt_id: Mapped[UUID] = mapped_column(
+        ForeignKey("session_call_attempts.id", ondelete="CASCADE"), primary_key=True
+    )
+    provider_item_id: Mapped[str] = mapped_column(String(160), nullable=False, unique=True)
+    instructions: Mapped[str] = mapped_column(Text, nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    request_event_id: Mapped[str | None] = mapped_column(String(160))
+    request_kind: Mapped[str | None] = mapped_column(String(16))
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error_code: Mapped[str | None] = mapped_column(String(160))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class SessionTurnModel(Base):
     __tablename__ = "session_turns"
     __table_args__ = (
