@@ -14,6 +14,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import DBAPIError
 
 import mori.modules.sessions.application as session_application
+from mori.modules.curriculum.curriculum import BEGINNER_LESSON_DEFINITIONS, FRAMEWORK_ID
 from mori.modules.learner_profiles.domain import (
     CorrectionPreference,
     CreateProfile,
@@ -26,6 +27,7 @@ from mori.modules.sessions.errors import (
     SessionNotFound,
     VoiceEntitlementUnavailable,
 )
+from mori.modules.sessions.prompt import BASE_POLICY_VERSION
 
 
 def _sign_in(client: TestClient, choice: str = "beginner") -> tuple[str, str]:
@@ -141,10 +143,19 @@ def test_plan_pins_curriculum_and_rejects_changed_setup(
         "profile_version, preference_version, settings_version, "
         "(setup_digest = (SELECT request_digest FROM sessions LIMIT 1)) "
         "FROM session_plans",
-    ) == [(
-        "learning_plan_v1", "mori-framework", "mori-framework-v2", "selector-v1",
-        "learning", 1, 2, 1, True,
-    )]
+    ) == [
+        (
+            "learning_plan_v1",
+            FRAMEWORK_ID,
+            BASE_POLICY_VERSION,
+            "selector-v1",
+            "learning",
+            1,
+            2,
+            1,
+            True,
+        )
+    ]
     assert _rows(database_url, "SELECT kind FROM session_plan_objectives") == [("graded",)]
     assert _rows(database_url, "SELECT requested_words FROM session_plans") == [(["market"],)]
 
@@ -187,11 +198,11 @@ async def test_saved_plan_compiles_and_stale_preferences_block_connection(
 
     compiled = await service.load_realtime_config(user_id=user_id, session_id=session_id)
     assert compiled.pair_policy_version == "mori-language-v1"
-    assert compiled.base_policy_version == "mori-framework-v2"
+    assert compiled.base_policy_version == BASE_POLICY_VERSION
     assert compiled.level_policy_version == "beginner"
     assert "# Lesson\n" in compiled.instructions
     assert "Start mostly in the base language" in compiled.instructions
-    assert "where they live" in compiled.instructions
+    assert BEGINNER_LESSON_DEFINITIONS[0].goal in compiled.instructions
     assert '"learningGoal":"Talk with family"' in compiled.instructions
 
     updated = client.patch(

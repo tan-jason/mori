@@ -4,9 +4,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from mori.modules.curriculum.domain import CurriculumItem
+from mori.modules.curriculum.domain import (
+    CapabilityEvidenceRequirement,
+    CurriculumItem,
+    LessonCapability,
+    LessonDefinition,
+)
 
-FRAMEWORK_ID = "mori-framework"
+LEGACY_FRAMEWORK_ID = "mori-framework"
+FRAMEWORK_ID = "mori-framework-v2"
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,14 +28,14 @@ LESSONS = (
         1,
         "lesson-01-introduction",
         "Introduce yourself and share a few details about your life.",
-        "Guide the learner toward a simple introduction that reflects their real life. "
-        "Invite a preferred name or another comfortable starting detail, then follow "
-        "what they share into where they live, whether they work, study, or do "
-        "something else, and what interests them. These are possible directions, "
+        "Guide the learner toward using basic vocabulary and phrases to have a "
+        "conversation about something familiar to them, and easy to converse about. "
+        "Start with a greeting, lesson goal and a little bit about themself to get "
+        "comfortable. These are possible directions, "
         "not required disclosures or a sequence of questions. When useful, help "
         "them say that they are learning the target language or ask what something "
         "means in the target language. Reuse details they share and help them "
-        "combine short phrases into a personal introduction.",
+        "combine familiar phrases with new details into a fuller account of their life.",
     ),
     Lesson(
         2,
@@ -123,4 +129,82 @@ FRAMEWORK_ITEMS = tuple(
         conversation_guidance=lesson.guidance,
     )
     for lesson in LESSONS
+)
+
+# These contracts describe the evidence to collect. Advancement remains disabled
+# until a versioned reducer and its qualifying thresholds are implemented.
+_PRODUCTIVE_EVIDENCE = CapabilityEvidenceRequirement(
+    outcome="communicated",
+    permitted_support=("independent",),
+    productive_use=True,
+    varied_opportunities=True,
+    later_session_recall=True,
+)
+_RESPONSE_EVIDENCE = CapabilityEvidenceRequirement(
+    outcome="communicated",
+    permitted_support=("independent",),
+    productive_use=False,
+    varied_opportunities=True,
+    later_session_recall=True,
+)
+
+BEGINNER_LESSON_DEFINITIONS = (
+    LessonDefinition(
+        lesson_key=LESSONS[0].key,
+        content_version="beginner-conversation-v1",
+        level="beginner",
+        goal=(
+            "Share a familiar detail, answer a related question, and contribute a "
+            "question or reaction that returns the turn."
+        ),
+        capabilities=(
+            LessonCapability(
+                "express-detail",
+                "Express one meaningful detail using reusable language.",
+                _PRODUCTIVE_EVIDENCE,
+            ),
+            LessonCapability(
+                "answer-related-question",
+                "Understand and answer a related question.",
+                _RESPONSE_EVIDENCE,
+            ),
+            LessonCapability(
+                "return-turn",
+                "Contribute a reciprocal question or reaction that returns the turn.",
+                _PRODUCTIVE_EVIDENCE,
+            ),
+        ),
+        suggested_encounters=4,
+    ),
+    LessonDefinition(
+        lesson_key=LESSONS[1].key,
+        content_version="beginner-conversation-v1",
+        level="beginner",
+        goal=(
+            "Connect details about a familiar subject and help develop the thread "
+            "through a relevant follow-up."
+        ),
+        capabilities=(
+            LessonCapability(
+                "add-connected-detail",
+                "Reuse familiar language to add a connected detail.",
+                _PRODUCTIVE_EVIDENCE,
+            ),
+            LessonCapability(
+                "connect-ideas",
+                "Connect ideas into a meaningful contribution.",
+                _PRODUCTIVE_EVIDENCE,
+            ),
+            LessonCapability(
+                "respond-to-follow-up",
+                "Respond to a fresh, relevant follow-up.",
+                _RESPONSE_EVIDENCE,
+            ),
+            LessonCapability(
+                "develop-thread",
+                "Ask a relevant follow-up or volunteer another contribution.",
+                _PRODUCTIVE_EVIDENCE,
+            ),
+        ),
+    ),
 )
