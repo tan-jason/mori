@@ -28,9 +28,12 @@ from mori.modules.identity.routes import router as identity_router
 from mori.modules.learner_profiles.application import LearnerProfileService
 from mori.modules.learner_profiles.routes import router as learner_profile_router
 from mori.modules.learning.application import AnalysisService
+from mori.modules.learning.decisions import OpenAIDecisionsReviewer
 from mori.modules.learning.extractor import OpenAIExtractor
 from mori.modules.learning.learner_file import LearnerFileService
 from mori.modules.learning.learner_file_routes import router as learner_file_router
+from mori.modules.learning.user_insight_routes import router as user_insight_router
+from mori.modules.learning.user_insights import UserInsightService
 from mori.modules.sessions.application import SessionService
 from mori.modules.sessions.realtime_provider import OpenAIRealtimeProvider
 from mori.modules.sessions.routes import router as session_router
@@ -89,6 +92,7 @@ def create_app(
     session_service = SessionService(
         session_maker=session_maker,
         allow_repeated_intro_sessions=runtime_settings.environment != Environment.PRODUCTION,
+        lesson_advancement_probability_threshold=runtime_settings.lesson_advancement_probability_threshold,
     )
     api_key = runtime_settings.openai_api_key
     safety_secret = runtime_settings.openai_safety_id_secret
@@ -142,8 +146,19 @@ def create_app(
         session_maker=session_maker,
         extractor=OpenAIExtractor(api_key.get_secret_value()) if api_key is not None else None,
         fact_digest_key=runtime_settings.session_signing_key.get_secret_value(),
+        decisions_reviewer=(
+            OpenAIDecisionsReviewer(
+                api_key.get_secret_value(),
+                model=runtime_settings.openai_decisions_model,
+                probability_threshold=runtime_settings.learning_evidence_probability_threshold,
+            )
+            if api_key is not None
+            else None
+        ),
+        evidence_probability_threshold=runtime_settings.learning_evidence_probability_threshold,
     )
     app.state.learner_file_service = LearnerFileService(session_maker)
+    app.state.user_insight_service = UserInsightService(session_maker)
     app.state.realtime_provider = provider
     app.state.realtime_supervisor = supervisor
 
@@ -174,6 +189,7 @@ def create_app(
     app.include_router(user_router, responses=error_contract)
     app.include_router(learner_profile_router, responses=error_contract)
     app.include_router(learner_file_router, responses=error_contract)
+    app.include_router(user_insight_router, responses=error_contract)
     app.include_router(session_router, responses=error_contract)
 
     @app.get("/health", tags=["operations"])

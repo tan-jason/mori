@@ -229,6 +229,32 @@ class SessionTurnModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class SessionLearningPlanModel(Base):
+    """Immutable lesson-cycle selection pinned when a session is created."""
+
+    __tablename__ = "session_learning_plans"
+    __table_args__ = (
+        CheckConstraint("source_history_revision >= 0", name="ck_learning_plan_revision"),
+        CheckConstraint("new_item_maximum BETWEEN 1 AND 5", name="ck_learning_plan_allowance"),
+    )
+
+    session_id: Mapped[UUID] = mapped_column(
+        ForeignKey("session_plans.session_id", ondelete="CASCADE"), primary_key=True
+    )
+    language_profile_id: Mapped[UUID] = mapped_column(
+        ForeignKey("language_profiles.id", ondelete="CASCADE"), nullable=False
+    )
+    source_history_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    lesson_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    content_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    rubric_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    focus_capability_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    recall_items: Mapped[list[dict[str, object]]] = mapped_column(JSONB, nullable=False)
+    new_item_maximum: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class SessionPromptBuildModel(Base):
     __tablename__ = "session_prompt_builds"
 
@@ -245,4 +271,8 @@ class SessionPromptBuildModel(Base):
     model_alias: Mapped[str] = mapped_column(String(128), nullable=False)
     voice_alias: Mapped[str] = mapped_column(String(128), nullable=False)
     instructions_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    redacted_recall_item_ids: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, server_default="[]"
+    )
+    source_history_revision: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

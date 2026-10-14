@@ -5,7 +5,7 @@ import { useAppDependencies } from "../../app/app-dependencies";
 import { useLanguageProfile } from "../../app/use-language-profile";
 import { useLearnerSession } from "../../app/use-learner-session";
 import type { LearnerFileEntry, LearnerFilePage } from "../../domain/learning";
-import { useLearnerFile } from "./use-memories";
+import { useLearnerFile, useUserInsights } from "./use-memories";
 
 function LearnerFileCard({ entry }: { entry: LearnerFileEntry }) {
   const { gateway } = useAppDependencies();
@@ -16,9 +16,13 @@ function LearnerFileCard({ entry }: { entry: LearnerFileEntry }) {
   const [draft, setDraft] = useState(entry.text);
   const [validationError, setValidationError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const queryKey = ["learner-file", languageProfile.id];
+  const queryKey = entry.kind === "insight"
+    ? ["user-insights", learner.user.id]
+    : ["learner-file", languageProfile.id];
   const edit = useMutation({
-    mutationFn: (text: string) => gateway.editLearnerFileEntry({
+    mutationFn: (text: string) => entry.kind === "insight" ? gateway.editUserInsight({
+      entryId: entry.id, expectedVersion: entry.version, text, csrfToken: learner.csrfToken,
+    }) : gateway.editLearnerFileEntry({
       languageProfileId: languageProfile.id, entryId: entry.id,
       expectedVersion: entry.version, text, csrfToken: learner.csrfToken,
     }),
@@ -37,7 +41,9 @@ function LearnerFileCard({ entry }: { entry: LearnerFileEntry }) {
     onError: () => void queryClient.invalidateQueries({ queryKey }),
   });
   const remove = useMutation({
-    mutationFn: () => gateway.deleteLearnerFileEntry({
+    mutationFn: () => entry.kind === "insight" ? gateway.deleteUserInsight({
+      entryId: entry.id, expectedVersion: entry.version, csrfToken: learner.csrfToken,
+    }) : gateway.deleteLearnerFileEntry({
       languageProfileId: languageProfile.id, entryId: entry.id,
       expectedVersion: entry.version, csrfToken: learner.csrfToken,
     }),
@@ -121,10 +127,13 @@ function LearnerFileCard({ entry }: { entry: LearnerFileEntry }) {
 
 export function MemoriesPage() {
   const learnerFile = useLearnerFile();
+  const insights = useUserInsights();
+  const { targetLanguage } = useLanguageProfile();
 
   if (learnerFile.isPending) return <PageLoadingState />;
   if (learnerFile.isError) return <PageErrorState onRetry={() => void learnerFile.refetch()} />;
   const entries = learnerFile.data.pages.flatMap((page) => page.entries);
+  const insightEntries = insights.data?.pages.flatMap((page) => page.entries) ?? [];
 
   return (
     <div className="detail-page memories-page">
@@ -133,8 +142,8 @@ export function MemoriesPage() {
         <h1>Learner file</h1>
         <p className="detail-summary">
           Learnings describe the language you practiced and how it served your lesson goal.
-          Insights are details you shared about your interests or work that can help Mori
-          make future conversations more relevant. You can correct or delete either one.
+          Insights are useful details you shared that can help Mori make future conversations
+          more relevant, whichever language you practice. You can correct or delete either one.
         </p>
       </header>
 
@@ -142,13 +151,13 @@ export function MemoriesPage() {
         <div className="section-heading">
           <div>
             <p className="eyebrow">Captured after conversations</p>
-            <h2 id="learner-file-title">Your entries</h2>
+            <h2 id="learner-file-title">Your {targetLanguage.name} learnings</h2>
           </div>
           <span className="count-pill">{entries.length}</span>
         </div>
         {entries.length === 0 ? (
-          <div className="privacy-note"><strong>Nothing captured yet</strong>
-            <p>Learnings and insights from completed conversations will appear here.</p></div>
+          <div className="privacy-note"><strong>No learnings captured yet</strong>
+            <p>Language you practice in completed conversations will appear here.</p></div>
         ) : (
           <div className="memory-list">
             {entries.map((entry) => <LearnerFileCard key={entry.id} entry={entry} />)}
@@ -162,6 +171,40 @@ export function MemoriesPage() {
           </button>
         )}
         {learnerFile.isFetchNextPageError && <p role="alert">Older entries could not be loaded. Try again.</p>}
+      </section>
+
+      <section className="section-block" aria-labelledby="user-insights-title">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Across your languages</p>
+            <h2 id="user-insights-title">Your insights</h2>
+          </div>
+          {insights.isSuccess && <span className="count-pill">{insightEntries.length}</span>}
+        </div>
+        {insights.isPending ? (
+          <p role="status">Loading your insights...</p>
+        ) : insights.isError ? (
+          <div className="privacy-note">
+            <p role="alert">Your insights could not be loaded.</p>
+            <button className="button button-quiet" type="button"
+              onClick={() => void insights.refetch()}>Try again</button>
+          </div>
+        ) : insightEntries.length === 0 ? (
+          <div className="privacy-note"><strong>No insights captured yet</strong>
+            <p>Useful details from your conversations will appear here.</p></div>
+        ) : (
+          <div className="memory-list">
+            {insightEntries.map((entry) => <LearnerFileCard key={entry.id} entry={entry} />)}
+          </div>
+        )}
+        {insights.hasNextPage && (
+          <button className="button button-quiet learner-file-more" type="button"
+            disabled={insights.isFetchingNextPage}
+            onClick={() => void insights.fetchNextPage()}>
+            {insights.isFetchingNextPage ? "Loading..." : "Load older insights"}
+          </button>
+        )}
+        {insights.isFetchNextPageError && <p role="alert">Older insights could not be loaded. Try again.</p>}
       </section>
 
       <aside className="privacy-note">

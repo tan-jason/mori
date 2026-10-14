@@ -5,9 +5,10 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy import and_, func, or_, select, update
@@ -15,19 +16,28 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from mori.modules.access.application import AccessCommands, IntroGrant
 from mori.modules.access.usage_models import UsageReservationModel
-from mori.modules.curriculum.catalog import CodeCourseCatalog
+from mori.modules.curriculum.catalog import CodeCourseCatalog, published_lesson_definition
 from mori.modules.curriculum.domain import (
     SELECTION_RULE_VERSION,
+    Assistance,
+    NewItemAllowance,
     PlannedObjective,
     PlanningContext,
     PublishedCourse,
     build_session_plan,
 )
+from mori.modules.curriculum.planning import (
+    PlannedRecall,
+    SessionLearningPlan,
+    plan_learning_session,
+)
 from mori.modules.learner_profiles.domain import PlanningProfile
 from mori.modules.learner_profiles.errors import OnboardingRequired, UnsupportedLanguagePair
 from mori.modules.learner_profiles.models import LearnerPreferenceModel
 from mori.modules.learner_profiles.persistence import SqlAlchemyLearnerProfileStore
-from mori.modules.learning.models import LearnerFileEntryModel
+from mori.modules.learning.models import LearnerFileEntryModel, ProfileLearningStateModel
+from mori.modules.learning.progress_store import eligible_item_ids, load_profile_progress
+from mori.modules.learning.user_insights import eligible_user_insights
 from mori.modules.sessions.domain import normalize_requested_words, normalize_topic
 from mori.modules.sessions.errors import (
     IdempotencyConflict,
@@ -42,6 +52,7 @@ from mori.modules.sessions.errors import (
 )
 from mori.modules.sessions.models import (
     SessionCallAttemptModel,
+    SessionLearningPlanModel,
     SessionModel,
     SessionPlanModel,
     SessionPlanObjectiveModel,
@@ -79,6 +90,9 @@ class SessionView:
     objectives: tuple[str, ...]
     mode: str
     created_at: datetime
+    lesson_goal: str | None = None
+    session_focus: str | None = None
+    new_item_maximum: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,6 +145,7 @@ class _SelectedPlan:
     profile: PlanningProfile
     course: PublishedCourse
     objectives: tuple[PlannedObjective, ...]
+    learning_plan: SessionLearningPlan | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,9 +164,15 @@ class SessionService:
         *,
         session_maker: async_sessionmaker[AsyncSession],
         allow_repeated_intro_sessions: bool = False,
+        lesson_advancement_probability_threshold: float | None = None,
     ) -> None:
         self._session_maker = session_maker
         self._allow_repeated_intro_sessions = allow_repeated_intro_sessions
+        if lesson_advancement_probability_threshold is not None and not (
+            0 < lesson_advancement_probability_threshold <= 1
+        ):
+            raise ValueError("invalid advancement probability threshold")
+        self._lesson_advancement_probability_threshold = lesson_advancement_probability_threshold
 
     async def create(
         self,
@@ -212,9 +233,8 @@ class SessionService:
             raise IdempotencyConflict
         return await self._view(db, existing)
 
-    @staticmethod
     async def _select_plan(
-        db: AsyncSession, *, user_id: UUID, setup: _SessionSetup
+        self, db: AsyncSession, *, user_id: UUID, setup: _SessionSetup
     ) -> _SelectedPlan:
         profile = await SqlAlchemyLearnerProfileStore(db).for_planning(
             user_id=user_id, profile_id=setup.profile_id
@@ -228,6 +248,20 @@ class SessionService:
         if course is None:
             raise UnsupportedLanguagePair
         try:
+            learning_plan = None
+            if (
+                profile.mode.value == "learning"
+                and profile.provisional_level is not None
+                and profile.provisional_level.value == "beginner"
+                and course.lesson_definitions
+                and all(d.rubric is not None for d in course.lesson_definitions)
+            ):
+                progress = await load_profile_progress(db, profile.id)
+                learning_plan = plan_learning_session(
+                    progress,
+                    course.lesson_definitions,
+                    probability_threshold=self._lesson_advancement_probability_threshold,
+                )
             objectives = build_session_plan(
                 PlanningContext(
                     mode=profile.mode.value,
@@ -239,9 +273,14 @@ class SessionService:
                 ),
                 course,
             )
+            if learning_plan is not None:
+                item = next(i for i in course.items if i.key == learning_plan.lesson_key)
+                objectives = (PlannedObjective(item.label, "graded", item.key),)
         except ValueError as error:
             raise PlanUnavailable from error
-        return _SelectedPlan(profile=profile, course=course, objectives=objectives)
+        return _SelectedPlan(
+            profile=profile, course=course, objectives=objectives, learning_plan=learning_plan
+        )
 
     async def _claim_grant(self, db: AsyncSession, *, user_id: UUID, now: datetime) -> IntroGrant:
         grant = await AccessCommands.claim_intro_grant(
@@ -331,7 +370,7 @@ class SessionService:
         )
         db.add(session)
         await db.flush()
-        reservation_expires_at = await AccessCommands.reserve_intro(
+        await AccessCommands.reserve_intro(
             db, grant_id=grant.id, session_id=session.id, now=now, ttl=_RESERVATION_TTL
         )
         await self._transition(
@@ -369,21 +408,47 @@ class SessionService:
                     curriculum_item_key=objective.curriculum_item_key,
                 )
             )
+        if selected.learning_plan is not None:
+            await db.flush()
+            learning = selected.learning_plan
+            state = await db.get(ProfileLearningStateModel, profile.id)
+            if state is None:
+                state = ProfileLearningStateModel(
+                    language_profile_id=profile.id, history_revision=0, updated_at=now
+                )
+                db.add(state)
+            state.active_lesson_key = learning.lesson_key
+            db.add(
+                SessionLearningPlanModel(
+                    session_id=session.id,
+                    language_profile_id=profile.id,
+                    source_history_revision=learning.source_history_revision,
+                    policy_version=learning.policy_version,
+                    lesson_key=learning.lesson_key,
+                    content_version=learning.content_version,
+                    rubric_version=learning.rubric_version,
+                    focus_capability_key=learning.focus_capability_key,
+                    recall_items=[
+                        {
+                            "itemId": str(r.item_id),
+                            "form": r.form,
+                            "meaning": r.meaning,
+                            "kind": r.kind,
+                            "capabilityKeys": list(r.capability_keys),
+                            "assistance": r.assistance,
+                        }
+                        for r in learning.recalls
+                    ],
+                    new_item_maximum=learning.new_item_allowance.maximum,
+                    created_at=now,
+                )
+            )
         await self._transition(
             db, session.id, expected="reserved", version=2, target="planned", now=now
         )
-        return SessionView(
-            id=session.id,
-            state="planned",
-            row_version=3,
-            connected_limit_ms=grant.connected_limit_ms,
-            connected_ms=0,
-            reservation_expires_at=reservation_expires_at,
-            objective=objectives[0].label,
-            objectives=tuple(item.label for item in objectives),
-            mode=mode,
-            created_at=now,
-        )
+        await db.flush()
+        await db.refresh(session)
+        return await self._view(db, session)
 
     async def get(self, *, user_id: UUID, session_id: UUID) -> SessionView:
         async with self._session_maker() as db:
@@ -488,6 +553,41 @@ class SessionService:
                     for objective in objectives
                 ),
             )
+            saved_learning = await db.get(SessionLearningPlanModel, session_id)
+            learning = None
+            redacted: tuple[str, ...] = ()
+            if saved_learning is not None:
+                if saved_learning.language_profile_id != profile.id:
+                    raise SessionNotConnectable
+                recalls = tuple(
+                    PlannedRecall(
+                        UUID(str(row["itemId"])),
+                        str(row["form"]),
+                        str(row["meaning"]),
+                        str(row["kind"]),
+                        tuple(cast(list[str], row["capabilityKeys"])),
+                        cast(Assistance, row["assistance"]),
+                    )
+                    for row in saved_learning.recall_items
+                )
+                eligible = await eligible_item_ids(
+                    db, profile.id, tuple(r.item_id for r in recalls)
+                )
+                redacted = tuple(str(r.item_id) for r in recalls if r.item_id not in eligible)
+                learning = SessionLearningPlan(
+                    profile.id,
+                    saved_learning.source_history_revision,
+                    saved_learning.policy_version,
+                    saved_learning.lesson_key,
+                    saved_learning.content_version,
+                    saved_learning.rubric_version,
+                    saved_learning.focus_capability_key,
+                    tuple(r for r in recalls if r.item_id in eligible),
+                    NewItemAllowance(saved_learning.new_item_maximum),
+                )
+                prompt_plan = replace(
+                    prompt_plan, learning_plan=learning, redacted_recall_item_ids=redacted
+                )
             now = datetime.now(UTC)
             file_filter = (
                 LearnerFileEntryModel.language_profile_id == profile.id,
@@ -498,16 +598,7 @@ class SessionService:
                     LearnerFileEntryModel.expires_at > now,
                 ),
             )
-            insight_rows = (
-                await db.scalars(
-                    select(LearnerFileEntryModel)
-                    .where(*file_filter, LearnerFileEntryModel.kind == "insight")
-                    .order_by(
-                        LearnerFileEntryModel.updated_at.desc(), LearnerFileEntryModel.id.desc()
-                    )
-                    .limit(5)
-                )
-            ).all()
+            insight_rows = await eligible_user_insights(db, user_id)
             learning_rows = (
                 (
                     await db.scalars(
@@ -530,8 +621,9 @@ class SessionService:
                 learning_goal=preferences.learning_goal,
                 speaking_context=preferences.speaking_context,
                 learning_notes=preferences.learning_notes,
-                learner_file_context=tuple(
-                    (entry.kind, entry.text or "") for entry in (*insight_rows, *learning_rows)
+                user_insights=tuple((entry.text, entry.temporal_context) for entry in insight_rows),
+                learner_file_context=(
+                    *(("learning", entry.text or "") for entry in learning_rows),
                 ),
             )
             try:
@@ -618,6 +710,8 @@ class SessionService:
                     model_alias=model_alias,
                     voice_alias=voice_alias,
                     instructions_sha256=compiled.instructions_sha256,
+                    redacted_recall_item_ids=list(compiled.redacted_recall_item_ids),
+                    source_history_revision=compiled.source_history_revision,
                     created_at=now,
                 )
             )
@@ -996,6 +1090,24 @@ class SessionService:
         )
         if plan is None or not objectives or reservation is None:
             raise RuntimeError("planned session is missing its plan, objective, or reservation")
+        learning = await db.get(SessionLearningPlanModel, session.id)
+        definition = None
+        if learning is not None:
+            profile = await SqlAlchemyLearnerProfileStore(db).for_planning(
+                user_id=session.user_id, profile_id=session.language_profile_id
+            )
+            if profile is not None:
+                course = CodeCourseCatalog().course_version(
+                    base_language_id=profile.base_language_id,
+                    target_language_id=profile.target_language_id,
+                    version=plan.curriculum_version,
+                )
+                if course is not None:
+                    definition = published_lesson_definition(
+                        course=course,
+                        lesson_key=learning.lesson_key,
+                        level=plan.selected_level or "",
+                    )
         return SessionView(
             id=session.id,
             state=session.state,
@@ -1007,6 +1119,17 @@ class SessionService:
             objectives=tuple(item.text for item in objectives),
             mode=plan.mode or "learning",
             created_at=session.created_at,
+            lesson_goal=definition.goal if definition else None,
+            session_focus=(
+                next(
+                    c.description
+                    for c in definition.capabilities
+                    if c.key == learning.focus_capability_key
+                )
+                if definition and learning
+                else None
+            ),
+            new_item_maximum=learning.new_item_maximum if learning else None,
         )
 
     @staticmethod

@@ -38,6 +38,23 @@ class Settings(BaseSettings):
     openai_realtime_model: str = Field(default="gpt-realtime-2.1", alias="OPENAI_REALTIME_MODEL")
     openai_realtime_voice: str = Field(default="marin", alias="OPENAI_REALTIME_VOICE")
     openai_extractor_model: str = Field(default="", alias="OPENAI_EXTRACTOR_MODEL")
+    openai_decisions_model: str = Field(
+        default="gpt-6-luna", alias="OPENAI_DECISIONS_MODEL", min_length=1
+    )
+    learning_evidence_probability_threshold: float = Field(
+        default=0.8,
+        alias="LEARNING_EVIDENCE_PROBABILITY_THRESHOLD",
+        ge=0,
+        le=1,
+        allow_inf_nan=False,
+    )
+    lesson_advancement_probability_threshold: float | None = Field(
+        default=None,
+        alias="LESSON_ADVANCEMENT_PROBABILITY_THRESHOLD",
+        gt=0,
+        le=1,
+        allow_inf_nan=False,
+    )
     openai_safety_id_secret: SecretStr | None = Field(default=None, alias="OPENAI_SAFETY_ID_SECRET")
 
     google_client_id: str = Field(alias="GOOGLE_CLIENT_ID", min_length=1)
@@ -74,6 +91,18 @@ class Settings(BaseSettings):
     @classmethod
     def empty_realtime_voice_uses_default(cls, value: object) -> object:
         return "marin" if value == "" else value
+
+    @field_validator("lesson_advancement_probability_threshold", mode="before")
+    @classmethod
+    def empty_advancement_threshold_disables_promotion(cls, value: object) -> object:
+        return None if value == "" else value
+
+    @field_validator("openai_decisions_model")
+    @classmethod
+    def validate_decisions_model(cls, value: str) -> str:
+        if not value.strip() or value != value.strip():
+            raise ValueError("OPENAI_DECISIONS_MODEL must be a nonempty model identifier")
+        return value
 
     @field_validator("openai_safety_id_secret")
     @classmethod

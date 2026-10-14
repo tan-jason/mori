@@ -321,7 +321,7 @@ export function createMockWebAppGateway(
   targetLanguageId: TargetLanguageId = DEFAULT_TARGET_LANGUAGE_ID,
   startIncomplete = false,
 ): WebAppGateway {
-  const languageProfile: LanguageProfile = {
+  let languageProfile: LanguageProfile = {
     id: `${BASE_LANGUAGE.id}-${targetLanguageId}`,
     baseLanguageId: BASE_LANGUAGE.id,
     targetLanguageId,
@@ -364,7 +364,7 @@ export function createMockWebAppGateway(
   const completedKeys = new Map<string, string>();
   const plannedSessions = new Map<string, PlannedSession>();
   const sessionKeys = new Map<string, { payload: string; id: string }>();
-  let learnerFile: LearnerFileEntry[] = [
+  const previewEntries: LearnerFileEntry[] = [
     {
       id: "learning-preview", kind: "learning", text: "Used a time phrase to describe a recent event.",
       origin: "capture", version: 1, sourceSessionId: "session-7b1",
@@ -377,6 +377,10 @@ export function createMockWebAppGateway(
       expiresAt: "2026-12-24T12:00:00Z",
     },
   ];
+  const learnerFiles = new Map<string, LearnerFileEntry[]>([
+    [languageProfile.id, previewEntries.filter((entry) => entry.kind === "learning")],
+  ]);
+  let userInsights = previewEntries.filter((entry) => entry.kind === "insight");
   const languagePairs: LanguagePair[] = TARGET_LANGUAGES.map((target) => ({
     baseLanguageId: BASE_LANGUAGE.id,
     targetLanguageId: target.id,
@@ -416,6 +420,7 @@ export function createMockWebAppGateway(
         throw new Error("This language course is not available.");
       }
       completedKeys.set(command.idempotencyKey, payload);
+      languageProfile = { id: `${BASE_LANGUAGE.id}-${command.targetLanguageId}`, baseLanguageId: BASE_LANGUAGE.id, targetLanguageId: command.targetLanguageId as TargetLanguageId };
       currentLearner = {
         ...currentLearner,
         version: currentLearner.version + 1,
@@ -594,24 +599,50 @@ export function createMockWebAppGateway(
     async getLearnerFile(languageProfileId, cursor, signal) {
       await pause(signal);
       getContent(languageProfileId);
-      return { entries: cursor ? [] : learnerFile, nextCursor: null };
+      return { entries: cursor ? [] : learnerFiles.get(languageProfileId) ?? [], nextCursor: null };
     },
 
     async editLearnerFileEntry(command, signal) {
       await pause(signal);
       getContent(command.languageProfileId);
-      const entry = learnerFile.find((item) => item.id === command.entryId);
+      const entries = learnerFiles.get(command.languageProfileId) ?? [];
+      const entry = entries.find((item) => item.id === command.entryId);
       if (!entry || entry.version !== command.expectedVersion) throw new Error("Entry changed.");
       const updated = { ...entry, text: command.text.trim(), origin: "learner_edit" as const,
         version: entry.version + 1, updatedAt: new Date().toISOString() };
-      learnerFile = learnerFile.map((item) => item.id === entry.id ? updated : item);
+      learnerFiles.set(command.languageProfileId, entries.map((item) => item.id === entry.id ? updated : item));
       return updated;
     },
 
     async deleteLearnerFileEntry(command, signal) {
       await pause(signal);
       getContent(command.languageProfileId);
-      learnerFile = learnerFile.filter((item) => item.id !== command.entryId);
+      const entries = learnerFiles.get(command.languageProfileId) ?? [];
+      const entry = entries.find((item) => item.id === command.entryId);
+      if (!entry || entry.version !== command.expectedVersion) throw new Error("Entry changed.");
+      learnerFiles.set(command.languageProfileId, entries.filter((item) => item.id !== command.entryId));
+    },
+
+    async getUserInsights(cursor, signal) {
+      await pause(signal);
+      return { entries: cursor ? [] : userInsights, nextCursor: null };
+    },
+
+    async editUserInsight(command, signal) {
+      await pause(signal);
+      const entry = userInsights.find((item) => item.id === command.entryId);
+      if (!entry || entry.version !== command.expectedVersion) throw new Error("Entry changed.");
+      const updated = { ...entry, text: command.text.trim(), origin: "learner_edit" as const,
+        version: entry.version + 1, updatedAt: new Date().toISOString() };
+      userInsights = userInsights.map((item) => item.id === entry.id ? updated : item);
+      return updated;
+    },
+
+    async deleteUserInsight(command, signal) {
+      await pause(signal);
+      const entry = userInsights.find((item) => item.id === command.entryId);
+      if (!entry || entry.version !== command.expectedVersion) throw new Error("Entry changed.");
+      userInsights = userInsights.filter((item) => item.id !== command.entryId);
     },
   };
 }

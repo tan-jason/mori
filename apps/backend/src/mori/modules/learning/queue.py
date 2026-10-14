@@ -31,6 +31,7 @@ app = procrastinate.App(
 async def capture_session(run_id: str) -> None:
     from mori.db import create_engine, create_session_maker
     from mori.modules.learning.application import AnalysisService
+    from mori.modules.learning.decisions import OpenAIDecisionsReviewer
     from mori.modules.learning.extractor import OpenAIExtractor
 
     settings = Settings()  # type: ignore[call-arg]
@@ -42,6 +43,12 @@ async def capture_session(run_id: str) -> None:
             session_maker=create_session_maker(engine),
             extractor=OpenAIExtractor(settings.openai_api_key.get_secret_value()),
             fact_digest_key=settings.session_signing_key.get_secret_value(),
+            decisions_reviewer=OpenAIDecisionsReviewer(
+                settings.openai_api_key.get_secret_value(),
+                model=settings.openai_decisions_model,
+                probability_threshold=settings.learning_evidence_probability_threshold,
+            ),
+            evidence_probability_threshold=settings.learning_evidence_probability_threshold,
         )
         await service.process(UUID(run_id))
     finally:

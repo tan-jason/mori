@@ -55,6 +55,9 @@ class SessionResponse(BaseModel):
     mode: str
     plan_preview: PlanPreviewResponse = Field(alias="planPreview")
     created_at: datetime = Field(alias="createdAt")
+    lesson_goal: str | None = Field(default=None, alias="lessonGoal")
+    session_focus: str | None = Field(default=None, alias="sessionFocus")
+    new_item_maximum: int | None = Field(default=None, alias="newItemMaximum", ge=1, le=5)
 
     @classmethod
     def from_view(cls, view: SessionView) -> SessionResponse:
@@ -69,6 +72,9 @@ class SessionResponse(BaseModel):
             mode=view.mode,
             planPreview=PlanPreviewResponse(objectives=list(view.objectives)),
             createdAt=view.created_at,
+            lessonGoal=view.lesson_goal,
+            sessionFocus=view.session_focus,
+            newItemMaximum=view.new_item_maximum,
         )
 
 

@@ -163,11 +163,14 @@ export const zSessionResponse = z.object({
     connectedMs: z.int(),
     createdAt: z.iso.datetime(),
     id: z.uuid(),
+    lessonGoal: z.string().nullish(),
     mode: z.string(),
+    newItemMaximum: z.int().gte(1).lte(5).nullish(),
     objective: z.string(),
     planPreview: zPlanPreviewResponse,
     reservationExpiresAt: z.iso.datetime(),
     rowVersion: z.int(),
+    sessionFocus: z.string().nullish(),
     state: z.string()
 });
 
@@ -257,6 +260,30 @@ export const zPreferencesResponse = z.object({
     timezone: z.string().min(1),
     tutorPace: zTutorPace,
     version: z.int().gt(0)
+});
+
+/**
+ * UserInsightEntryResponse
+ */
+export const zUserInsightEntryResponse = z.object({
+    createdAt: z.iso.datetime(),
+    expiresAt: z.iso.datetime().nullable(),
+    id: z.uuid(),
+    kind: z.literal('insight').optional().default('insight'),
+    origin: z.enum(['capture', 'learner_edit']),
+    sourceSessionId: z.uuid(),
+    temporalContext: z.string().nullish(),
+    text: z.string(),
+    updatedAt: z.iso.datetime(),
+    version: z.int()
+});
+
+/**
+ * UserInsightsResponse
+ */
+export const zUserInsightsResponse = z.object({
+    entries: z.array(zUserInsightEntryResponse),
+    nextCursor: z.string().nullable()
 });
 
 /**
@@ -444,6 +471,45 @@ export const zExchangeWebrtcApiV1SessionsSessionIdWebrtcPostPath = z.object({
  * Successful Response
  */
 export const zExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponse = z.string();
+
+export const zListInsightsApiV1UserInsightsGetQuery = z.object({
+    cursor: z.string().nullish()
+});
+
+/**
+ * Successful Response
+ */
+export const zListInsightsApiV1UserInsightsGetResponse = zUserInsightsResponse;
+
+export const zDeleteInsightApiV1UserInsightsEntryIdDeleteHeaders = z.object({
+    'X-CSRF-Token': z.string(),
+    'If-Match': z.string()
+});
+
+export const zDeleteInsightApiV1UserInsightsEntryIdDeletePath = z.object({
+    entry_id: z.uuid()
+});
+
+/**
+ * Successful Response
+ */
+export const zDeleteInsightApiV1UserInsightsEntryIdDeleteResponse = z.void();
+
+export const zEditInsightApiV1UserInsightsEntryIdPatchBody = zEditLearnerFileEntryRequest;
+
+export const zEditInsightApiV1UserInsightsEntryIdPatchHeaders = z.object({
+    'X-CSRF-Token': z.string(),
+    'If-Match': z.string()
+});
+
+export const zEditInsightApiV1UserInsightsEntryIdPatchPath = z.object({
+    entry_id: z.uuid()
+});
+
+/**
+ * Successful Response
+ */
+export const zEditInsightApiV1UserInsightsEntryIdPatchResponse = zUserInsightEntryResponse;
 
 export const zLogoutAuthLogoutPostHeaders = z.object({
     'X-CSRF-Token': z.string()

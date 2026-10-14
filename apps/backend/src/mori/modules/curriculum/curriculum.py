@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from mori.modules.curriculum.domain import (
     CapabilityEvidenceRequirement,
     CurriculumItem,
     LessonCapability,
     LessonDefinition,
+    LessonRubric,
+    LessonSuccessCriterion,
+    PerformanceLevel,
 )
 
 LEGACY_FRAMEWORK_ID = "mori-framework"
-FRAMEWORK_ID = "mori-framework-v2"
+PART1_FRAMEWORK_ID = "mori-framework-v2"
+FRAMEWORK_ID = "mori-framework-v3"
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,7 +152,7 @@ _RESPONSE_EVIDENCE = CapabilityEvidenceRequirement(
     later_session_recall=True,
 )
 
-BEGINNER_LESSON_DEFINITIONS = (
+PART1_BEGINNER_LESSON_DEFINITIONS = (
     LessonDefinition(
         lesson_key=LESSONS[0].key,
         content_version="beginner-conversation-v1",
@@ -207,4 +211,86 @@ BEGINNER_LESSON_DEFINITIONS = (
             ),
         ),
     ),
+)
+
+_LESSON_ONE_RUBRIC = LessonRubric(
+    version="beginner-lesson-01-rubric-v1",
+    levels=(
+        PerformanceLevel(
+            "beginning",
+            "Assessable practice does not yet communicate the required familiar detail, "
+            "related response, or reciprocal contribution.",
+        ),
+        PerformanceLevel(
+            "supported",
+            "The required contribution communicates meaning with useful cues or a supplied model.",
+        ),
+        PerformanceLevel(
+            "achieving",
+            "The required contribution communicates meaning independently in a two-way exchange.",
+        ),
+        PerformanceLevel(
+            "retaining",
+            "The required contribution is recalled independently in later sessions and "
+            "reused in meaningfully varied two-way exchanges.",
+        ),
+    ),
+    ready_level_key="retaining",
+    overall_instructions=(
+        "Benchmark expressing a familiar detail, answering a related question, and returning "
+        "the turn together. All three criteria matter; a strong detail alone does not establish "
+        "a two-way conversation. Apply the ordered levels to each criterion separately, "
+        "and require all criteria for the corresponding overall level."
+    ),
+)
+_LESSON_TWO_RUBRIC = LessonRubric(
+    version="beginner-lesson-02-rubric-v1",
+    levels=(
+        PerformanceLevel(
+            "beginning",
+            "Assessable contributions do not yet communicate the required connected detail, "
+            "connection, follow-up response, or initiative.",
+        ),
+        PerformanceLevel(
+            "supported",
+            "The required contribution develops a connected thread with useful cues or a model.",
+        ),
+        PerformanceLevel(
+            "achieving",
+            "The required contribution independently develops a connected familiar conversation.",
+        ),
+        PerformanceLevel(
+            "retaining",
+            "Connected conversation is retained through independent later-session recall "
+            "and developed in meaningfully varied fresh exchanges.",
+        ),
+    ),
+    ready_level_key="retaining",
+    overall_instructions=(
+        "Benchmark adding a connected detail, connecting ideas, answering a fresh follow-up, "
+        "and developing the thread through learner initiative. All four criteria matter. "
+        "Apply levels to each criterion separately, and require all criteria for the "
+        "corresponding overall level. Earlier lesson-one evidence can show retention but "
+        "does not substitute for the connected conversation required here."
+    ),
+)
+BEGINNER_LESSON_DEFINITIONS = tuple(
+    replace(
+        definition,
+        content_version="beginner-conversation-v2",
+        success_criteria=tuple(
+            LessonSuccessCriterion(
+                key=capability.key,
+                description=capability.description,
+                capability_keys=(capability.key,),
+            )
+            for capability in definition.capabilities
+        ),
+        rubric=rubric,
+    )
+    for definition, rubric in zip(
+        PART1_BEGINNER_LESSON_DEFINITIONS,
+        (_LESSON_ONE_RUBRIC, _LESSON_TWO_RUBRIC),
+        strict=True,
+    )
 )

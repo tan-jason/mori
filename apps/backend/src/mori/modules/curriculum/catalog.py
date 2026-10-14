@@ -9,6 +9,8 @@ from mori.modules.curriculum.curriculum import (
     FRAMEWORK_ID,
     FRAMEWORK_ITEMS,
     LEGACY_FRAMEWORK_ID,
+    PART1_BEGINNER_LESSON_DEFINITIONS,
+    PART1_FRAMEWORK_ID,
 )
 from mori.modules.curriculum.domain import (
     CoursePairView,
@@ -65,6 +67,14 @@ MORI_COURSE = PublishedCourse(
     items=FRAMEWORK_ITEMS,
     framework_version=FRAMEWORK_ID,
     lesson_definitions=BEGINNER_LESSON_DEFINITIONS,
+)
+PART1_MORI_COURSE = PublishedCourse(
+    curriculum_version=PART1_FRAMEWORK_ID,
+    language_policy_version="mori-language-v1",
+    voice_policy_version="mori-voice-v1",
+    items=FRAMEWORK_ITEMS,
+    framework_version=PART1_FRAMEWORK_ID,
+    lesson_definitions=PART1_BEGINNER_LESSON_DEFINITIONS,
 )
 LEGACY_MORI_COURSE = PublishedCourse(
     curriculum_version=LEGACY_FRAMEWORK_ID,
@@ -133,7 +143,7 @@ class CodeCourseCatalog:
             return next(
                 (
                     course
-                    for course in (MORI_COURSE, LEGACY_MORI_COURSE)
+                    for course in (MORI_COURSE, PART1_MORI_COURSE, LEGACY_MORI_COURSE)
                     if course.curriculum_version == version
                 ),
                 None,
@@ -142,6 +152,7 @@ class CodeCourseCatalog:
 
 
 validate_published_course(MORI_COURSE)
+validate_published_course(PART1_MORI_COURSE)
 validate_published_course(LEGACY_MORI_COURSE)
 if set(EVIDENCE_RULES) != {item.key for item in FRAMEWORK_ITEMS}:
     raise ValueError("course evidence rules do not match framework lessons")

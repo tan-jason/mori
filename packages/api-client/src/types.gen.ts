@@ -455,9 +455,17 @@ export type SessionResponse = {
      */
     id: string;
     /**
+     * Lessongoal
+     */
+    lessonGoal?: string | null;
+    /**
      * Mode
      */
     mode: string;
+    /**
+     * Newitemmaximum
+     */
+    newItemMaximum?: number | null;
     /**
      * Objective
      */
@@ -471,6 +479,10 @@ export type SessionResponse = {
      * Rowversion
      */
     rowVersion: number;
+    /**
+     * Sessionfocus
+     */
+    sessionFocus?: string | null;
     /**
      * State
      */
@@ -486,6 +498,66 @@ export type StartingChoice = 'beginner' | 'intermediate' | 'advanced' | 'fluent'
  * TutorPace
  */
 export type TutorPace = 'level' | 'gentle' | 'steady' | 'natural';
+
+/**
+ * UserInsightEntryResponse
+ */
+export type UserInsightEntryResponse = {
+    /**
+     * Createdat
+     */
+    createdAt: string;
+    /**
+     * Expiresat
+     */
+    expiresAt: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Kind
+     */
+    kind?: 'insight';
+    /**
+     * Origin
+     */
+    origin: 'capture' | 'learner_edit';
+    /**
+     * Sourcesessionid
+     */
+    sourceSessionId: string;
+    /**
+     * Temporalcontext
+     */
+    temporalContext?: string | null;
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Updatedat
+     */
+    updatedAt: string;
+    /**
+     * Version
+     */
+    version: number;
+};
+
+/**
+ * UserInsightsResponse
+ */
+export type UserInsightsResponse = {
+    /**
+     * Entries
+     */
+    entries: Array<UserInsightEntryResponse>;
+    /**
+     * Nextcursor
+     */
+    nextCursor: string | null;
+};
 
 /**
  * UserResponse
@@ -953,6 +1025,104 @@ export type ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponses = {
 };
 
 export type ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponse = ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponses[keyof ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponses];
+
+export type ListInsightsApiV1UserInsightsGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Cursor
+         */
+        cursor?: string | null;
+    };
+    url: '/api/v1/user-insights';
+};
+
+export type ListInsightsApiV1UserInsightsGetErrors = {
+    /**
+     * Mori error envelope
+     */
+    default: ApiErrorResponse;
+};
+
+export type ListInsightsApiV1UserInsightsGetError = ListInsightsApiV1UserInsightsGetErrors[keyof ListInsightsApiV1UserInsightsGetErrors];
+
+export type ListInsightsApiV1UserInsightsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: UserInsightsResponse;
+};
+
+export type ListInsightsApiV1UserInsightsGetResponse = ListInsightsApiV1UserInsightsGetResponses[keyof ListInsightsApiV1UserInsightsGetResponses];
+
+export type DeleteInsightApiV1UserInsightsEntryIdDeleteData = {
+    body?: never;
+    headers: {
+        'X-CSRF-Token': string;
+        'If-Match': string;
+    };
+    path: {
+        /**
+         * Entry Id
+         */
+        entry_id: string;
+    };
+    query?: never;
+    url: '/api/v1/user-insights/{entry_id}';
+};
+
+export type DeleteInsightApiV1UserInsightsEntryIdDeleteErrors = {
+    /**
+     * Mori error envelope
+     */
+    default: ApiErrorResponse;
+};
+
+export type DeleteInsightApiV1UserInsightsEntryIdDeleteError = DeleteInsightApiV1UserInsightsEntryIdDeleteErrors[keyof DeleteInsightApiV1UserInsightsEntryIdDeleteErrors];
+
+export type DeleteInsightApiV1UserInsightsEntryIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteInsightApiV1UserInsightsEntryIdDeleteResponse = DeleteInsightApiV1UserInsightsEntryIdDeleteResponses[keyof DeleteInsightApiV1UserInsightsEntryIdDeleteResponses];
+
+export type EditInsightApiV1UserInsightsEntryIdPatchData = {
+    body: EditLearnerFileEntryRequest;
+    headers: {
+        'X-CSRF-Token': string;
+        'If-Match': string;
+    };
+    path: {
+        /**
+         * Entry Id
+         */
+        entry_id: string;
+    };
+    query?: never;
+    url: '/api/v1/user-insights/{entry_id}';
+};
+
+export type EditInsightApiV1UserInsightsEntryIdPatchErrors = {
+    /**
+     * Mori error envelope
+     */
+    default: ApiErrorResponse;
+};
+
+export type EditInsightApiV1UserInsightsEntryIdPatchError = EditInsightApiV1UserInsightsEntryIdPatchErrors[keyof EditInsightApiV1UserInsightsEntryIdPatchErrors];
+
+export type EditInsightApiV1UserInsightsEntryIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: UserInsightEntryResponse;
+};
+
+export type EditInsightApiV1UserInsightsEntryIdPatchResponse = EditInsightApiV1UserInsightsEntryIdPatchResponses[keyof EditInsightApiV1UserInsightsEntryIdPatchResponses];
 
 export type LogoutAuthLogoutPostData = {
     body?: never;

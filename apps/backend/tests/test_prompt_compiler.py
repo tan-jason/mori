@@ -320,3 +320,14 @@ def test_mutated_published_definition_is_rejected() -> None:
     course = replace(TEST_COURSE, lesson_definitions=(definition, BEGINNER_LESSON_DEFINITIONS[1]))
     with pytest.raises(ValueError, match="versions differ"):
         compile_realtime_config(plan=_plan(), profile=_profile(), course=course)
+
+
+def test_account_insight_preserves_temporal_context_without_implying_language_practice() -> None:
+    compiled = compile_realtime_config(
+        plan=_plan(),
+        profile=replace(_profile(), user_insights=(("Played beach volleyball.", "2026-10-12"),)),
+        course=TEST_COURSE,
+    )
+    assert '"text":"Played beach volleyball."' in compiled.instructions
+    assert '"temporalContext":"2026-10-12"' in compiled.instructions
+    assert "# Build on previous practice" not in compiled.instructions
