@@ -170,7 +170,7 @@ async def test_extractor_receives_languages_and_full_pinned_lesson(
                 }
             ],
             "corrections": [],
-            "insights": [],
+            "user_insights": [],
         }
     )
     provider = OpenAIExtractor("unused-test-key")

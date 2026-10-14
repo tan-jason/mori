@@ -71,6 +71,53 @@ class LessonCapability:
 
 
 @dataclass(frozen=True, slots=True)
+class PerformanceLevel:
+    key: str
+    description: str
+
+    def __post_init__(self) -> None:
+        if not self.key.strip() or not self.description.strip():
+            raise ValueError("invalid performance level")
+
+
+@dataclass(frozen=True, slots=True)
+class LessonSuccessCriterion:
+    key: str
+    description: str
+    capability_keys: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if (
+            not self.key.strip()
+            or not self.description.strip()
+            or not isinstance(self.capability_keys, tuple)
+            or not self.capability_keys
+            or len(set(self.capability_keys)) != len(self.capability_keys)
+        ):
+            raise ValueError("invalid lesson success criterion")
+
+
+@dataclass(frozen=True, slots=True)
+class LessonRubric:
+    version: str
+    levels: tuple[PerformanceLevel, ...]
+    ready_level_key: str
+    overall_instructions: str
+
+    def __post_init__(self) -> None:
+        if (
+            not self.version.strip()
+            or not isinstance(self.levels, tuple)
+            or len(self.levels) < 2
+            or any(not isinstance(level, PerformanceLevel) for level in self.levels)
+            or len({level.key for level in self.levels}) != len(self.levels)
+            or self.ready_level_key not in {level.key for level in self.levels}
+            or not self.overall_instructions.strip()
+        ):
+            raise ValueError("invalid lesson rubric")
+
+
+@dataclass(frozen=True, slots=True)
 class LessonDefinition:
     """A published, immutable goal and ordered capability contract."""
 
@@ -80,6 +127,8 @@ class LessonDefinition:
     goal: str
     capabilities: tuple[LessonCapability, ...]
     suggested_encounters: int | None = None
+    success_criteria: tuple[LessonSuccessCriterion, ...] = ()
+    rubric: LessonRubric | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -97,6 +146,19 @@ class LessonDefinition:
             )
         ):
             raise ValueError("invalid lesson definition")
+        if (
+            not isinstance(self.success_criteria, tuple)
+            or any(not isinstance(item, LessonSuccessCriterion) for item in self.success_criteria)
+            or len({item.key for item in self.success_criteria}) != len(self.success_criteria)
+            or any(
+                key not in self.capability_keys
+                for item in self.success_criteria
+                for key in item.capability_keys
+            )
+            or bool(self.success_criteria) != (self.rubric is not None)
+            or (self.rubric is not None and not isinstance(self.rubric, LessonRubric))
+        ):
+            raise ValueError("invalid lesson scoring contract")
 
     @property
     def capability_keys(self) -> tuple[str, ...]:

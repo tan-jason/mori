@@ -84,6 +84,7 @@ class LearnerFileService:
             now = datetime.now(UTC)
             query = select(LearnerFileEntryModel).where(
                 LearnerFileEntryModel.language_profile_id == profile_id,
+                LearnerFileEntryModel.kind == "learning",
                 LearnerFileEntryModel.deleted_at.is_(None),
                 LearnerFileEntryModel.text.is_not(None),
                 or_(
@@ -134,6 +135,7 @@ class LearnerFileService:
                 .where(
                     LearnerFileEntryModel.id == entry_id,
                     LearnerFileEntryModel.language_profile_id == profile_id,
+                    LearnerFileEntryModel.kind == "learning",
                     LearnerFileEntryModel.deleted_at.is_(None),
                 )
                 .with_for_update()
@@ -146,6 +148,7 @@ class LearnerFileService:
                 raise LearnerFileVersionConflict
             await self._require_no_active_call(db, profile_id)
             entry.text = normalized
+            await self._suppress_evidence(db, entry)
             entry.origin = "learner_edit"
             entry.version += 1
             entry.updated_at = datetime.now(UTC)
@@ -166,6 +169,7 @@ class LearnerFileService:
                 .where(
                     LearnerFileEntryModel.id == entry_id,
                     LearnerFileEntryModel.language_profile_id == profile_id,
+                    LearnerFileEntryModel.kind == "learning",
                 )
                 .with_for_update()
             )
@@ -176,10 +180,30 @@ class LearnerFileService:
             if entry.version != expected_version:
                 raise LearnerFileVersionConflict
             await self._require_no_active_call(db, profile_id)
+            await self._suppress_evidence(db, entry)
             entry.text = None
+            entry.origin = "learner_edit"
             entry.deleted_at = datetime.now(UTC)
             entry.updated_at = entry.deleted_at
             entry.version += 1
+
+    @staticmethod
+    async def _suppress_evidence(db: AsyncSession, entry: LearnerFileEntryModel) -> None:
+        from mori.modules.learning.models import LanguageItemModel, ProfileLearningStateModel
+
+        now = datetime.now(UTC)
+        if entry.language_item_id is not None:
+            item = await db.get(LanguageItemModel, entry.language_item_id)
+            if item is not None:
+                item.suppressed_at = now
+        state = await db.get(ProfileLearningStateModel, entry.language_profile_id)
+        if state is None:
+            state = ProfileLearningStateModel(
+                language_profile_id=entry.language_profile_id, history_revision=0, updated_at=now
+            )
+            db.add(state)
+        state.history_revision += 1
+        state.updated_at = now
 
     async def _owned_profile(self, db: AsyncSession, user_id: UUID, profile_id: UUID) -> None:
         owner = await db.scalar(

@@ -318,4 +318,34 @@ describe("createBackendWebAppGateway", () => {
       code: "invalid_response",
     });
   });
+  it("uses the account insight endpoint with cursor and versioned mutations", async () => {
+    const entry = { id: "00000000-0000-4000-8000-000000000001", kind: "insight", text: "Plays volleyball.", origin: "capture", version: 1, sourceSessionId: "00000000-0000-4000-8000-000000000002", createdAt: "2026-10-13T00:00:00Z", updatedAt: "2026-10-13T00:00:00Z", expiresAt: null, temporalContext: null };
+    const fetchMock = vi.fn<typeof window.fetch>();
+    fetchMock.mockResolvedValueOnce(jsonResponse({ entries: [entry], nextCursor: null }))
+      .mockResolvedValueOnce(jsonResponse({ ...entry, text: "Plays indoor volleyball.", version: 2 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const gateway = createBackendWebAppGateway({ apiOrigin: "http://api.test", fetch: fetchMock });
+    expect((await gateway.getUserInsights("a+b")).entries).toHaveLength(1);
+    await gateway.editUserInsight({ entryId: "insight-1", text: "Plays indoor volleyball.", expectedVersion: 1, csrfToken: "csrf" });
+    await gateway.deleteUserInsight({ entryId: "insight-1", expectedVersion: 2, csrfToken: "csrf" });
+    expect((fetchMock.mock.calls[0]?.[0] as URL).href).toBe("http://api.test/api/v1/user-insights?cursor=a%2Bb");
+    expect(new Headers(fetchMock.mock.calls[1]?.[1]?.headers).get("If-Match")).toBe('"1"');
+    expect(new Headers(fetchMock.mock.calls[1]?.[1]?.headers).get("X-CSRF-Token")).toBe("csrf");
+    expect(new Headers(fetchMock.mock.calls[2]?.[1]?.headers).get("If-Match")).toBe('"2"');
+  });
+
+  it("rejects profile learning records in the account insight stream", async () => {
+    const fetchMock = vi.fn<typeof window.fetch>();
+    fetchMock.mockResolvedValue(jsonResponse({ entries: [{ kind: "learning" }], nextCursor: null }));
+    const gateway = createBackendWebAppGateway({ apiOrigin: "http://api.test", fetch: fetchMock });
+    await expect(gateway.getUserInsights()).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("normalizes non-JSON insight responses at the transport boundary", async () => {
+    const fetchMock = vi.fn<typeof window.fetch>();
+    fetchMock.mockResolvedValue(new Response("not-json"));
+    const gateway = createBackendWebAppGateway({ apiOrigin: "http://api.test", fetch: fetchMock });
+    await expect(gateway.getUserInsights()).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
 });

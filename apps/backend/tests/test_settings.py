@@ -45,3 +45,18 @@ def test_return_paths_cannot_be_protocol_relative() -> None:
 
     with pytest.raises(ValidationError):
         Settings(**values)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("value", ["", None])
+def test_empty_advancement_threshold_disables_promotion(value: str | None) -> None:
+    values = {**_settings_values(), "LESSON_ADVANCEMENT_PROBABILITY_THRESHOLD": value}
+    assert Settings(**values).lesson_advancement_probability_threshold is None  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "field", ["LEARNING_EVIDENCE_PROBABILITY_THRESHOLD", "LESSON_ADVANCEMENT_PROBABILITY_THRESHOLD"]
+)
+@pytest.mark.parametrize("value", [-0.1, 1.1, float("nan"), float("inf")])
+def test_invalid_lesson_cycle_thresholds_fail_closed(field: str, value: float) -> None:
+    with pytest.raises(ValidationError):
+        Settings(**{**_settings_values(), field: value})  # type: ignore[arg-type]

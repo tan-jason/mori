@@ -1,6 +1,6 @@
 # Beginner lessons 1 and 2: curriculum and extraction as one package
 
-**Status:** Part 1 is implemented and verified. Part 2 remains a proposal for discussion; Decisions is the selected review/scoring provider, and user insights are a separate user-owned stream.
+**Status:** Parts 1 and 2 are implemented. Decisions verifies and benchmarks the lesson cycle; insights are user-owned, and language learnings/progress remain profile-owned. Automatic advancement is disabled until an experiment threshold is configured.
 
 **Recommendation:** ship the lesson definitions, extraction contract, and progression rules together. Plan lesson 1 around four 10-minute sessions, while allowing accepted evidence to make it shorter or longer. Every continuation begins with targeted recall, then adds 1-5 useful items as time and observed support allow. Code selects the lesson and session focus; the tutor generates the conversation.
 
@@ -108,7 +108,7 @@ The choice of what history to include and which lesson to select belongs to part
 
 The current publication is `mori-framework-v2`, with beginner lesson definitions under `beginner-conversation-v1` and tutor policy `mori-framework-v5`. The historical `mori-framework` course remains resolvable. Beginner tutor instructions use the new goals, ordered capabilities, productive recall, and a default maximum of two new items. Shared displayed objective labels remain unchanged; adaptive saved focus/budget and structured recall selection belong to Part 2.
 
-Timed wrap-up delivery is implemented through `SessionControlModel` and migration `0016_session_wrap_up_control.py`. Independent review found no blockers. **154 backend tests, full Ruff, full mypy across 76 files, and migration upgrade/downgrade/re-upgrade with clean Alembic metadata checks passed.** No live OpenAI provider call was performed. Automated lesson advancement and Decisions scoring remain unimplemented.
+Timed wrap-up delivery is implemented through `SessionControlModel` and migration `0016_session_wrap_up_control.py`. Independent review found no blockers. **154 backend tests, full Ruff, full mypy across 76 files, and migration upgrade/downgrade/re-upgrade with clean Alembic metadata checks passed.** At this Part 1 checkpoint, no live OpenAI provider call had been performed; Decisions scoring and automated lesson advancement were still deferred to Part 2.
 
 ## Part 2: extractor, learnings, and lesson selection
 
@@ -176,7 +176,7 @@ The official API offers `predicate`, `choice`, and `score` questions. Its native
 
 The input can be a serialized text representation of the latest transcript, pinned lesson criteria/rubric, accumulated eligible language learnings, and grounded current candidates. We can construct structured data in code and serialize it into that text, but it is not an unrestricted JSON-schema input/output endpoint. Give questions stable names that map to server-validated candidate IDs. Use independent verification and scoring questions in one request over shared evidence; code combines their answers after the response. [Decisions create reference](https://developers.openai.com/api/reference/python/resources/decisions/methods/create)
 
-The current Python dependency is OpenAI 2.x. The official Decisions examples require Python SDK 3.26.0 or later; that SDK migration belongs to the proposed Part 2 integration, with adapter compatibility tests. The guide currently identifies `gpt-6-luna` as the supported Decisions model. [OpenAI Decisions guide](https://developers.openai.com/api/docs/guides/decisions)
+The proposal started from OpenAI 2.x. The official Decisions examples require Python SDK 3.26.0 or later; Part 2 now upgrades the dependency and includes adapter compatibility tests. The guide currently identifies `gpt-6-luna` as the supported Decisions model. [OpenAI Decisions guide](https://developers.openai.com/api/docs/guides/decisions)
 
 ### Success criteria and benchmark belong to each lesson
 
@@ -293,3 +293,24 @@ Use Decisions as the selected provider from the start of the experiment. Record 
 The exact thresholds remain open rather than being treated as approved constants. Capture progress scores and recurring patterns during the experiment; lesson advancement should use an explicit experiment-policy configuration or controlled lesson selection until a qualifying rule is agreed. Retain historical content/result versions. Editable prose memories do not become fabricated structured evidence.
 
 Include useful and unnecessary personal facts, dated experiences, role-play/copying, corrections, and deletion across profiles. Verify that insight capture remains selective, precise, short, and lower priority than learning capture. Test cumulative benchmarks against complete history, missing older evidence, stale revisions, and a changed lesson rubric.
+
+
+### Implemented Part 2 and operating the experiment
+
+Current sessions pin `mori-framework-v3`, beginner lesson content `beginner-conversation-v2`, and tutor policy `mori-framework-v6`. Historical `mori-framework` and Part 1 `mori-framework-v2` remain resolvable. Each beginner lesson owns its success criteria and four-level rubric. The SDK requirement is now OpenAI 3.26 or later, with 3.29 locked.
+
+The analysis worker runs structured extraction, literal grounding, named Decisions verification, and a dependent cumulative benchmark. It stores native distributions and exact provenance. Accumulated history includes all active contributions for the profile and original reviewed legacy observations with exact quotes. Edited summaries and quote-free legacy records do not establish proficiency. The initial implementation fails closed when complete history exceeds the input budget; evidence-preserving batching remains the documented scalability extension, rather than silently dropping older evidence.
+
+Profile revisions serialize accepted contributions. Duplicate jobs do not add encounters; newer reanalysis supersedes the earlier contribution. A benchmark whose input revision changed remains historical and is refreshed before it can authorize advancement. The planner saves the lesson, focus, up to three recall items, and a maximum of 1-5 new items. Reconnect/bootstrap uses that saved selection. Edits/deletions invalidate affected evidence and benchmarks; deleted recall is redacted at bootstrap and recorded in the prompt manifest.
+
+Account-owned insights have separate read/edit/delete endpoints at `/api/v1/user-insights` and appear separately from profile learnings in the Learner File. Capture is optional, category-free, and bounded to two facts of 120 characters. Existing insight IDs, source references, edits, expiry, and erased deletion tombstones are migrated. Corrections and suppression are honored across the learner's language profiles.
+
+Configure the experiment with:
+
+- `OPENAI_DECISIONS_MODEL=gpt-6-luna`.
+- `LEARNING_EVIDENCE_PROBABILITY_THRESHOLD=0.8`, an adjustable initial evidence acceptance threshold.
+- `LESSON_ADVANCEMENT_PROBABILITY_THRESHOLD=` leaves automatic advancement disabled. A configured probability must be greater than zero and at most one; every required criterion and the overall benchmark must independently meet it at the lesson's ready level. Neither a rounded score nor a session count promotes a learner.
+
+Verification includes backend tests for multi-session recall, recurring help, unobserved criteria, uncertain/refused results, complete history, idempotency, reanalysis, deletion, profile isolation, prompt redaction, and migration upgrade/rollback/re-upgrade. Frontend tests exercise independent insight loading, account mutations, and language profile separation. Live Decisions checks used only synthetic conversations: the complete adapter accepted a supported teaching/practice occurrence and returned three criterion distributions plus an overall score, without claiming independent readiness. These checks confirm integration, not pedagogical calibration; rubric/threshold tuning continues through observed lesson cycles.
+
+Final verification: all 189 backend tests and 33 frontend tests passed, including the concurrent-history race and dated insight prompt context; build, ESLint, Ruff, mypy, OpenAPI synchronization, and migration metadata checks passed. Live synthetic Decisions verification and cumulative benchmarking succeeded.

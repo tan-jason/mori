@@ -1,4 +1,4 @@
-import { zApiErrorResponse, zGetRecapApiV1SessionsSessionIdRecapGetResponse, zLanguagePairsResponse, zLearnerFileEntryResponse, zLearnerFileResponse, zMeResponse, zSessionResponse, zVoiceAvailabilityResponse } from "@mori/api-client/zod";
+import { zApiErrorResponse, zGetRecapApiV1SessionsSessionIdRecapGetResponse, zLanguagePairsResponse, zLearnerFileEntryResponse, zLearnerFileResponse, zMeResponse, zSessionResponse, zVoiceAvailabilityResponse, zUserInsightsResponse, zUserInsightEntryResponse } from "@mori/api-client/zod";
 import type { CurrentLearner } from "../domain/identity";
 import { isTargetLanguageId, type TargetLanguageId } from "../domain/languages";
 import { getApiOrigin } from "./api-config";
@@ -47,6 +47,11 @@ export function createBackendWebAppGateway(
   const fetchImplementation = options.fetch ?? window.fetch.bind(window);
   const previewGateway = createMockWebAppGateway();
   const previewLanguageProfileId = "english-mandarin";
+
+  const insightPayload = async (response: Response): Promise<unknown> => {
+    try { return await response.json(); }
+    catch { throw new ApiError(response.status, "invalid_response", "Mori returned invalid insights."); }
+  };
 
   const request = async (
     path: string,
@@ -279,6 +284,36 @@ export function createBackendWebAppGateway(
 
     async deleteLearnerFileEntry(command, signal) {
       await request(`/api/v1/language-profiles/${encodeURIComponent(command.languageProfileId)}/learner-file/${encodeURIComponent(command.entryId)}`, {
+        method: "DELETE", signal,
+        headers: { "If-Match": `"${command.expectedVersion}"`, "X-CSRF-Token": command.csrfToken },
+      });
+    },
+
+    async getUserInsights(cursor, signal) {
+      const path = "/api/v1/user-insights";
+      const response = await request(cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path, { signal });
+      const parsed = zUserInsightsResponse.safeParse(await insightPayload(response));
+      if (!parsed.success || parsed.data.entries.some((entry) => entry.kind !== "insight")) {
+        throw new ApiError(response.status, "invalid_response", "Mori returned invalid insights.");
+      }
+      return parsed.data;
+    },
+
+    async editUserInsight(command, signal) {
+      const response = await request(`/api/v1/user-insights/${encodeURIComponent(command.entryId)}`, {
+        method: "PATCH", signal,
+        headers: { "Content-Type": "application/json", "If-Match": `"${command.expectedVersion}"`, "X-CSRF-Token": command.csrfToken },
+        body: JSON.stringify({ text: command.text }),
+      });
+      const parsed = zUserInsightEntryResponse.safeParse(await insightPayload(response));
+      if (!parsed.success || parsed.data.kind !== "insight") {
+        throw new ApiError(response.status, "invalid_response", "Mori returned an invalid insight.");
+      }
+      return parsed.data;
+    },
+
+    async deleteUserInsight(command, signal) {
+      await request(`/api/v1/user-insights/${encodeURIComponent(command.entryId)}`, {
         method: "DELETE", signal,
         headers: { "If-Match": `"${command.expectedVersion}"`, "X-CSRF-Token": command.csrfToken },
       });

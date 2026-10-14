@@ -773,9 +773,33 @@
             "title": "Id",
             "type": "string"
           },
+          "lessonGoal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lessongoal"
+          },
           "mode": {
             "title": "Mode",
             "type": "string"
+          },
+          "newItemMaximum": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Newitemmaximum"
           },
           "objective": {
             "title": "Objective",
@@ -792,6 +816,17 @@
           "rowVersion": {
             "title": "Rowversion",
             "type": "integer"
+          },
+          "sessionFocus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sessionfocus"
           },
           "state": {
             "title": "State",
@@ -833,6 +868,115 @@
         ],
         "title": "TutorPace",
         "type": "string"
+      },
+      "UserInsightEntryResponse": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiresat"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "insight",
+            "default": "insight",
+            "title": "Kind",
+            "type": "string"
+          },
+          "origin": {
+            "enum": [
+              "capture",
+              "learner_edit"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "sourceSessionId": {
+            "format": "uuid",
+            "title": "Sourcesessionid",
+            "type": "string"
+          },
+          "temporalContext": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temporalcontext"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "origin",
+          "version",
+          "sourceSessionId",
+          "createdAt",
+          "updatedAt",
+          "expiresAt"
+        ],
+        "title": "UserInsightEntryResponse",
+        "type": "object"
+      },
+      "UserInsightsResponse": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/UserInsightEntryResponse"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          }
+        },
+        "required": [
+          "entries",
+          "nextCursor"
+        ],
+        "title": "UserInsightsResponse",
+        "type": "object"
       },
       "UserResponse": {
         "additionalProperties": false,
@@ -1572,6 +1716,174 @@
         "summary": "Exchange Webrtc",
         "tags": [
           "sessions"
+        ]
+      }
+    },
+    "/api/v1/user-insights": {
+      "get": {
+        "operationId": "list_insights_api_v1_user_insights_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserInsightsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Mori error envelope"
+          }
+        },
+        "summary": "List Insights",
+        "tags": [
+          "user-insights"
+        ]
+      }
+    },
+    "/api/v1/user-insights/{entry_id}": {
+      "delete": {
+        "operationId": "delete_insight_api_v1_user_insights__entry_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Mori error envelope"
+          }
+        },
+        "summary": "Delete Insight",
+        "tags": [
+          "user-insights"
+        ]
+      },
+      "patch": {
+        "operationId": "edit_insight_api_v1_user_insights__entry_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditLearnerFileEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserInsightEntryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Mori error envelope"
+          }
+        },
+        "summary": "Edit Insight",
+        "tags": [
+          "user-insights"
         ]
       }
     },

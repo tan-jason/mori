@@ -8,22 +8,29 @@ from typing import Literal, Protocol
 from uuid import UUID
 
 from openai import AsyncOpenAI
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from mori.modules.learning.domain import (
     CorrectionCandidate,
     FinalTurn,
-    InsightCandidate,
     LearningCandidate,
     PracticeCandidate,
+    UserInsightCandidate,
 )
 from mori.modules.learning.evidence import (
     AcceptedObservation,
     AnalysisContext,
     Assistance,
+    CapabilityAttemptCandidate,
     EvidenceCandidate,
+    IntroductionCandidate,
+    ItemPracticeCandidate,
+    LanguageItemCandidate,
+    LanguageItemKind,
     ObservationCandidate,
     ObservationReview,
+    OpportunityType,
+    PracticeOutcome,
     ReviewDecision,
 )
 from mori.modules.learning.prompt import build_evidence_review_prompt, build_extraction_prompt
@@ -65,13 +72,46 @@ class _CorrectionOutput(BaseModel):
     suggestion: str
 
 
-class _InsightOutput(BaseModel):
+class _UserInsightOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     source_turn_id: str
     source_quote: str
-    category: Literal["interest", "occupation"]
-    value: str
-    confidence: float
+    text: str = Field(min_length=1, max_length=120)
+    temporal_context: str | None
+
+
+class _IntroductionOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tutor_turn_id: str
+    tutor_quote: str
+
+
+class _LanguageItemOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    key: str
+    form: str
+    meaning: str
+    kind: LanguageItemKind
+    capability_keys: list[str]
+    known_item_id: str | None
+    introduction: _IntroductionOutput | None
+
+
+class _ItemPracticeOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    item_key: str
+    evidence: _EvidenceOutput
+    outcome: PracticeOutcome
+    opportunity_type: OpportunityType
+
+
+class _CapabilityAttemptOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    capability_key: str
+    evidence: _EvidenceOutput
+    outcome: PracticeOutcome
+    opportunity_type: OpportunityType
+    item_keys: list[str]
 
 
 class _LearningOutput(BaseModel):
@@ -79,25 +119,37 @@ class _LearningOutput(BaseModel):
     summary: str
     observations: list[_ObservationOutput]
     corrections: list[_CorrectionOutput]
-    insights: list[_InsightOutput]
+    user_insights: list[_UserInsightOutput] = Field(default_factory=list, max_length=2)
+    language_items: list[_LanguageItemOutput] = Field(default_factory=list, max_length=12)
+    item_practices: list[_ItemPracticeOutput] = Field(default_factory=list, max_length=40)
+    capability_attempts: list[_CapabilityAttemptOutput] = Field(default_factory=list, max_length=24)
 
 
 class _PracticeOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     summary: str
-    insights: list[_InsightOutput]
+    user_insights: list[_UserInsightOutput] = Field(default_factory=list, max_length=2)
 
 
-def _insights(outputs: list[_InsightOutput]) -> tuple[InsightCandidate, ...]:
+def _insights(outputs: list[_UserInsightOutput]) -> tuple[UserInsightCandidate, ...]:
     return tuple(
-        InsightCandidate(
-            fact=item.value,
+        UserInsightCandidate(
+            text=item.text,
             source_turn_id=UUID(item.source_turn_id),
             source_quote=item.source_quote,
-            topic=item.category,
-            confidence=item.confidence,
+            temporal_context=item.temporal_context,
         )
         for item in outputs
+    )
+
+
+def _evidence(item: _EvidenceOutput) -> EvidenceCandidate:
+    return EvidenceCandidate(
+        UUID(item.learner_turn_id),
+        item.learner_quote,
+        UUID(item.opportunity_turn_id) if item.opportunity_turn_id is not None else None,
+        item.opportunity_quote,
+        item.assistance,
     )
 
 
@@ -150,18 +202,7 @@ class OpenAIExtractor:
                         detail=o.detail,
                         confidence=o.confidence,
                         curriculum_item_key=o.curriculum_item_key,
-                        evidence=tuple(
-                            EvidenceCandidate(
-                                UUID(item.learner_turn_id),
-                                item.learner_quote,
-                                UUID(item.opportunity_turn_id)
-                                if item.opportunity_turn_id is not None
-                                else None,
-                                item.opportunity_quote,
-                                item.assistance,
-                            )
-                            for item in o.evidence
-                        ),
+                        evidence=tuple(_evidence(item) for item in o.evidence),
                     )
                     for o in output.observations
                 ),
@@ -169,7 +210,43 @@ class OpenAIExtractor:
                     CorrectionCandidate(UUID(c.learner_turn_id), c.suggestion)
                     for c in output.corrections
                 ),
-                insights=_insights(output.insights),
+                user_insights=_insights(output.user_insights),
+                language_items=tuple(
+                    LanguageItemCandidate(
+                        item.key,
+                        item.form,
+                        item.meaning,
+                        item.kind,
+                        tuple(item.capability_keys),
+                        UUID(item.known_item_id) if item.known_item_id is not None else None,
+                        IntroductionCandidate(
+                            UUID(item.introduction.tutor_turn_id),
+                            item.introduction.tutor_quote,
+                        )
+                        if item.introduction is not None
+                        else None,
+                    )
+                    for item in output.language_items
+                ),
+                item_practices=tuple(
+                    ItemPracticeCandidate(
+                        item.item_key,
+                        _evidence(item.evidence),
+                        item.outcome,
+                        item.opportunity_type,
+                    )
+                    for item in output.item_practices
+                ),
+                capability_attempts=tuple(
+                    CapabilityAttemptCandidate(
+                        item.capability_key,
+                        _evidence(item.evidence),
+                        item.outcome,
+                        item.opportunity_type,
+                        tuple(item.item_keys),
+                    )
+                    for item in output.capability_attempts
+                ),
             )
         practice_response = await self._client.responses.parse(
             model=model,
@@ -184,7 +261,7 @@ class OpenAIExtractor:
             raise ValueError("extractor returned no structured analysis")
         return PracticeCandidate(
             summary=practice_response.output_parsed.summary,
-            insights=_insights(practice_response.output_parsed.insights),
+            user_insights=_insights(practice_response.output_parsed.user_insights),
         )
 
     async def review_observations(

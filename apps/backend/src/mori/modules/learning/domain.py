@@ -10,8 +10,17 @@ from uuid import UUID
 from mori.modules.learning.evidence import (
     AcceptedObservation,
     AnalysisContext,
+    CapabilityAttemptCandidate,
+    GroundedCapabilityAttempt,
+    GroundedItemPractice,
+    GroundedLanguageItem,
+    ItemPracticeCandidate,
+    LanguageItemCandidate,
     ObservationCandidate,
+    QuotedTurn,
+    validate_language_learning,
     validate_observation,
+    validate_source_quote,
 )
 
 MIN_RECAP_OBSERVATION_CONFIDENCE = 0.7
@@ -57,17 +66,37 @@ class InsightCandidate:
 
 
 @dataclass(frozen=True, slots=True)
+class UserInsightCandidate:
+    text: str
+    source_turn_id: UUID
+    source_quote: str
+    temporal_context: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class GroundedUserInsight:
+    text: str
+    source: QuotedTurn
+    temporal_context: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class LearningCandidate:
     summary: str
     observations: tuple[ObservationCandidate, ...]
     corrections: tuple[CorrectionCandidate, ...]
     insights: tuple[InsightCandidate, ...] = ()
+    language_items: tuple[LanguageItemCandidate, ...] = ()
+    item_practices: tuple[ItemPracticeCandidate, ...] = ()
+    capability_attempts: tuple[CapabilityAttemptCandidate, ...] = ()
+    user_insights: tuple[UserInsightCandidate, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class PracticeCandidate:
     summary: str
     insights: tuple[InsightCandidate, ...] = ()
+    user_insights: tuple[UserInsightCandidate, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +127,10 @@ class ValidatedAnalysis:
     observations: tuple[AcceptedObservation, ...]
     corrections: tuple[AcceptedCorrection, ...]
     insights: tuple[AcceptedInsight, ...] = ()
+    language_items: tuple[GroundedLanguageItem, ...] = ()
+    item_practices: tuple[GroundedItemPractice, ...] = ()
+    capability_attempts: tuple[GroundedCapabilityAttempt, ...] = ()
+    user_insights: tuple[GroundedUserInsight, ...] = ()
 
 
 def validate_candidate(
@@ -116,6 +149,30 @@ def validate_candidate(
         raise ValueError("invalid recap summary")
     learner_ids = {turn.id for turn in turns if turn.role == "learner" and turn.text.strip()}
     learner_text = {turn.id: turn.text for turn in turns if turn.id in learner_ids}
+    if len(candidate.user_insights) > 2:
+        raise ValueError("too many user insights")
+    user_insights: list[GroundedUserInsight] = []
+    seen_user_insights: set[tuple[str, str | None]] = set()
+    for user_insight in candidate.user_insights:
+        text = " ".join(user_insight.text.split())
+        temporal = user_insight.temporal_context
+        if (
+            not text
+            or len(text) > 120
+            or (temporal is not None and (not temporal.strip() or len(temporal) > 120))
+        ):
+            raise ValueError("invalid user insight")
+        source_span = validate_source_quote(
+            turn_id=user_insight.source_turn_id,
+            quote=user_insight.source_quote,
+            role="learner",
+            turns=turns,
+        )
+        key = (text.casefold(), temporal)
+        if key in seen_user_insights:
+            raise ValueError("duplicate user insight")
+        seen_user_insights.add(key)
+        user_insights.append(GroundedUserInsight(text, source_span, temporal))
     insights: list[AcceptedInsight] = []
     insight_keys: set[tuple[str, str]] = set()
     for insight in candidate.insights[:5]:
@@ -155,7 +212,9 @@ def validate_candidate(
             )
             insight_keys.add(key)
     if isinstance(candidate, PracticeCandidate):
-        return ValidatedAnalysis(summary, (), (), tuple(insights))
+        return ValidatedAnalysis(
+            summary, (), (), tuple(insights), user_insights=tuple(user_insights)
+        )
     if context is None or context.lesson is None:
         raise ValueError("learning analysis requires pinned lesson context")
     if len(candidate.observations) > 3 or len(candidate.corrections) > 3:
@@ -174,4 +233,20 @@ def validate_candidate(
         if correction.learner_turn_id not in learner_ids or not suggestion or len(suggestion) > 240:
             raise ValueError("invalid or ungrounded correction")
         corrections.append(AcceptedCorrection(correction.learner_turn_id, suggestion))
-    return ValidatedAnalysis(summary, tuple(observations), tuple(corrections), tuple(insights))
+    items, practices, attempts = validate_language_learning(
+        context=context,
+        turns=turns,
+        items=candidate.language_items,
+        practices=candidate.item_practices,
+        attempts=candidate.capability_attempts,
+    )
+    return ValidatedAnalysis(
+        summary,
+        tuple(observations),
+        tuple(corrections),
+        tuple(insights),
+        items,
+        practices,
+        attempts,
+        tuple(user_insights),
+    )

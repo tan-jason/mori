@@ -60,4 +60,16 @@ export interface WebAppGateway {
     expectedVersion: number;
     csrfToken: string;
   }, signal?: AbortSignal): Promise<void>;
+  getUserInsights(cursor?: string | null, signal?: AbortSignal): Promise<LearnerFilePage>;
+  editUserInsight(command: {
+    entryId: string;
+    expectedVersion: number;
+    text: string;
+    csrfToken: string;
+  }, signal?: AbortSignal): Promise<LearnerFileEntry>;
+  deleteUserInsight(command: {
+    entryId: string;
+    expectedVersion: number;
+    csrfToken: string;
+  }, signal?: AbortSignal): Promise<void>;
 }

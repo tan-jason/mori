@@ -251,7 +251,7 @@ def test_lesson_contract_is_pinned_to_course_and_level() -> None:
         course=TEST_COURSE, lesson_key=LESSONS[0].key, level="beginner"
     )
     assert definition is BEGINNER_LESSON_DEFINITIONS[0]
-    assert definition.content_version == "beginner-conversation-v1"
+    assert definition.content_version == "beginner-conversation-v2"
     assert definition.capability_keys == (
         "express-detail",
         "answer-related-question",

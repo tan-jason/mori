@@ -10,7 +10,7 @@ dependencies = [
   "email-validator>=2.2,<3",
   "fastapi>=0.116,<1",
   "httpx2>=2,<3",
-  "openai>=2,<3",
+  "openai>=3.26,<4",
   "procrastinate==3.10.0",
   "psycopg[binary,pool]>=3.2,<4",
   "pydantic-settings>=2.10,<3",

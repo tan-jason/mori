@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from pydantic import SecretStr
 from sqlalchemy import create_engine, text
 
+from mori.modules.curriculum import catalog as curriculum_catalog
 from mori.modules.learning.application import AnalysisService
 from mori.modules.learning.domain import (
     CorrectionCandidate,
@@ -306,15 +307,16 @@ async def test_future_prompt_keeps_insights_when_learnings_fill_the_file(
                 )
             db.execute(
                 text(
-                    "INSERT INTO learner_file_entries "
-                    "(id, language_profile_id, source_session_id, kind, insight_topic, text, "
+                    "INSERT INTO user_insights "
+                    "(id, user_id, source_session_id, identity_digest, text, "
                     "origin, version, created_at, updated_at, expires_at) "
-                    "VALUES (:id, :profile_id, :session_id, 'insight', 'interest', "
+                    "VALUES (:id, :user_id, :session_id, :digest, "
                     "'Enjoys playing beach volleyball.', 'capture', 1, :now, :now, :expiry)"
                 ),
                 {
                     "id": uuid4(),
-                    "profile_id": profile_id,
+                    "user_id": UUID(me["user"]["id"]),
+                    "digest": "a" * 64,
                     "session_id": session_id,
                     "now": datetime.now(UTC) - timedelta(days=1),
                     "expiry": datetime.now(UTC) + timedelta(days=89),
@@ -328,9 +330,9 @@ async def test_future_prompt_keeps_insights_when_learnings_fill_the_file(
     assert "Enjoys playing beach volleyball." in prompt.instructions
     assert "Practiced structure 0." not in prompt.instructions
     if starting_choice == "beginner":
-        assert "Practiced structure 8." in prompt.instructions
-        assert "# Build on previous practice" in prompt.instructions
-        assert "Briefly welcome the learner back" in prompt.instructions
+        assert "Practiced structure 8." not in prompt.instructions
+        assert "# Build on previous practice" not in prompt.instructions
+        assert "Session focus:" in prompt.instructions
     else:
         assert "Practiced structure" not in prompt.instructions
         assert "# Build on previous practice" not in prompt.instructions
@@ -341,6 +343,7 @@ async def test_compatible_saved_plan_bootstraps_current_policy_with_captured_int
     client: TestClient, app: FastAPI, database_url: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(session_application, "BASE_POLICY_VERSION", "mori-framework-v3")
+    monkeypatch.setattr(curriculum_catalog, "MORI_COURSE", curriculum_catalog.PART1_MORI_COURSE)
     session_id, _ = _planned(client)
     me = client.get("/api/v1/me").json()
     async with app.state.session_maker() as db, db.begin():
@@ -382,7 +385,6 @@ async def test_capturer_saves_expiring_insight_and_delete_revokes_it(
     client: TestClient, app: FastAPI, database_url: str
 ) -> None:
     session_id, csrf = _planned(client)
-    profile_id = client.get("/api/v1/me").json()["activeLanguageProfile"]["id"]
     turn_id, run_id = uuid4(), uuid4()
     engine = create_engine(database_url)
     try:
@@ -430,7 +432,7 @@ async def test_capturer_saves_expiring_insight_and_delete_revokes_it(
         extractor=FakeInsightExtractor(),
         fact_digest_key="test-secret-key",
     ).process(run_id)
-    path = f"/api/v1/language-profiles/{profile_id}/learner-file"
+    path = "/api/v1/user-insights"
     entries = client.get(path).json()["entries"]
     assert len(entries) == 2
     assert {entry["text"] for entry in entries} == {"Enjoys cooking.", "Enjoys hiking."}
@@ -446,7 +448,7 @@ async def test_capturer_saves_expiring_insight_and_delete_revokes_it(
     )
     assert deleted.status_code == 204
     assert [entry["text"] for entry in client.get(path).json()["entries"]] == ["Enjoys hiking."]
-    rows = _sql(database_url, "SELECT text, deleted_at IS NOT NULL FROM learner_file_entries")
+    rows = _sql(database_url, "SELECT text, deleted_at IS NOT NULL FROM user_insights")
     assert set(rows) == {
         (None, True),
         ("Enjoys hiking.", False),
@@ -670,8 +672,13 @@ async def test_webapp_call_consumes_once_and_supervisor_finishes(
         user_id=UUID(client.get("/api/v1/me").json()["user"]["id"]),
         session_id=UUID(repeated.json()["id"]),
     )
-    assert "I practiced a greeting." in prompt.instructions
-    assert "# Build on previous practice" in prompt.instructions
+    assert "I practiced a greeting." not in prompt.instructions
+    assert "# Build on previous practice" not in prompt.instructions
+    async with app.state.session_maker() as db:
+        from mori.modules.learning.progress_store import load_learning_history
+
+        history = await load_learning_history(db, UUID(profile_id))
+        assert not any(record.observations for record in history.records)
     deleted = client.delete(entry_path, headers={**headers, "If-Match": '"2"'})
     assert deleted.status_code == 204
     assert client.delete(entry_path, headers={**headers, "If-Match": '"2"'}).status_code == 204

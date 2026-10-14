@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostData, AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostErrors, AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostResponses, CreateLanguageProfileApiV1LanguageProfilesPostData, CreateLanguageProfileApiV1LanguageProfilesPostErrors, CreateLanguageProfileApiV1LanguageProfilesPostResponses, CreateSessionApiV1SessionsPostData, CreateSessionApiV1SessionsPostErrors, CreateSessionApiV1SessionsPostResponses, DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteData, DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteErrors, DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteResponses, EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchData, EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchErrors, EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchResponses, EndSessionApiV1SessionsSessionIdEndPostData, EndSessionApiV1SessionsSessionIdEndPostErrors, EndSessionApiV1SessionsSessionIdEndPostResponses, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostData, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostErrors, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponses, GetLanguagePairsApiV1LanguagePairsGetData, GetLanguagePairsApiV1LanguagePairsGetErrors, GetLanguagePairsApiV1LanguagePairsGetResponses, GetMeApiV1MeGetData, GetMeApiV1MeGetErrors, GetMeApiV1MeGetResponses, GetRecapApiV1SessionsSessionIdRecapGetData, GetRecapApiV1SessionsSessionIdRecapGetErrors, GetRecapApiV1SessionsSessionIdRecapGetResponses, GetSessionApiV1SessionsSessionIdGetData, GetSessionApiV1SessionsSessionIdGetErrors, GetSessionApiV1SessionsSessionIdGetResponses, HealthHealthGetData, HealthHealthGetResponses, ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetData, ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetErrors, ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetResponses, LogoutAuthLogoutPostData, LogoutAuthLogoutPostErrors, LogoutAuthLogoutPostResponses, ReadyReadyGetData, ReadyReadyGetResponses, UpdatePreferencesApiV1MePreferencesPatchData, UpdatePreferencesApiV1MePreferencesPatchErrors, UpdatePreferencesApiV1MePreferencesPatchResponses, VoiceAvailabilityApiV1SessionsAvailabilityGetData, VoiceAvailabilityApiV1SessionsAvailabilityGetErrors, VoiceAvailabilityApiV1SessionsAvailabilityGetResponses } from './types.gen';
+import type { AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostData, AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostErrors, AcknowledgeConnectionApiV1SessionsSessionIdConnectionsAttemptIdAckPostResponses, CreateLanguageProfileApiV1LanguageProfilesPostData, CreateLanguageProfileApiV1LanguageProfilesPostErrors, CreateLanguageProfileApiV1LanguageProfilesPostResponses, CreateSessionApiV1SessionsPostData, CreateSessionApiV1SessionsPostErrors, CreateSessionApiV1SessionsPostResponses, DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteData, DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteErrors, DeleteEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdDeleteResponses, DeleteInsightApiV1UserInsightsEntryIdDeleteData, DeleteInsightApiV1UserInsightsEntryIdDeleteErrors, DeleteInsightApiV1UserInsightsEntryIdDeleteResponses, EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchData, EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchErrors, EditEntryApiV1LanguageProfilesProfileIdLearnerFileEntryIdPatchResponses, EditInsightApiV1UserInsightsEntryIdPatchData, EditInsightApiV1UserInsightsEntryIdPatchErrors, EditInsightApiV1UserInsightsEntryIdPatchResponses, EndSessionApiV1SessionsSessionIdEndPostData, EndSessionApiV1SessionsSessionIdEndPostErrors, EndSessionApiV1SessionsSessionIdEndPostResponses, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostData, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostErrors, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponses, GetLanguagePairsApiV1LanguagePairsGetData, GetLanguagePairsApiV1LanguagePairsGetErrors, GetLanguagePairsApiV1LanguagePairsGetResponses, GetMeApiV1MeGetData, GetMeApiV1MeGetErrors, GetMeApiV1MeGetResponses, GetRecapApiV1SessionsSessionIdRecapGetData, GetRecapApiV1SessionsSessionIdRecapGetErrors, GetRecapApiV1SessionsSessionIdRecapGetResponses, GetSessionApiV1SessionsSessionIdGetData, GetSessionApiV1SessionsSessionIdGetErrors, GetSessionApiV1SessionsSessionIdGetResponses, HealthHealthGetData, HealthHealthGetResponses, ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetData, ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetErrors, ListEntriesApiV1LanguageProfilesProfileIdLearnerFileGetResponses, ListInsightsApiV1UserInsightsGetData, ListInsightsApiV1UserInsightsGetErrors, ListInsightsApiV1UserInsightsGetResponses, LogoutAuthLogoutPostData, LogoutAuthLogoutPostErrors, LogoutAuthLogoutPostResponses, ReadyReadyGetData, ReadyReadyGetResponses, UpdatePreferencesApiV1MePreferencesPatchData, UpdatePreferencesApiV1MePreferencesPatchErrors, UpdatePreferencesApiV1MePreferencesPatchResponses, VoiceAvailabilityApiV1SessionsAvailabilityGetData, VoiceAvailabilityApiV1SessionsAvailabilityGetErrors, VoiceAvailabilityApiV1SessionsAvailabilityGetResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -115,6 +115,28 @@ export const getRecapApiV1SessionsSessionIdRecapGet = <ThrowOnError extends bool
  * Exchange Webrtc
  */
 export const exchangeWebrtcApiV1SessionsSessionIdWebrtcPost = <ThrowOnError extends boolean = false>(options: Options<ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostData, ThrowOnError>) => (options.client ?? client).post<ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostResponses, ExchangeWebrtcApiV1SessionsSessionIdWebrtcPostErrors, ThrowOnError>({ url: '/api/v1/sessions/{session_id}/webrtc', ...options });
+
+/**
+ * List Insights
+ */
+export const listInsightsApiV1UserInsightsGet = <ThrowOnError extends boolean = false>(options?: Options<ListInsightsApiV1UserInsightsGetData, ThrowOnError>) => (options?.client ?? client).get<ListInsightsApiV1UserInsightsGetResponses, ListInsightsApiV1UserInsightsGetErrors, ThrowOnError>({ url: '/api/v1/user-insights', ...options });
+
+/**
+ * Delete Insight
+ */
+export const deleteInsightApiV1UserInsightsEntryIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteInsightApiV1UserInsightsEntryIdDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteInsightApiV1UserInsightsEntryIdDeleteResponses, DeleteInsightApiV1UserInsightsEntryIdDeleteErrors, ThrowOnError>({ url: '/api/v1/user-insights/{entry_id}', ...options });
+
+/**
+ * Edit Insight
+ */
+export const editInsightApiV1UserInsightsEntryIdPatch = <ThrowOnError extends boolean = false>(options: Options<EditInsightApiV1UserInsightsEntryIdPatchData, ThrowOnError>) => (options.client ?? client).patch<EditInsightApiV1UserInsightsEntryIdPatchResponses, EditInsightApiV1UserInsightsEntryIdPatchErrors, ThrowOnError>({
+    url: '/api/v1/user-insights/{entry_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Logout
